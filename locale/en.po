@@ -1,0 +1,376 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: StreamRecorder 0.1.0\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "&File"
+msgstr "&File"
+
+msgid "&Help"
+msgstr "&Help"
+
+msgid "AAC to M4A remux"
+msgstr "AAC to M4A remux"
+
+msgid "AAC to M4A remux failed"
+msgstr "AAC to M4A remux failed"
+
+msgid "About"
+msgstr "About"
+
+msgid "Add station"
+msgstr "Add station"
+
+msgid "Always on top"
+msgstr "Always on top"
+
+msgid "Application settings saved"
+msgstr "Application settings saved"
+
+msgid "Ask for confirmation before exit"
+msgstr "Ask for confirmation before exit"
+
+msgid "Available version:"
+msgstr "Available version:"
+
+msgid "Browse"
+msgstr "Browse"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Check for updates"
+msgstr "Check for updates"
+
+msgid "Choose recordings folder"
+msgstr "Choose recordings folder"
+
+msgid "Close StreamRecorder"
+msgstr "Close StreamRecorder"
+
+msgid "Configure the GitHub repository in Settings to check for updates."
+msgstr "Configure the GitHub repository in Settings to check for updates."
+
+msgid "Connecting"
+msgstr "Connecting"
+
+msgid "Connection ended for"
+msgstr "Connection ended for"
+
+msgid "Connection failed for"
+msgstr "Connection failed for"
+
+msgid "Connection interrupted for"
+msgstr "Connection interrupted for"
+
+msgid "Crash monitor"
+msgstr "Crash monitor"
+
+msgid "Crash monitoring will be activated on the next program start."
+msgstr "Crash monitoring will be activated on the next program start."
+
+msgid "Currently recording:"
+msgstr "Currently recording:"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Delete station"
+msgstr "Delete station"
+
+msgid "Delete station prompt"
+msgstr "Delete station"
+
+msgid "Disabling crash monitoring will be fully applied after restarting the program."
+msgstr "Disabling crash monitoring will be fully applied after restarting the program."
+
+msgid "Do you really want to close StreamRecorder?"
+msgstr "Do you really want to close StreamRecorder?"
+
+msgid "Download and install the update now?"
+msgstr "Download and install the update now?"
+
+msgid "Downloadable asset"
+msgstr "Downloadable asset"
+
+msgid "Downloading update"
+msgstr "Downloading update"
+
+msgid "Enable schedule"
+msgstr "Enable schedule"
+
+msgid "End HH:MM:"
+msgstr "End HH:MM:"
+
+msgid "English"
+msgstr "English"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Exit"
+msgstr "Exit"
+
+msgid "Failed to download the update"
+msgstr "Failed to download the update"
+
+msgid "Failed to update startup registration"
+msgstr "Failed to update startup registration"
+
+msgid "File"
+msgstr "File"
+
+msgid "File name template:"
+msgstr "File name template:"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Fri"
+msgstr "Fri"
+
+msgid "General"
+msgstr "General"
+
+msgid "Hide log"
+msgstr "Hide log"
+
+msgid "HLS playlist error for"
+msgstr "HLS playlist error for"
+
+msgid "HLS recording started"
+msgstr "HLS recording started"
+
+msgid "HLS segment error for"
+msgstr "HLS segment error for"
+
+msgid "Idle"
+msgstr "Idle"
+
+msgid "Invalid data"
+msgstr "Invalid data"
+
+msgid "Invalid hour value."
+msgstr "Invalid hour value."
+
+msgid "Invalid minute value."
+msgstr "Invalid minute value."
+
+msgid "Language changes will be fully applied after restarting the program."
+msgstr "Language changes will be fully applied after restarting the program."
+
+msgid "Language:"
+msgstr "Language:"
+
+msgid "Launch application at Windows startup"
+msgstr "Launch application at Windows startup"
+
+msgid "Minimize to system tray"
+msgstr "Minimize to system tray"
+
+msgid "Mon"
+msgstr "Mon"
+
+msgid "Name:"
+msgstr "Name:"
+
+msgid "New"
+msgstr "New"
+
+msgid "No newer version is available."
+msgstr "No newer version is available."
+
+msgid "No station selected"
+msgstr "No station selected"
+
+msgid "No supported downloadable asset was found. Open the release page in your browser?"
+msgstr "No supported downloadable asset was found. Open the release page in your browser?"
+
+msgid "Open recordings folder"
+msgstr "Open recordings folder"
+
+msgid "Open settings folder"
+msgstr "Open settings folder"
+
+msgid "Other"
+msgstr "Other"
+
+msgid "Password:"
+msgstr "Password:"
+
+msgid "Polish"
+msgstr "Polish"
+
+msgid "Portable audio stream recorder."
+msgstr "Portable audio stream recorder."
+
+msgid "Prevent the computer from sleeping"
+msgstr "Prevent the computer from sleeping"
+
+msgid "Properties"
+msgstr "Properties"
+
+msgid "Read error for"
+msgstr "Read error for"
+
+msgid "Reconnecting"
+msgstr "Reconnecting"
+
+msgid "Recording"
+msgstr "Recording"
+
+msgid "Recording error"
+msgstr "Recording error"
+
+msgid "Recording started"
+msgstr "Recording started"
+
+msgid "Recording stopped"
+msgstr "Recording stopped"
+
+msgid "recording:"
+msgstr "recording:"
+
+msgid "Recordings folder:"
+msgstr "Recordings folder:"
+
+msgid "Remux RAW AAC to M4A after recording"
+msgstr "Remux RAW AAC to M4A after recording"
+
+msgid "Restart program after a crash"
+msgstr "Restart program after a crash"
+
+msgid "Restart required"
+msgstr "Restart required"
+
+msgid "retrying"
+msgstr "retrying"
+
+msgid "Sat"
+msgstr "Sat"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Saved station"
+msgstr "Saved station"
+
+msgid "Schedule"
+msgstr "Schedule"
+
+msgid "Schedule started recording"
+msgstr "Schedule started recording"
+
+msgid "Schedule stopped recording"
+msgstr "Schedule stopped recording"
+
+msgid "Select a station from the list or add a new one."
+msgstr "Select a station from the list or add a new one."
+
+msgid "Select at least one weekday for the schedule."
+msgstr "Select at least one weekday for the schedule."
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "Settings error"
+msgstr "Settings error"
+
+msgid "Show"
+msgstr "Show"
+
+msgid "Show log"
+msgstr "Show log"
+
+msgid "Skipping AAC to M4A remux: MP4Box.exe was not found"
+msgstr "Skipping AAC to M4A remux: MP4Box.exe was not found"
+
+msgid "Start"
+msgstr "Start"
+
+msgid "Start HH:MM:"
+msgstr "Start HH:MM:"
+
+msgid "Start minimized"
+msgstr "Start minimized"
+
+msgid "Start recording"
+msgstr "Start recording"
+
+msgid "Station"
+msgstr "Station"
+
+msgid "Station name cannot be empty."
+msgstr "Station name cannot be empty."
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Stop"
+msgstr "Stop"
+
+msgid "Stop recording"
+msgstr "Stop recording"
+
+msgid "Stopped"
+msgstr "Stopped"
+
+msgid "Stopping"
+msgstr "Stopping"
+
+msgid "Stream"
+msgstr "Stream"
+
+msgid "Sun"
+msgstr "Sun"
+
+msgid "temporarily produced no data, retrying"
+msgstr "temporarily produced no data, retrying"
+
+msgid "The stream URL is not valid."
+msgstr "The stream URL is not valid."
+
+msgid "The update has been downloaded. StreamRecorder will now close and install the update."
+msgstr "The update has been downloaded. StreamRecorder will now close and install the update."
+
+msgid "Thu"
+msgstr "Thu"
+
+msgid "Time is out of range."
+msgstr "Time is out of range."
+
+msgid "Time must use HH:MM format."
+msgstr "Time must use HH:MM format."
+
+msgid "Tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second"
+msgstr "Tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second"
+
+msgid "Tue"
+msgstr "Tue"
+
+msgid "Update available"
+msgstr "Update available"
+
+msgid "Update repository:"
+msgstr "Update repository:"
+
+msgid "Updates"
+msgstr "Updates"
+
+msgid "Username:"
+msgstr "Username:"
+
+msgid "Waiting for HLS segments"
+msgstr "Waiting for HLS segments"
+
+msgid "Waiting for playlist"
+msgstr "Waiting for playlist"
+
+msgid "Waiting for reconnect"
+msgstr "Waiting for reconnect"
+
+msgid "Wed"
+msgstr "Wed"

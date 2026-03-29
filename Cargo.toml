@@ -1,0 +1,52 @@
+[package]
+name = "streamrecorder"
+version = "0.1.0"
+edition = "2024"
+authors = ["Kazek"]
+description = "Portable Windows stream recorder for radio streams"
+license = "MIT"
+publish = false
+default-run = "streamrecorder"
+
+[lib]
+name = "streamrecorder"
+path = "src/lib.rs"
+
+[[bin]]
+name = "streamrecorder"
+path = "src/main.rs"
+
+[[bin]]
+name = "streamrecorder_guard"
+path = "src/bin/streamrecorder_guard.rs"
+
+[dependencies]
+anyhow = "1.0"
+base64 = "0.22"
+chrono = { version = "0.4", features = ["clock", "serde"] }
+crossbeam-channel = "0.5"
+directories = "6.0"
+futures-util = "0.3"
+native-windows-derive = "1.0"
+native-windows-gui = { version = "1.0", features = ["combobox", "cursor", "file-dialog", "list-view", "menu", "message-window", "tabs", "tray-notification"] }
+once_cell = "1.21"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "charset", "http2", "json", "rustls-tls", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.46", features = ["fs", "io-util", "macros", "rt-multi-thread", "signal", "sync", "time"] }
+toml = "0.9"
+url = { version = "2.5", features = ["serde"] }
+uuid = { version = "1.18", features = ["serde", "v4"] }
+
+[dependencies.windows]
+version = "0.62"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Power",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"

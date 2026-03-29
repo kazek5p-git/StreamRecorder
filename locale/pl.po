@@ -1,0 +1,376 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: StreamRecorder 0.1.0\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "&File"
+msgstr "&Plik"
+
+msgid "&Help"
+msgstr "&Pomoc"
+
+msgid "AAC to M4A remux"
+msgstr "Remux AAC do M4A"
+
+msgid "AAC to M4A remux failed"
+msgstr "Remux AAC do M4A nie powiódł się"
+
+msgid "About"
+msgstr "O programie"
+
+msgid "Add station"
+msgstr "Dodaj stację"
+
+msgid "Always on top"
+msgstr "Zawsze na wierzchu"
+
+msgid "Application settings saved"
+msgstr "Zapisano ustawienia programu"
+
+msgid "Ask for confirmation before exit"
+msgstr "Pytaj przy zamykaniu programu"
+
+msgid "Available version:"
+msgstr "Dostępna wersja:"
+
+msgid "Browse"
+msgstr "Przeglądaj"
+
+msgid "Cancel"
+msgstr "Anuluj"
+
+msgid "Check for updates"
+msgstr "Sprawdź aktualizacje"
+
+msgid "Choose recordings folder"
+msgstr "Wybierz folder nagrań"
+
+msgid "Close StreamRecorder"
+msgstr "Zamknąć StreamRecorder"
+
+msgid "Configure the GitHub repository in Settings to check for updates."
+msgstr "Skonfiguruj repozytorium GitHub w Ustawieniach, aby sprawdzać aktualizacje."
+
+msgid "Connecting"
+msgstr "Łączenie"
+
+msgid "Connection ended for"
+msgstr "Połączenie zakończone dla"
+
+msgid "Connection failed for"
+msgstr "Połączenie nieudane dla"
+
+msgid "Connection interrupted for"
+msgstr "Połączenie przerwane dla"
+
+msgid "Crash monitor"
+msgstr "Monitor awarii"
+
+msgid "Crash monitoring will be activated on the next program start."
+msgstr "Monitor awarii zostanie aktywowany przy następnym uruchomieniu programu."
+
+msgid "Currently recording:"
+msgstr "Aktualnie nagrywane:"
+
+msgid "Delete"
+msgstr "Usuń"
+
+msgid "Delete station"
+msgstr "Usuń stację"
+
+msgid "Delete station prompt"
+msgstr "Usunąć stację"
+
+msgid "Disabling crash monitoring will be fully applied after restarting the program."
+msgstr "Wyłączenie monitora awarii zostanie w pełni zastosowane po ponownym uruchomieniu programu."
+
+msgid "Do you really want to close StreamRecorder?"
+msgstr "Czy na pewno chcesz zamknąć StreamRecorder?"
+
+msgid "Download and install the update now?"
+msgstr "Pobierać i instalować aktualizację teraz?"
+
+msgid "Downloadable asset"
+msgstr "Plik aktualizacji"
+
+msgid "Downloading update"
+msgstr "Pobieranie aktualizacji"
+
+msgid "Enable schedule"
+msgstr "Włącz harmonogram"
+
+msgid "End HH:MM:"
+msgstr "Koniec HH:MM:"
+
+msgid "English"
+msgstr "Angielski"
+
+msgid "Error"
+msgstr "Błąd"
+
+msgid "Exit"
+msgstr "Zakończ"
+
+msgid "Failed to download the update"
+msgstr "Nie udało się pobrać aktualizacji"
+
+msgid "Failed to update startup registration"
+msgstr "Nie udało się zmienić ustawienia autostartu"
+
+msgid "File"
+msgstr "Plik"
+
+msgid "File name template:"
+msgstr "Szablon nazw plików:"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Fri"
+msgstr "Pt"
+
+msgid "General"
+msgstr "Ogólne"
+
+msgid "Hide log"
+msgstr "Ukryj log"
+
+msgid "HLS playlist error for"
+msgstr "Błąd playlisty HLS dla"
+
+msgid "HLS recording started"
+msgstr "Nagrywanie HLS rozpoczęte"
+
+msgid "HLS segment error for"
+msgstr "Błąd segmentu HLS dla"
+
+msgid "Idle"
+msgstr "Bezczynny"
+
+msgid "Invalid data"
+msgstr "Błąd danych"
+
+msgid "Invalid hour value."
+msgstr "Nieprawidłowa godzina."
+
+msgid "Invalid minute value."
+msgstr "Nieprawidłowa minuta."
+
+msgid "Language changes will be fully applied after restarting the program."
+msgstr "Zmiana języka zostanie w pełni zastosowana po ponownym uruchomieniu programu."
+
+msgid "Language:"
+msgstr "Język:"
+
+msgid "Launch application at Windows startup"
+msgstr "Uruchamiaj aplikację przy starcie systemu"
+
+msgid "Minimize to system tray"
+msgstr "Minimalizuj do zasobnika systemowego"
+
+msgid "Mon"
+msgstr "Pon"
+
+msgid "Name:"
+msgstr "Nazwa:"
+
+msgid "New"
+msgstr "Nowa"
+
+msgid "No newer version is available."
+msgstr "Brak nowszej wersji."
+
+msgid "No station selected"
+msgstr "Brak stacji"
+
+msgid "No supported downloadable asset was found. Open the release page in your browser?"
+msgstr "Nie znaleziono obsługiwanego pliku aktualizacji. Otworzyć stronę wydania w przeglądarce?"
+
+msgid "Open recordings folder"
+msgstr "Otwórz folder z nagraniami"
+
+msgid "Open settings folder"
+msgstr "Otwórz folder ustawień"
+
+msgid "Other"
+msgstr "Inne"
+
+msgid "Password:"
+msgstr "Hasło:"
+
+msgid "Polish"
+msgstr "Polski"
+
+msgid "Portable audio stream recorder."
+msgstr "Portable nagrywarka strumieni audio."
+
+msgid "Prevent the computer from sleeping"
+msgstr "Zapobiegaj przechodzeniu komputera w uśpienie"
+
+msgid "Properties"
+msgstr "Właściwości"
+
+msgid "Read error for"
+msgstr "Błąd odczytu dla"
+
+msgid "Reconnecting"
+msgstr "Ponawianie połączenia"
+
+msgid "Recording"
+msgstr "Nagrywanie"
+
+msgid "Recording error"
+msgstr "Błąd nagrywania"
+
+msgid "Recording started"
+msgstr "Nagrywanie rozpoczęte"
+
+msgid "Recording stopped"
+msgstr "Nagrywanie zatrzymane"
+
+msgid "recording:"
+msgstr "nagrywane:"
+
+msgid "Recordings folder:"
+msgstr "Folder nagrań:"
+
+msgid "Remux RAW AAC to M4A after recording"
+msgstr "Remuxuj RAW AAC do M4A po nagraniu"
+
+msgid "Restart program after a crash"
+msgstr "Restartuj program po awarii"
+
+msgid "Restart required"
+msgstr "Restart wymagany"
+
+msgid "retrying"
+msgstr "ponawiam"
+
+msgid "Sat"
+msgstr "Sob"
+
+msgid "Save"
+msgstr "Zapisz"
+
+msgid "Saved station"
+msgstr "Zapisano stację"
+
+msgid "Schedule"
+msgstr "Harmonogram"
+
+msgid "Schedule started recording"
+msgstr "Harmonogram uruchomił nagrywanie"
+
+msgid "Schedule stopped recording"
+msgstr "Harmonogram zatrzymał nagrywanie"
+
+msgid "Select a station from the list or add a new one."
+msgstr "Wybierz stację z listy albo dodaj nową."
+
+msgid "Select at least one weekday for the schedule."
+msgstr "Zaznacz co najmniej jeden dzień harmonogramu."
+
+msgid "Settings"
+msgstr "Ustawienia"
+
+msgid "Settings error"
+msgstr "Błąd ustawień"
+
+msgid "Show"
+msgstr "Pokaż"
+
+msgid "Show log"
+msgstr "Pokaż log"
+
+msgid "Skipping AAC to M4A remux: MP4Box.exe was not found"
+msgstr "Pomijam remux AAC do M4A: nie znaleziono MP4Box.exe"
+
+msgid "Start"
+msgstr "Start"
+
+msgid "Start HH:MM:"
+msgstr "Start HH:MM:"
+
+msgid "Start minimized"
+msgstr "Uruchom zminimalizowany"
+
+msgid "Start recording"
+msgstr "Rozpocznij nagrywanie"
+
+msgid "Station"
+msgstr "Stacja"
+
+msgid "Station name cannot be empty."
+msgstr "Nazwa stacji nie może być pusta."
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Stop"
+msgstr "Stop"
+
+msgid "Stop recording"
+msgstr "Zatrzymaj nagrywanie"
+
+msgid "Stopped"
+msgstr "Zatrzymane"
+
+msgid "Stopping"
+msgstr "Zatrzymywanie"
+
+msgid "Stream"
+msgstr "Strumień"
+
+msgid "Sun"
+msgstr "Nd"
+
+msgid "temporarily produced no data, retrying"
+msgstr "chwilowo nie dostarczył danych, ponawiam połączenie"
+
+msgid "The stream URL is not valid."
+msgstr "Adres URL nie jest poprawny."
+
+msgid "The update has been downloaded. StreamRecorder will now close and install the update."
+msgstr "Aktualizacja została pobrana. StreamRecorder zamknie się teraz i zainstaluje aktualizację."
+
+msgid "Thu"
+msgstr "Czw"
+
+msgid "Time is out of range."
+msgstr "Czas jest poza zakresem."
+
+msgid "Time must use HH:MM format."
+msgstr "Czas musi mieć format HH:MM."
+
+msgid "Tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second"
+msgstr "Zmienne: %t stacja, %r rok, %M miesiąc, %d dzień, %h godzina, %m minuta, %s sekunda"
+
+msgid "Tue"
+msgstr "Wt"
+
+msgid "Update available"
+msgstr "Aktualizacja dostępna"
+
+msgid "Update repository:"
+msgstr "Repozytorium aktualizacji:"
+
+msgid "Updates"
+msgstr "Aktualizacje"
+
+msgid "Username:"
+msgstr "Użytkownik:"
+
+msgid "Waiting for HLS segments"
+msgstr "Oczekiwanie na segmenty HLS"
+
+msgid "Waiting for playlist"
+msgstr "Oczekiwanie na playlistę"
+
+msgid "Waiting for reconnect"
+msgstr "Oczekiwanie na ponowne połączenie"
+
+msgid "Wed"
+msgstr "Śr"

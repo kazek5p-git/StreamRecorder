@@ -1,0 +1,6 @@
+/target
+/Config
+/My recordings
+*.log
+*.user
+*.pdb
