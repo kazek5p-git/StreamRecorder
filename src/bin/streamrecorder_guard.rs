@@ -15,7 +15,7 @@ fn main() {
             Ok(status) => {
                 restart_count += 1;
                 eprintln!(
-                    "streamrecorder_guard: {} zakończył się kodem {:?}, restart {}",
+                    "streamrecorder_guard: {} exited with code {:?}, restart attempt {}",
                     exe.display(),
                     status.code(),
                     restart_count
@@ -24,7 +24,7 @@ fn main() {
             Err(error) => {
                 restart_count += 1;
                 eprintln!(
-                    "streamrecorder_guard: nie udało się uruchomić {}: {}",
+                    "streamrecorder_guard: failed to launch {}: {}",
                     exe.display(),
                     error
                 );
@@ -32,7 +32,7 @@ fn main() {
         }
 
         if restart_count >= 3 {
-            eprintln!("streamrecorder_guard: zbyt wiele restartów, kończę działanie");
+            eprintln!("streamrecorder_guard: too many restart attempts, stopping");
             break;
         }
 

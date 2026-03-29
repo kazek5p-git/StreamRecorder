@@ -1,18 +1,18 @@
 # StreamRecorder
 
-Portable aplikacja Windows w Rust do nagrywania strumieni audio bez transkodowania.
+Portable Windows application written in Rust for recording audio streams without transcoding.
 
-## Aktualny zakres
+## Current Scope
 
-- Natywne GUI Windows z listą stacji, edycją stacji, harmonogramem i przełączanym widokiem logu.
-- Portable config w `Config/app.toml`.
-- Nagrywanie HTTP/HTTPS oraz HLS z automatycznym ponawianiem połączenia.
-- Wykrywanie podstawowych formatów: MP3, AAC, OGG, FLAC, WMA, WAV, MPEG-TS.
-- Harmonogram jednej reguły na stację.
-- Opcjonalny remux RAW AAC do M4A przez zewnętrzny `MP4Box.exe`.
-- Osobne okno ustawień z opcjami startup/topmost/tray/sleep/folder/szablon nazw/remux/aktualizacje.
-- Runtime tłumaczeń oparty o `locale/streamrecorder.pot`, `locale/pl.po` i `locale/en.po`.
-- Tray oraz `streamrecorder_guard.exe` z automatycznym przejęciem uruchomienia, gdy monitoring awarii jest włączony.
+- Native Windows GUI with a station list, station editor, schedule management, and a toggleable log view.
+- Portable configuration stored in `Config/app.toml`.
+- HTTP/HTTPS and HLS recording with automatic reconnect handling.
+- Basic format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS streams.
+- One schedule rule per station.
+- Optional RAW AAC to M4A remuxing through external `MP4Box.exe`.
+- Separate settings window for startup, topmost, tray, sleep prevention, recording folder, file naming template, remux, language, and updates.
+- Runtime localization based on `locale/streamrecorder.pot`, `locale/en.po`, and `locale/pl.po`.
+- Tray integration and `streamrecorder_guard.exe` crash monitoring with guarded relaunch support.
 
 ## Build
 
@@ -20,14 +20,14 @@ Portable aplikacja Windows w Rust do nagrywania strumieni audio bez transkodowan
 cargo build
 ```
 
-Projekt wymusza lokalnie toolchain `x86_64-pc-windows-msvc` oraz linker MSVC przez `.cargo/config.toml`.
+The project pins the local `x86_64-pc-windows-msvc` toolchain and MSVC linker through `.cargo/config.toml`.
 
-## Struktura portable
+## Portable Layout
 
-- `Config/app.toml`: ustawienia i lista stacji
-- `Config/streamrecorder.log`: log aplikacji
-- `My recordings/`: domyślny folder nagrań
+- `Config/app.toml`: application settings and station list
+- `Config/streamrecorder.log`: application log
+- `My recordings/`: default recording output folder
 
-## Aktualizacje
+## Updates
 
-Sprawdzanie aktualizacji korzysta z GitHub Releases po ustawieniu `owner/repo` w konfiguracji, pobiera obsługiwane assety release i uruchamia instalację przez tymczasowy skrypt PowerShell.
+Update checks use GitHub Releases after `owner/repo` is configured in the app settings. Supported release assets are downloaded and installed through a temporary PowerShell script.

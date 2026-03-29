@@ -1799,7 +1799,7 @@ fn main() {
     let context = AppContext::load().unwrap_or_else(|error| {
         nwg::fatal_message(
             "StreamRecorder",
-            &format!("Nie udało się uruchomić aplikacji:\n{}", error),
+            &format!("Failed to start the application:\n{}", error),
         )
     });
     let _ = APP_CONTEXT.set(context);
