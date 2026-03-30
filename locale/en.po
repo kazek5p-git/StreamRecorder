@@ -75,6 +75,9 @@ msgstr "Connection failed for"
 msgid "Connection interrupted for"
 msgstr "Connection interrupted for"
 
+msgid "Connection lost, reconnecting"
+msgstr "Connection lost, reconnecting"
+
 msgid "Crash monitor"
 msgstr "Crash monitor"
 
@@ -392,6 +395,9 @@ msgstr "Username:"
 
 msgid "Waiting for HLS segments"
 msgstr "Waiting for HLS segments"
+
+msgid "Playlist unavailable, retrying"
+msgstr "Playlist unavailable, retrying"
 
 msgid "Waiting for playlist"
 msgstr "Waiting for playlist"

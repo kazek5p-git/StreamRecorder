@@ -10,4 +10,4 @@ pub mod recording;
 pub mod scheduler;
 pub mod updater;
 
-pub const APP_VERSION: &str = "0.1.6.1";
+pub const APP_VERSION: &str = "0.1.6.2";

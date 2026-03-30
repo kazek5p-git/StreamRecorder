@@ -75,6 +75,9 @@ msgstr "Połączenie nieudane dla"
 msgid "Connection interrupted for"
 msgstr "Połączenie przerwane dla"
 
+msgid "Connection lost, reconnecting"
+msgstr "Połączenie utracone, ponawiam połączenie"
+
 msgid "Crash monitor"
 msgstr "Monitor awarii"
 
@@ -392,6 +395,9 @@ msgstr "Użytkownik:"
 
 msgid "Waiting for HLS segments"
 msgstr "Oczekiwanie na segmenty HLS"
+
+msgid "Playlist unavailable, retrying"
+msgstr "Playlista niedostępna, ponawiam połączenie"
 
 msgid "Waiting for playlist"
 msgstr "Oczekiwanie na playlistę"

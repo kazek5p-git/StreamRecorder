@@ -25,8 +25,8 @@ use windows::Win32::System::Power::{
 use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
 use windows::Win32::UI::WindowsAndMessaging::{
     BringWindowToTop, GWL_STYLE, GetWindowLongW, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
-    SWP_NOSIZE, SetForegroundWindow, SetWindowLongW, SetWindowPos, WM_CONTEXTMENU, WM_GETDLGCODE,
-    WM_KEYDOWN, WS_TABSTOP,
+    SWP_NOSIZE, SetForegroundWindow, SetWindowLongW, SetWindowPos, WM_CHAR, WM_COMMAND,
+    WM_CONTEXTMENU, WM_GETDLGCODE, WM_KEYDOWN, WM_SYSKEYDOWN, WS_TABSTOP,
 };
 
 const GUARDED_ARG: &str = "--guarded";
@@ -37,6 +37,7 @@ const ESC_KEY: u32 = 0x1B;
 const SHIFT_KEY: i32 = 0x10;
 const DLGC_WANTARROWS_VALUE: isize = 0x0001;
 const DLGC_WANTTAB_VALUE: isize = 0x0002;
+const IDCANCEL_COMMAND: usize = 2;
 
 static APP_CONTEXT: OnceCell<Arc<AppContext>> = OnceCell::new();
 
@@ -52,11 +53,6 @@ struct MainWindow {
     log_visible: RefCell<bool>,
     window: nwg::Window,
     file_menu: nwg::Menu,
-    file_add: nwg::MenuItem,
-    file_edit: nwg::MenuItem,
-    file_start: nwg::MenuItem,
-    file_stop: nwg::MenuItem,
-    file_delete: nwg::MenuItem,
     system_open_recordings: nwg::MenuItem,
     system_open_settings: nwg::MenuItem,
     file_settings: nwg::MenuItem,
@@ -153,11 +149,6 @@ impl Default for MainWindow {
             log_visible: RefCell::new(false),
             window: Default::default(),
             file_menu: Default::default(),
-            file_add: Default::default(),
-            file_edit: Default::default(),
-            file_start: Default::default(),
-            file_stop: Default::default(),
-            file_delete: Default::default(),
             system_open_recordings: Default::default(),
             system_open_settings: Default::default(),
             file_settings: Default::default(),
@@ -272,26 +263,6 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .text(tr("&File"))
             .parent(&data.window)
             .build(&mut data.file_menu)?;
-        nwg::MenuItem::builder()
-            .text(tr("Add station"))
-            .parent(&data.file_menu)
-            .build(&mut data.file_add)?;
-        nwg::MenuItem::builder()
-            .text(tr("Edit station"))
-            .parent(&data.file_menu)
-            .build(&mut data.file_edit)?;
-        nwg::MenuItem::builder()
-            .text(tr("Start recording"))
-            .parent(&data.file_menu)
-            .build(&mut data.file_start)?;
-        nwg::MenuItem::builder()
-            .text(tr("Stop recording"))
-            .parent(&data.file_menu)
-            .build(&mut data.file_stop)?;
-        nwg::MenuItem::builder()
-            .text(tr("Delete station"))
-            .parent(&data.file_menu)
-            .build(&mut data.file_delete)?;
         nwg::MenuItem::builder()
             .text(tr("Open recordings folder"))
             .parent(&data.file_menu)
@@ -875,7 +846,7 @@ fn build_day<C: Into<nwg::ControlHandle>>(
         .position(pos)
         .size((55, 24))
         .build(checkbox)?;
-    checkbox.set_check_state(nwg::CheckBoxState::Checked);
+    checkbox.set_check_state(nwg::CheckBoxState::Unchecked);
     Ok(())
 }
 
@@ -892,13 +863,6 @@ fn bind_events(ui: &MainWindowUi) {
                 E::OnWindowMinimize if handle == app.window => app.on_window_minimize(),
                 E::OnButtonClick if handle == app.new_button => app.open_new_station_dialog(),
                 E::OnButtonClick if handle == app.show_log_button => app.toggle_log(),
-                E::OnMenuItemSelected if handle == app.file_add => app.open_new_station_dialog(),
-                E::OnMenuItemSelected if handle == app.file_edit => {
-                    app.open_selected_station_dialog()
-                }
-                E::OnMenuItemSelected if handle == app.file_start => app.start_selected(),
-                E::OnMenuItemSelected if handle == app.file_stop => app.stop_selected(),
-                E::OnMenuItemSelected if handle == app.file_delete => app.delete_selected(),
                 E::OnMenuItemSelected if handle == app.system_open_recordings => {
                     app.open_recordings_folder()
                 }
@@ -975,6 +939,7 @@ fn bind_settings_events(ui: &MainWindowUi) {
                 E::OnWindowClose if handle == app.settings_window => {
                     app.on_settings_window_close(&evt_data)
                 }
+                E::OnKeyEsc => app.hide_settings_dialog(),
                 E::OnButtonClick if handle == app.settings_recordings_folder_browse => {
                     app.browse_recordings_folder()
                 }
@@ -1143,6 +1108,30 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
     bind_station_escape_handler(ui, &ui.inner.start_input.handle, 0x10020);
     bind_station_escape_handler(ui, &ui.inner.end_input.handle, 0x10021);
     bind_station_escape_handler(ui, &ui.inner.station_ok.handle, 0x10022);
+    bind_settings_escape_handler(ui, &ui.inner.settings_window.handle, 0x10023);
+    bind_settings_escape_handler(ui, &ui.inner.settings_launch_on_startup.handle, 0x10024);
+    bind_settings_escape_handler(ui, &ui.inner.settings_always_on_top.handle, 0x10025);
+    bind_settings_escape_handler(ui, &ui.inner.settings_minimize_to_tray.handle, 0x10026);
+    bind_settings_escape_handler(ui, &ui.inner.settings_confirm_on_exit.handle, 0x10027);
+    bind_settings_escape_handler(ui, &ui.inner.settings_restart_on_crash.handle, 0x10028);
+    bind_settings_escape_handler(ui, &ui.inner.settings_prevent_sleep.handle, 0x10029);
+    bind_settings_escape_handler(ui, &ui.inner.settings_start_minimized.handle, 0x1002A);
+    bind_settings_escape_handler(
+        ui,
+        &ui.inner.settings_recordings_folder_input.handle,
+        0x1002B,
+    );
+    bind_settings_escape_handler(
+        ui,
+        &ui.inner.settings_recordings_folder_browse.handle,
+        0x1002C,
+    );
+    bind_settings_escape_handler(ui, &ui.inner.settings_template_input.handle, 0x1002D);
+    bind_settings_escape_handler(ui, &ui.inner.settings_remux_raw_aac.handle, 0x1002E);
+    bind_settings_escape_handler(ui, &ui.inner.settings_language_combo.handle, 0x1002F);
+    bind_settings_escape_handler(ui, &ui.inner.settings_update_repo_input.handle, 0x10030);
+    bind_settings_escape_handler(ui, &ui.inner.settings_save.handle, 0x10031);
+    bind_settings_escape_handler(ui, &ui.inner.settings_cancel.handle, 0x10032);
 
     let weak = Rc::downgrade(&ui.inner);
     if let Ok(handler) = nwg::bind_raw_event_handler(
@@ -1212,6 +1201,29 @@ fn bind_station_escape_handler(ui: &MainWindowUi, handle: &nwg::ControlHandle, h
             };
             if msg == WM_KEYDOWN && w as u32 == ESC_KEY {
                 app.hide_station_dialog();
+                return Some(0);
+            }
+            None
+        })
+    {
+        ui.inner.raw_handlers.borrow_mut().push(handler);
+    }
+}
+
+fn bind_settings_escape_handler(ui: &MainWindowUi, handle: &nwg::ControlHandle, handler_id: usize) {
+    let weak = Rc::downgrade(&ui.inner);
+    if let Ok(handler) =
+        nwg::bind_raw_event_handler(handle, handler_id, move |_hwnd, msg, w, _l| {
+            let Some(app) = weak.upgrade() else {
+                return None;
+            };
+            if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_CHAR) && w as u32 == ESC_KEY
+            {
+                app.hide_settings_dialog();
+                return Some(0);
+            }
+            if msg == WM_COMMAND && (w & 0xFFFF) == IDCANCEL_COMMAND {
+                app.hide_settings_dialog();
                 return Some(0);
             }
             None
@@ -1465,7 +1477,7 @@ impl MainWindow {
         } else {
             self.schedule_enabled
                 .set_check_state(nwg::CheckBoxState::Unchecked);
-            set_day_checks(self, &[true, true, true, true, true, true, true]);
+            set_day_checks(self, &[false, false, false, false, false, false, false]);
             self.start_input.set_text("00:00");
             self.end_input.set_text("23:59");
         }
@@ -1693,11 +1705,6 @@ impl MainWindow {
             .map(|station_id| app_context().recorder.is_recording(station_id))
             .unwrap_or(false);
         let has_selection = selected_station.is_some();
-
-        self.file_edit.set_enabled(has_selection);
-        self.file_start.set_enabled(has_selection && !recording);
-        self.file_stop.set_enabled(has_selection && recording);
-        self.file_delete.set_enabled(has_selection);
 
         self.popup_edit.set_enabled(has_selection);
         self.popup_start.set_enabled(has_selection && !recording);
@@ -2214,8 +2221,8 @@ fn display_state_label(label: &str) -> String {
         "Idle" => tr("Idle").to_string(),
         "Connecting" => tr("Connecting").to_string(),
         "Reconnecting" => tr("Reconnecting").to_string(),
-        "Waiting for reconnect" => tr("Waiting for reconnect").to_string(),
-        "Waiting for playlist" => tr("Waiting for playlist").to_string(),
+        "Waiting for reconnect" => tr("Connection lost, reconnecting").to_string(),
+        "Waiting for playlist" => tr("Playlist unavailable, retrying").to_string(),
         "Waiting for HLS segments" => tr("Waiting for HLS segments").to_string(),
         "Stopping" => tr("Stopping").to_string(),
         "Stopped" => tr("Stopped").to_string(),

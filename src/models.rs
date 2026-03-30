@@ -34,7 +34,7 @@ impl Default for ScheduleRule {
     fn default() -> Self {
         Self {
             enabled: false,
-            weekdays: [true, true, true, true, true, true, true],
+            weekdays: [false, false, false, false, false, false, false],
             start_hour: 0,
             start_minute: 0,
             end_hour: 23,
