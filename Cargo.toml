@@ -1,6 +1,6 @@
 [package]
 name = "streamrecorder"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 authors = ["Kazek"]
 description = "Portable Windows stream recorder for radio streams"
@@ -43,6 +43,7 @@ uuid = { version = "1.18", features = ["serde", "v4"] }
 version = "0.62"
 features = [
     "Win32_Foundation",
+    "Win32_UI_Input_KeyboardAndMouse",
     "Win32_System_Power",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",

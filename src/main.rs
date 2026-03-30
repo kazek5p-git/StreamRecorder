@@ -21,12 +21,17 @@ use windows::Win32::Foundation::HWND;
 use windows::Win32::System::Power::{
     ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED, SetThreadExecutionState,
 };
+use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
 use windows::Win32::UI::WindowsAndMessaging::{
     BringWindowToTop, GWL_STYLE, GetWindowLongW, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
-    SWP_NOSIZE, SetForegroundWindow, SetWindowLongW, SetWindowPos, WM_CONTEXTMENU, WS_TABSTOP,
+    SWP_NOSIZE, SetForegroundWindow, SetWindowLongW, SetWindowPos, WM_CONTEXTMENU, WM_GETDLGCODE,
+    WM_KEYDOWN, WS_TABSTOP,
 };
 
 const GUARDED_ARG: &str = "--guarded";
+const TAB_KEY: u32 = 0x09;
+const SHIFT_KEY: i32 = 0x10;
+const DLGC_WANTTAB_VALUE: isize = 0x0002;
 
 static APP_CONTEXT: OnceCell<Arc<AppContext>> = OnceCell::new();
 
@@ -423,16 +428,21 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .parent(&data.popup_menu)
             .build(&mut data.popup_delete)?;
 
-        data.station_list.insert_column(tr("Station"));
+        data.station_list.insert_column(nwg::InsertListViewColumn {
+            index: Some(0),
+            width: Some(240),
+            text: Some(tr("Station").to_string()),
+            ..Default::default()
+        });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(1),
-            width: Some(330),
+            width: Some(280),
             text: Some("URL".to_string()),
             ..Default::default()
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(2),
-            width: Some(170),
+            width: Some(150),
             text: Some(tr("Status").to_string()),
             ..Default::default()
         });
@@ -444,7 +454,7 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(4),
-            width: Some(190),
+            width: Some(210),
             text: Some(tr("File").to_string()),
             ..Default::default()
         });
@@ -1051,6 +1061,77 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
     ) {
         ui.inner.raw_handlers.borrow_mut().push(handler);
     }
+
+    let weak = Rc::downgrade(&ui.inner);
+    if let Ok(handler) = nwg::bind_raw_event_handler(
+        &ui.inner.station_tabs.handle,
+        0x10012,
+        move |_hwnd, msg, w, _l| {
+            let Some(app) = weak.upgrade() else {
+                return None;
+            };
+            if msg == WM_GETDLGCODE {
+                return Some(DLGC_WANTTAB_VALUE);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY && !is_shift_pressed() {
+                app.focus_first_station_tab_control();
+                return Some(0);
+            }
+            None
+        },
+    ) {
+        ui.inner.raw_handlers.borrow_mut().push(handler);
+    }
+
+    let weak = Rc::downgrade(&ui.inner);
+    if let Ok(handler) = nwg::bind_raw_event_handler(
+        &ui.inner.name_input.handle,
+        0x10013,
+        move |_hwnd, msg, w, _l| {
+            let Some(app) = weak.upgrade() else {
+                return None;
+            };
+            if msg == WM_GETDLGCODE {
+                return Some(DLGC_WANTTAB_VALUE);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY {
+                if is_shift_pressed() {
+                    app.station_tabs.set_focus();
+                } else {
+                    app.url_input.set_focus();
+                }
+                return Some(0);
+            }
+            None
+        },
+    ) {
+        ui.inner.raw_handlers.borrow_mut().push(handler);
+    }
+
+    let weak = Rc::downgrade(&ui.inner);
+    if let Ok(handler) = nwg::bind_raw_event_handler(
+        &ui.inner.schedule_enabled.handle,
+        0x10014,
+        move |_hwnd, msg, w, _l| {
+            let Some(app) = weak.upgrade() else {
+                return None;
+            };
+            if msg == WM_GETDLGCODE {
+                return Some(DLGC_WANTTAB_VALUE);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY {
+                if is_shift_pressed() {
+                    app.station_tabs.set_focus();
+                } else {
+                    app.day_mon.set_focus();
+                }
+                return Some(0);
+            }
+            None
+        },
+    ) {
+        ui.inner.raw_handlers.borrow_mut().push(handler);
+    }
 }
 
 impl MainWindow {
@@ -1205,6 +1286,13 @@ impl MainWindow {
         self.station_window.set_visible(true);
         self.station_window.restore();
         self.station_tabs.set_focus();
+    }
+
+    fn focus_first_station_tab_control(&self) {
+        match self.station_tabs.selected_tab() {
+            1 => self.schedule_enabled.set_focus(),
+            _ => self.name_input.set_focus(),
+        }
     }
 
     fn hide_station_dialog(&self) {
@@ -1952,6 +2040,10 @@ impl Drop for MainWindowUi {
 
 fn is_keyboard_context_menu(lparam: isize) -> bool {
     lparam == -1
+}
+
+fn is_shift_pressed() -> bool {
+    unsafe { GetKeyState(SHIFT_KEY) < 0 }
 }
 
 fn check(value: bool) -> nwg::CheckBoxState {
