@@ -1,5 +1,6 @@
 pub mod app_context;
 pub mod config;
+pub mod gpac;
 pub mod localization;
 pub mod logging;
 pub mod models;

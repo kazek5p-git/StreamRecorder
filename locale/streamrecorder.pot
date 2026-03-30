@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: StreamRecorder 0.1.1\n"
+"Project-Id-Version: StreamRecorder 0.1.2\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -19,6 +19,9 @@ msgid "AAC to M4A remux failed"
 msgstr ""
 
 msgid "About"
+msgstr ""
+
+msgid "Add"
 msgstr ""
 
 msgid "Add station"
@@ -88,6 +91,12 @@ msgid "Disabling crash monitoring will be fully applied after restarting the pro
 msgstr ""
 
 msgid "Do you really want to close StreamRecorder?"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Edit station"
 msgstr ""
 
 msgid "Download and install the update now?"
@@ -181,6 +190,9 @@ msgid "New"
 msgstr ""
 
 msgid "No newer version is available."
+msgstr ""
+
+msgid "OK"
 msgstr ""
 
 msgid "No station selected"
@@ -309,6 +321,9 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
+msgid "Station:"
+msgstr ""
+
 msgid "Stop"
 msgstr ""
 
@@ -373,4 +388,52 @@ msgid "Waiting for reconnect"
 msgstr ""
 
 msgid "Wed"
+msgstr ""
+
+msgid "Available GPAC version"
+msgstr ""
+
+msgid "Check MP4Box updates"
+msgstr ""
+
+msgid "Detected MP4Box path"
+msgstr ""
+
+msgid "Download and launch the GPAC installer now?"
+msgstr ""
+
+msgid "GPAC update channel:"
+msgstr ""
+
+msgid "Install GPAC to enable RAW AAC to M4A remuxing."
+msgstr ""
+
+msgid "Install or update MP4Box"
+msgstr ""
+
+msgid "Installed GPAC version"
+msgstr ""
+
+msgid "MP4Box / GPAC"
+msgstr ""
+
+msgid "MP4Box is up to date."
+msgstr ""
+
+msgid "MP4Box.exe was not detected."
+msgstr ""
+
+msgid "Nightly"
+msgstr ""
+
+msgid "Stable"
+msgstr ""
+
+msgid "Started GPAC installer"
+msgstr ""
+
+msgid "The GPAC installer has been started. Finish the setup and then reopen Settings or check MP4Box updates again. StreamRecorder will auto-detect MP4Box.exe."
+msgstr ""
+
+msgid "Unknown"
 msgstr ""

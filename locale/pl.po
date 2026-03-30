@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: StreamRecorder 0.1.1\n"
+"Project-Id-Version: StreamRecorder 0.1.2\n"
 "Language: pl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -20,6 +20,9 @@ msgstr "Remux AAC do M4A nie powiódł się"
 
 msgid "About"
 msgstr "O programie"
+
+msgid "Add"
+msgstr "Dodaj"
 
 msgid "Add station"
 msgstr "Dodaj stację"
@@ -89,6 +92,12 @@ msgstr "Wyłączenie monitora awarii zostanie w pełni zastosowane po ponownym u
 
 msgid "Do you really want to close StreamRecorder?"
 msgstr "Czy na pewno chcesz zamknąć StreamRecorder?"
+
+msgid "Edit"
+msgstr "Edytuj"
+
+msgid "Edit station"
+msgstr "Edytuj stację"
 
 msgid "Download and install the update now?"
 msgstr "Pobierać i instalować aktualizację teraz?"
@@ -182,6 +191,9 @@ msgstr "Nowa"
 
 msgid "No newer version is available."
 msgstr "Brak nowszej wersji."
+
+msgid "OK"
+msgstr "OK"
 
 msgid "No station selected"
 msgstr "Brak stacji"
@@ -309,6 +321,9 @@ msgstr "Nazwa stacji nie może być pusta."
 msgid "Status"
 msgstr "Status"
 
+msgid "Station:"
+msgstr "Stacja:"
+
 msgid "Stop"
 msgstr "Stop"
 
@@ -374,3 +389,51 @@ msgstr "Oczekiwanie na ponowne połączenie"
 
 msgid "Wed"
 msgstr "Śr"
+
+msgid "Available GPAC version"
+msgstr "Dostępna wersja GPAC"
+
+msgid "Check MP4Box updates"
+msgstr "Sprawdź aktualizacje MP4Box"
+
+msgid "Detected MP4Box path"
+msgstr "Wykryta ścieżka MP4Box"
+
+msgid "Download and launch the GPAC installer now?"
+msgstr "Pobrać i uruchomić instalator GPAC teraz?"
+
+msgid "GPAC update channel:"
+msgstr "Kanał aktualizacji GPAC:"
+
+msgid "Install GPAC to enable RAW AAC to M4A remuxing."
+msgstr "Zainstaluj GPAC, aby włączyć remux RAW AAC do M4A."
+
+msgid "Install or update MP4Box"
+msgstr "Zainstaluj lub zaktualizuj MP4Box"
+
+msgid "Installed GPAC version"
+msgstr "Zainstalowana wersja GPAC"
+
+msgid "MP4Box / GPAC"
+msgstr "MP4Box / GPAC"
+
+msgid "MP4Box is up to date."
+msgstr "MP4Box jest aktualny."
+
+msgid "MP4Box.exe was not detected."
+msgstr "Nie wykryto pliku MP4Box.exe."
+
+msgid "Nightly"
+msgstr "Nightly"
+
+msgid "Stable"
+msgstr "Stable"
+
+msgid "Started GPAC installer"
+msgstr "Uruchomiono instalator GPAC"
+
+msgid "The GPAC installer has been started. Finish the setup and then reopen Settings or check MP4Box updates again. StreamRecorder will auto-detect MP4Box.exe."
+msgstr "Instalator GPAC został uruchomiony. Dokończ instalację, a potem ponownie otwórz Ustawienia albo jeszcze raz sprawdź aktualizacje MP4Box. StreamRecorder automatycznie wykryje MP4Box.exe."
+
+msgid "Unknown"
+msgstr "Nieznane"

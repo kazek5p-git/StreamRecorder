@@ -1,4 +1,5 @@
 use crate::config::AppPaths;
+use crate::gpac::resolve_mp4box_path;
 use crate::localization::tr;
 use crate::logging::LogBus;
 use crate::models::{AppSettings, Credentials, Station, StreamFormat, StreamProtocol};
@@ -692,16 +693,9 @@ async fn remux_aac(
     logs: &LogBus,
     input_path: &Path,
 ) -> Result<Option<PathBuf>> {
-    let tool_path = match settings.remux_tool_path.clone() {
-        Some(path) => path,
-        None => {
-            let local_tool = paths.root_dir.join("Tools").join("MP4Box.exe");
-            if local_tool.exists() {
-                local_tool
-            } else {
-                paths.root_dir.join("MP4Box.exe")
-            }
-        }
+    let Some(tool_path) = resolve_mp4box_path(paths, settings) else {
+        logs.push(tr("Skipping AAC to M4A remux: MP4Box.exe was not found"));
+        return Ok(None);
     };
 
     if !tool_path.exists() {
@@ -742,7 +736,7 @@ async fn remux_aac(
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.1")
+        .user_agent("StreamRecorder/0.1.2")
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()

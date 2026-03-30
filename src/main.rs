@@ -12,8 +12,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use streamrecorder::app_context::AppContext;
 use streamrecorder::config::{AppPaths, load_or_create};
+use streamrecorder::gpac::{
+    InstalledGpacInfo, download_gpac_installer, fetch_gpac_release, is_gpac_release_current,
+    launch_gpac_installer, resolve_mp4box_path,
+};
 use streamrecorder::localization::{current_language, tr};
-use streamrecorder::models::{AppSettings, ScheduleRule, Station};
+use streamrecorder::models::{AppSettings, Credentials, GpacReleaseChannel, ScheduleRule, Station};
 use streamrecorder::updater::{download_update, install_downloaded_update};
 use uuid::Uuid;
 use windows::Win32::Foundation::HWND;
@@ -34,29 +38,49 @@ fn app_context() -> &'static Arc<AppContext> {
 
 struct MainWindow {
     current_station_id: RefCell<Option<Uuid>>,
+    station_editor_station_id: RefCell<Option<Uuid>>,
+    schedule_station_id: RefCell<Option<Uuid>>,
     station_rows: RefCell<Vec<Uuid>>,
     last_log_text: RefCell<String>,
     log_visible: RefCell<bool>,
     window: nwg::Window,
-    menu: nwg::Menu,
-    file_menu: nwg::MenuItem,
+    file_menu: nwg::Menu,
     file_add: nwg::MenuItem,
+    file_edit: nwg::MenuItem,
     file_open_recordings: nwg::MenuItem,
     file_open_settings: nwg::MenuItem,
     file_schedule: nwg::MenuItem,
     file_settings: nwg::MenuItem,
     file_exit: nwg::MenuItem,
-    help_menu: nwg::MenuItem,
+    help_menu: nwg::Menu,
+    help_gpac_updates: nwg::MenuItem,
     help_updates: nwg::MenuItem,
     help_about: nwg::MenuItem,
     new_button: nwg::Button,
-    save_button: nwg::Button,
+    edit_button: nwg::Button,
     start_button: nwg::Button,
     stop_button: nwg::Button,
     delete_button: nwg::Button,
     show_log_button: nwg::Button,
     station_list: nwg::ListView,
-    name_label: nwg::Label,
+    status_bar: nwg::Label,
+    log_box: nwg::TextBox,
+    timer: nwg::AnimationTimer,
+    icon: nwg::Icon,
+    tray_window: nwg::MessageWindow,
+    tray: nwg::TrayNotification,
+    tray_menu: nwg::Menu,
+    tray_show: nwg::MenuItem,
+    tray_exit: nwg::MenuItem,
+    popup_menu: nwg::Menu,
+    popup_add: nwg::MenuItem,
+    popup_edit: nwg::MenuItem,
+    popup_start: nwg::MenuItem,
+    popup_stop: nwg::MenuItem,
+    popup_schedule: nwg::MenuItem,
+    popup_delete: nwg::MenuItem,
+    station_window: nwg::Window,
+    station_name_label: nwg::Label,
     name_input: nwg::TextInput,
     url_label: nwg::Label,
     url_input: nwg::TextInput,
@@ -64,6 +88,10 @@ struct MainWindow {
     user_input: nwg::TextInput,
     pass_label: nwg::Label,
     pass_input: nwg::TextInput,
+    station_ok: nwg::Button,
+    station_cancel: nwg::Button,
+    schedule_window: nwg::Window,
+    schedule_station_label: nwg::Label,
     schedule_enabled: nwg::CheckBox,
     day_mon: nwg::CheckBox,
     day_tue: nwg::CheckBox,
@@ -76,26 +104,15 @@ struct MainWindow {
     start_input: nwg::TextInput,
     end_label: nwg::Label,
     end_input: nwg::TextInput,
-    status_bar: nwg::Label,
-    log_box: nwg::TextBox,
-    timer: nwg::AnimationTimer,
-    icon: nwg::Icon,
-    tray_window: nwg::MessageWindow,
-    tray: nwg::TrayNotification,
-    tray_menu: nwg::Menu,
-    tray_show: nwg::MenuItem,
-    tray_exit: nwg::MenuItem,
-    popup_menu: nwg::Menu,
-    popup_start: nwg::MenuItem,
-    popup_stop: nwg::MenuItem,
-    popup_schedule: nwg::MenuItem,
-    popup_properties: nwg::MenuItem,
+    schedule_ok: nwg::Button,
+    schedule_cancel: nwg::Button,
     settings_window: nwg::Window,
     settings_general_label: nwg::Label,
     settings_folder_label: nwg::Label,
     settings_template_label: nwg::Label,
     settings_template_help: nwg::Label,
     settings_other_label: nwg::Label,
+    settings_gpac_label: nwg::Label,
     settings_launch_on_startup: nwg::CheckBox,
     settings_always_on_top: nwg::CheckBox,
     settings_minimize_to_tray: nwg::CheckBox,
@@ -109,12 +126,19 @@ struct MainWindow {
     settings_remux_raw_aac: nwg::CheckBox,
     settings_language_label: nwg::Label,
     settings_language_combo: nwg::ComboBox<String>,
+    settings_gpac_status_label: nwg::Label,
+    settings_gpac_channel_label: nwg::Label,
+    settings_gpac_channel_combo: nwg::ComboBox<String>,
+    settings_gpac_install: nwg::Button,
+    settings_gpac_check: nwg::Button,
     settings_update_repo_label: nwg::Label,
     settings_update_repo_input: nwg::TextInput,
     settings_save: nwg::Button,
     settings_cancel: nwg::Button,
     settings_folder_dialog: nwg::FileDialog,
     handler: RefCell<Option<nwg::EventHandler>>,
+    station_handler: RefCell<Option<nwg::EventHandler>>,
+    schedule_handler: RefCell<Option<nwg::EventHandler>>,
     settings_handler: RefCell<Option<nwg::EventHandler>>,
 }
 
@@ -122,29 +146,49 @@ impl Default for MainWindow {
     fn default() -> Self {
         Self {
             current_station_id: RefCell::new(None),
+            station_editor_station_id: RefCell::new(None),
+            schedule_station_id: RefCell::new(None),
             station_rows: RefCell::new(Vec::new()),
             last_log_text: RefCell::new(String::new()),
             log_visible: RefCell::new(false),
             window: Default::default(),
-            menu: Default::default(),
             file_menu: Default::default(),
             file_add: Default::default(),
+            file_edit: Default::default(),
             file_open_recordings: Default::default(),
             file_open_settings: Default::default(),
             file_schedule: Default::default(),
             file_settings: Default::default(),
             file_exit: Default::default(),
             help_menu: Default::default(),
+            help_gpac_updates: Default::default(),
             help_updates: Default::default(),
             help_about: Default::default(),
             new_button: Default::default(),
-            save_button: Default::default(),
+            edit_button: Default::default(),
             start_button: Default::default(),
             stop_button: Default::default(),
             delete_button: Default::default(),
             show_log_button: Default::default(),
             station_list: Default::default(),
-            name_label: Default::default(),
+            status_bar: Default::default(),
+            log_box: Default::default(),
+            timer: Default::default(),
+            icon: Default::default(),
+            tray_window: Default::default(),
+            tray: Default::default(),
+            tray_menu: Default::default(),
+            tray_show: Default::default(),
+            tray_exit: Default::default(),
+            popup_menu: Default::default(),
+            popup_add: Default::default(),
+            popup_edit: Default::default(),
+            popup_start: Default::default(),
+            popup_stop: Default::default(),
+            popup_schedule: Default::default(),
+            popup_delete: Default::default(),
+            station_window: Default::default(),
+            station_name_label: Default::default(),
             name_input: Default::default(),
             url_label: Default::default(),
             url_input: Default::default(),
@@ -152,6 +196,10 @@ impl Default for MainWindow {
             user_input: Default::default(),
             pass_label: Default::default(),
             pass_input: Default::default(),
+            station_ok: Default::default(),
+            station_cancel: Default::default(),
+            schedule_window: Default::default(),
+            schedule_station_label: Default::default(),
             schedule_enabled: Default::default(),
             day_mon: Default::default(),
             day_tue: Default::default(),
@@ -164,26 +212,15 @@ impl Default for MainWindow {
             start_input: Default::default(),
             end_label: Default::default(),
             end_input: Default::default(),
-            status_bar: Default::default(),
-            log_box: Default::default(),
-            timer: Default::default(),
-            icon: Default::default(),
-            tray_window: Default::default(),
-            tray: Default::default(),
-            tray_menu: Default::default(),
-            tray_show: Default::default(),
-            tray_exit: Default::default(),
-            popup_menu: Default::default(),
-            popup_start: Default::default(),
-            popup_stop: Default::default(),
-            popup_schedule: Default::default(),
-            popup_properties: Default::default(),
+            schedule_ok: Default::default(),
+            schedule_cancel: Default::default(),
             settings_window: Default::default(),
             settings_general_label: Default::default(),
             settings_folder_label: Default::default(),
             settings_template_label: Default::default(),
             settings_template_help: Default::default(),
             settings_other_label: Default::default(),
+            settings_gpac_label: Default::default(),
             settings_launch_on_startup: Default::default(),
             settings_always_on_top: Default::default(),
             settings_minimize_to_tray: Default::default(),
@@ -197,12 +234,19 @@ impl Default for MainWindow {
             settings_remux_raw_aac: Default::default(),
             settings_language_label: Default::default(),
             settings_language_combo: Default::default(),
+            settings_gpac_status_label: Default::default(),
+            settings_gpac_channel_label: Default::default(),
+            settings_gpac_channel_combo: Default::default(),
+            settings_gpac_install: Default::default(),
+            settings_gpac_check: Default::default(),
             settings_update_repo_label: Default::default(),
             settings_update_repo_input: Default::default(),
             settings_save: Default::default(),
             settings_cancel: Default::default(),
             settings_folder_dialog: Default::default(),
             handler: RefCell::new(None),
+            station_handler: RefCell::new(None),
+            schedule_handler: RefCell::new(None),
             settings_handler: RefCell::new(None),
         }
     }
@@ -224,23 +268,24 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
                     | nwg::WindowFlags::MINIMIZE_BOX
                     | nwg::WindowFlags::VISIBLE,
             )
-            .size((1160, 760))
+            .size((980, 700))
             .position((100, 60))
             .title("StreamRecorder")
             .icon(Some(&data.icon))
             .build(&mut data.window)?;
 
         nwg::Menu::builder()
-            .parent(&data.window)
-            .build(&mut data.menu)?;
-        nwg::MenuItem::builder()
             .text(tr("&File"))
-            .parent(&data.menu)
+            .parent(&data.window)
             .build(&mut data.file_menu)?;
         nwg::MenuItem::builder()
             .text(tr("Add station"))
             .parent(&data.file_menu)
             .build(&mut data.file_add)?;
+        nwg::MenuItem::builder()
+            .text(tr("Edit station"))
+            .parent(&data.file_menu)
+            .build(&mut data.file_edit)?;
         nwg::MenuItem::builder()
             .text(tr("Open recordings folder"))
             .parent(&data.file_menu)
@@ -261,10 +306,14 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .text(tr("Exit"))
             .parent(&data.file_menu)
             .build(&mut data.file_exit)?;
-        nwg::MenuItem::builder()
+        nwg::Menu::builder()
             .text(tr("&Help"))
-            .parent(&data.menu)
+            .parent(&data.window)
             .build(&mut data.help_menu)?;
+        nwg::MenuItem::builder()
+            .text(tr("Check MP4Box updates"))
+            .parent(&data.help_menu)
+            .build(&mut data.help_gpac_updates)?;
         nwg::MenuItem::builder()
             .text(tr("Check for updates"))
             .parent(&data.help_menu)
@@ -276,51 +325,16 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
 
         build_button(
             &data.window,
-            &mut data.new_button,
-            tr("New"),
-            (10, 10),
-            (90, 28),
-        )?;
-        build_button(
-            &data.window,
-            &mut data.save_button,
-            tr("Save"),
-            (110, 10),
-            (90, 28),
-        )?;
-        build_button(
-            &data.window,
-            &mut data.start_button,
-            tr("Start"),
-            (210, 10),
-            (90, 28),
-        )?;
-        build_button(
-            &data.window,
-            &mut data.stop_button,
-            tr("Stop"),
-            (310, 10),
-            (90, 28),
-        )?;
-        build_button(
-            &data.window,
-            &mut data.delete_button,
-            tr("Delete"),
-            (410, 10),
-            (90, 28),
-        )?;
-        build_button(
-            &data.window,
             &mut data.show_log_button,
             tr("Show log"),
-            (510, 10),
+            (870, 10),
             (100, 28),
         )?;
 
         nwg::ListView::builder()
             .parent(&data.window)
             .position((10, 45))
-            .size((560, 340))
+            .size((960, 430))
             .focus(true)
             .list_style(nwg::ListViewStyle::Detailed)
             .flags(
@@ -332,126 +346,56 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .ex_flags(nwg::ListViewExFlags::FULL_ROW_SELECT | nwg::ListViewExFlags::GRID)
             .build(&mut data.station_list)?;
 
-        build_label(
+        build_button(
             &data.window,
-            &mut data.name_label,
-            tr("Name:"),
-            (590, 48),
-            (90, 22),
+            &mut data.new_button,
+            tr("Add"),
+            (10, 10),
+            (90, 28),
         )?;
-        build_input(
+        build_button(
             &data.window,
-            &mut data.name_input,
-            "",
-            (690, 45),
-            (440, 26),
-            false,
+            &mut data.edit_button,
+            tr("Edit"),
+            (110, 10),
+            (90, 28),
         )?;
-        build_label(
+        build_button(
             &data.window,
-            &mut data.url_label,
-            "URL:",
-            (590, 80),
-            (90, 22),
+            &mut data.delete_button,
+            tr("Delete"),
+            (210, 10),
+            (90, 28),
         )?;
-        build_input(
+        build_button(
             &data.window,
-            &mut data.url_input,
-            "",
-            (690, 77),
-            (440, 26),
-            false,
+            &mut data.start_button,
+            tr("Start"),
+            (310, 10),
+            (90, 28),
         )?;
-        build_label(
+        build_button(
             &data.window,
-            &mut data.user_label,
-            tr("Username:"),
-            (590, 112),
-            (90, 22),
-        )?;
-        build_input(
-            &data.window,
-            &mut data.user_input,
-            "",
-            (690, 109),
-            (440, 26),
-            false,
-        )?;
-        build_label(
-            &data.window,
-            &mut data.pass_label,
-            tr("Password:"),
-            (590, 144),
-            (90, 22),
-        )?;
-        build_input(
-            &data.window,
-            &mut data.pass_input,
-            "",
-            (690, 141),
-            (440, 26),
-            true,
-        )?;
-
-        nwg::CheckBox::builder()
-            .text(tr("Enable schedule"))
-            .parent(&data.window)
-            .position((590, 178))
-            .size((180, 24))
-            .build(&mut data.schedule_enabled)?;
-        build_day(&data.window, &mut data.day_mon, tr("Mon"), (590, 208))?;
-        build_day(&data.window, &mut data.day_tue, tr("Tue"), (650, 208))?;
-        build_day(&data.window, &mut data.day_wed, tr("Wed"), (710, 208))?;
-        build_day(&data.window, &mut data.day_thu, tr("Thu"), (770, 208))?;
-        build_day(&data.window, &mut data.day_fri, tr("Fri"), (590, 238))?;
-        build_day(&data.window, &mut data.day_sat, tr("Sat"), (650, 238))?;
-        build_day(&data.window, &mut data.day_sun, tr("Sun"), (710, 238))?;
-        build_label(
-            &data.window,
-            &mut data.start_label,
-            tr("Start HH:MM:"),
-            (590, 274),
-            (90, 22),
-        )?;
-        build_input(
-            &data.window,
-            &mut data.start_input,
-            "00:00",
-            (690, 271),
-            (90, 26),
-            false,
-        )?;
-        build_label(
-            &data.window,
-            &mut data.end_label,
-            tr("End HH:MM:"),
-            (800, 274),
-            (100, 22),
-        )?;
-        build_input(
-            &data.window,
-            &mut data.end_input,
-            "23:59",
-            (910, 271),
-            (90, 26),
-            false,
+            &mut data.stop_button,
+            tr("Stop"),
+            (410, 10),
+            (90, 28),
         )?;
 
         build_label(
             &data.window,
             &mut data.status_bar,
             &format!("{} 0", tr("Currently recording:")),
-            (10, 395),
-            (300, 22),
+            (10, 485),
+            (320, 22),
         )?;
         nwg::TextBox::builder()
             .parent(&data.window)
-            .position((10, 425))
-            .size((1120, 290))
+            .position((10, 515))
+            .size((960, 145))
             .readonly(true)
             .flags(
                 nwg::TextBoxFlags::VISIBLE
-                    | nwg::TextBoxFlags::TAB_STOP
                     | nwg::TextBoxFlags::VSCROLL
                     | nwg::TextBoxFlags::AUTOVSCROLL,
             )
@@ -485,6 +429,14 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .parent(&data.window)
             .build(&mut data.popup_menu)?;
         nwg::MenuItem::builder()
+            .text(tr("Add station"))
+            .parent(&data.popup_menu)
+            .build(&mut data.popup_add)?;
+        nwg::MenuItem::builder()
+            .text(tr("Edit station"))
+            .parent(&data.popup_menu)
+            .build(&mut data.popup_edit)?;
+        nwg::MenuItem::builder()
             .text(tr("Start recording"))
             .parent(&data.popup_menu)
             .build(&mut data.popup_start)?;
@@ -497,32 +449,32 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .parent(&data.popup_menu)
             .build(&mut data.popup_schedule)?;
         nwg::MenuItem::builder()
-            .text(tr("Properties"))
+            .text(tr("Delete station"))
             .parent(&data.popup_menu)
-            .build(&mut data.popup_properties)?;
+            .build(&mut data.popup_delete)?;
 
         data.station_list.insert_column(tr("Station"));
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(1),
-            width: Some(280),
+            width: Some(330),
             text: Some("URL".to_string()),
             ..Default::default()
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(2),
-            width: Some(120),
+            width: Some(170),
             text: Some(tr("Status").to_string()),
             ..Default::default()
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(3),
-            width: Some(70),
+            width: Some(80),
             text: Some(tr("Format").to_string()),
             ..Default::default()
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(4),
-            width: Some(150),
+            width: Some(190),
             text: Some(tr("File").to_string()),
             ..Default::default()
         });
@@ -530,7 +482,198 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
 
         nwg::Window::builder()
             .flags(nwg::WindowFlags::WINDOW)
-            .size((640, 520))
+            .size((520, 255))
+            .position((170, 100))
+            .title(tr("Add station"))
+            .icon(Some(&data.icon))
+            .parent(Some(&data.window))
+            .build(&mut data.station_window)?;
+        build_label(
+            &data.station_window,
+            &mut data.station_name_label,
+            tr("Name:"),
+            (20, 20),
+            (90, 22),
+        )?;
+        build_input(
+            &data.station_window,
+            &mut data.name_input,
+            "",
+            (120, 17),
+            (370, 26),
+            false,
+        )?;
+        build_label(
+            &data.station_window,
+            &mut data.url_label,
+            "URL:",
+            (20, 55),
+            (90, 22),
+        )?;
+        build_input(
+            &data.station_window,
+            &mut data.url_input,
+            "",
+            (120, 52),
+            (370, 26),
+            false,
+        )?;
+        build_label(
+            &data.station_window,
+            &mut data.user_label,
+            tr("Username:"),
+            (20, 90),
+            (90, 22),
+        )?;
+        build_input(
+            &data.station_window,
+            &mut data.user_input,
+            "",
+            (120, 87),
+            (370, 26),
+            false,
+        )?;
+        build_label(
+            &data.station_window,
+            &mut data.pass_label,
+            tr("Password:"),
+            (20, 125),
+            (90, 22),
+        )?;
+        build_input(
+            &data.station_window,
+            &mut data.pass_input,
+            "",
+            (120, 122),
+            (370, 26),
+            true,
+        )?;
+        build_button(
+            &data.station_window,
+            &mut data.station_ok,
+            tr("OK"),
+            (300, 180),
+            (90, 28),
+        )?;
+        build_button(
+            &data.station_window,
+            &mut data.station_cancel,
+            tr("Cancel"),
+            (400, 180),
+            (90, 28),
+        )?;
+
+        nwg::Window::builder()
+            .flags(nwg::WindowFlags::WINDOW)
+            .size((430, 265))
+            .position((210, 140))
+            .title(tr("Schedule"))
+            .icon(Some(&data.icon))
+            .parent(Some(&data.window))
+            .build(&mut data.schedule_window)?;
+        build_label(
+            &data.schedule_window,
+            &mut data.schedule_station_label,
+            "",
+            (20, 18),
+            (380, 22),
+        )?;
+        nwg::CheckBox::builder()
+            .text(tr("Enable schedule"))
+            .parent(&data.schedule_window)
+            .position((20, 50))
+            .size((180, 24))
+            .build(&mut data.schedule_enabled)?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_mon,
+            tr("Mon"),
+            (20, 82),
+        )?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_tue,
+            tr("Tue"),
+            (80, 82),
+        )?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_wed,
+            tr("Wed"),
+            (140, 82),
+        )?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_thu,
+            tr("Thu"),
+            (200, 82),
+        )?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_fri,
+            tr("Fri"),
+            (260, 82),
+        )?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_sat,
+            tr("Sat"),
+            (20, 112),
+        )?;
+        build_day(
+            &data.schedule_window,
+            &mut data.day_sun,
+            tr("Sun"),
+            (80, 112),
+        )?;
+        build_label(
+            &data.schedule_window,
+            &mut data.start_label,
+            tr("Start HH:MM:"),
+            (20, 150),
+            (90, 22),
+        )?;
+        build_input(
+            &data.schedule_window,
+            &mut data.start_input,
+            "00:00",
+            (120, 147),
+            (90, 26),
+            false,
+        )?;
+        build_label(
+            &data.schedule_window,
+            &mut data.end_label,
+            tr("End HH:MM:"),
+            (230, 150),
+            (90, 22),
+        )?;
+        build_input(
+            &data.schedule_window,
+            &mut data.end_input,
+            "23:59",
+            (320, 147),
+            (90, 26),
+            false,
+        )?;
+        build_button(
+            &data.schedule_window,
+            &mut data.schedule_ok,
+            tr("OK"),
+            (220, 205),
+            (90, 28),
+        )?;
+        build_button(
+            &data.schedule_window,
+            &mut data.schedule_cancel,
+            tr("Cancel"),
+            (320, 205),
+            (90, 28),
+        )?;
+
+        nwg::Window::builder()
+            .flags(nwg::WindowFlags::WINDOW)
+            .size((660, 690))
             .position((160, 110))
             .title(tr("Settings"))
             .icon(Some(&data.icon))
@@ -641,18 +784,18 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .text(tr("Remux RAW AAC to M4A after recording"))
             .parent(&data.settings_window)
             .position((20, 365))
-            .size((320, 22))
+            .size((360, 22))
             .build(&mut data.settings_remux_raw_aac)?;
         build_label(
             &data.settings_window,
             &mut data.settings_language_label,
             tr("Language:"),
-            (20, 400),
+            (20, 395),
             (140, 22),
         )?;
         nwg::ComboBox::builder()
             .parent(&data.settings_window)
-            .position((170, 397))
+            .position((170, 392))
             .size((150, 120))
             .collection(language_options())
             .selected_index(Some(language_selection_index()))
@@ -661,29 +804,71 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.settings_window,
             &mut data.settings_update_repo_label,
             tr("Update repository:"),
-            (20, 432),
+            (20, 427),
             (140, 22),
         )?;
         build_input(
             &data.settings_window,
             &mut data.settings_update_repo_input,
             "",
-            (170, 429),
-            (450, 26),
+            (170, 424),
+            (470, 26),
             false,
+        )?;
+        build_label(
+            &data.settings_window,
+            &mut data.settings_gpac_label,
+            tr("MP4Box / GPAC"),
+            (10, 465),
+            (180, 20),
+        )?;
+        build_label(
+            &data.settings_window,
+            &mut data.settings_gpac_status_label,
+            "",
+            (20, 490),
+            (620, 52),
+        )?;
+        build_label(
+            &data.settings_window,
+            &mut data.settings_gpac_channel_label,
+            tr("GPAC update channel:"),
+            (20, 550),
+            (150, 22),
+        )?;
+        nwg::ComboBox::builder()
+            .parent(&data.settings_window)
+            .position((180, 547))
+            .size((150, 120))
+            .collection(gpac_channel_options())
+            .selected_index(Some(gpac_channel_selection_index()))
+            .build(&mut data.settings_gpac_channel_combo)?;
+        build_button(
+            &data.settings_window,
+            &mut data.settings_gpac_install,
+            tr("Install or update MP4Box"),
+            (20, 585),
+            (220, 28),
+        )?;
+        build_button(
+            &data.settings_window,
+            &mut data.settings_gpac_check,
+            tr("Check MP4Box updates"),
+            (250, 585),
+            (180, 28),
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_save,
             tr("Save"),
-            (430, 460),
+            (450, 625),
             (90, 28),
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_cancel,
             tr("Cancel"),
-            (530, 460),
+            (550, 625),
             (90, 28),
         )?;
         nwg::FileDialog::builder()
@@ -695,6 +880,8 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             inner: Rc::new(data),
         };
         bind_events(&ui);
+        bind_station_events(&ui);
+        bind_schedule_events(&ui);
         bind_settings_events(&ui);
         ui.inner.setup();
         Ok(ui)
@@ -774,31 +961,47 @@ fn bind_events(ui: &MainWindowUi) {
             match evt {
                 E::OnWindowClose if handle == app.window => app.on_window_close(&evt_data),
                 E::OnWindowMinimize if handle == app.window => app.on_window_minimize(),
-                E::OnButtonClick if handle == app.new_button => app.new_station(),
-                E::OnButtonClick if handle == app.save_button => app.save_station(),
+                E::OnButtonClick if handle == app.new_button => app.open_new_station_dialog(),
+                E::OnButtonClick if handle == app.edit_button => app.open_selected_station_dialog(),
                 E::OnButtonClick if handle == app.start_button => app.start_selected(),
                 E::OnButtonClick if handle == app.stop_button => app.stop_selected(),
                 E::OnButtonClick if handle == app.delete_button => app.delete_selected(),
                 E::OnButtonClick if handle == app.show_log_button => app.toggle_log(),
-                E::OnMenuItemSelected if handle == app.file_add => app.new_station(),
+                E::OnMenuItemSelected if handle == app.file_add => app.open_new_station_dialog(),
+                E::OnMenuItemSelected if handle == app.file_edit => {
+                    app.open_selected_station_dialog()
+                }
                 E::OnMenuItemSelected if handle == app.file_open_recordings => {
                     app.open_recordings_folder()
                 }
                 E::OnMenuItemSelected if handle == app.file_open_settings => {
                     app.open_settings_folder()
                 }
-                E::OnMenuItemSelected if handle == app.file_schedule => app.focus_schedule(),
+                E::OnMenuItemSelected if handle == app.file_schedule => app.open_schedule_dialog(),
                 E::OnMenuItemSelected if handle == app.file_settings => app.open_settings_dialog(),
                 E::OnMenuItemSelected if handle == app.file_exit => app.window.close(),
+                E::OnMenuItemSelected if handle == app.help_gpac_updates => {
+                    app.check_gpac_updates_from_main()
+                }
                 E::OnMenuItemSelected if handle == app.help_updates => app.check_updates(),
                 E::OnMenuItemSelected if handle == app.help_about => app.about(),
                 E::OnMenuItemSelected if handle == app.tray_show => app.show_from_tray(),
                 E::OnMenuItemSelected if handle == app.tray_exit => app.window.close(),
+                E::OnMenuItemSelected if handle == app.popup_add => app.open_new_station_dialog(),
+                E::OnMenuItemSelected if handle == app.popup_edit => {
+                    app.open_selected_station_dialog()
+                }
                 E::OnMenuItemSelected if handle == app.popup_start => app.start_selected(),
                 E::OnMenuItemSelected if handle == app.popup_stop => app.stop_selected(),
-                E::OnMenuItemSelected if handle == app.popup_schedule => app.focus_schedule(),
-                E::OnMenuItemSelected if handle == app.popup_properties => app.open_properties(),
+                E::OnMenuItemSelected if handle == app.popup_schedule => app.open_schedule_dialog(),
+                E::OnMenuItemSelected if handle == app.popup_delete => app.delete_selected(),
                 E::OnContextMenu if handle == app.tray => app.show_tray_menu(),
+                E::OnContextMenu if handle == app.station_list => {
+                    app.show_station_menu_at_keyboard_anchor()
+                }
+                E::OnContextMenu if handle == app.window && app.station_list.focus() => {
+                    app.show_station_menu_at_keyboard_anchor()
+                }
                 E::OnMousePress(nwg::MousePressEvent::MousePressLeftUp) if handle == app.tray => {
                     app.show_from_tray()
                 }
@@ -809,11 +1012,57 @@ fn bind_events(ui: &MainWindowUi) {
                 E::OnListViewRightClick if handle == app.station_list => {
                     app.on_station_right_click(&evt_data)
                 }
-                E::OnListViewItemActivated if handle == app.station_list => app.start_selected(),
+                E::OnListViewItemActivated if handle == app.station_list => {
+                    app.open_selected_station_dialog()
+                }
                 _ => {}
             }
         });
     *ui.inner.handler.borrow_mut() = Some(handler);
+}
+
+fn bind_station_events(ui: &MainWindowUi) {
+    use nwg::Event as E;
+    let weak = Rc::downgrade(&ui.inner);
+    let handler = nwg::full_bind_event_handler(
+        &ui.inner.station_window.handle,
+        move |evt, evt_data, handle| {
+            let Some(app) = weak.upgrade() else {
+                return;
+            };
+            match evt {
+                E::OnWindowClose if handle == app.station_window => {
+                    app.on_station_window_close(&evt_data)
+                }
+                E::OnButtonClick if handle == app.station_ok => app.save_station(),
+                E::OnButtonClick if handle == app.station_cancel => app.hide_station_dialog(),
+                _ => {}
+            }
+        },
+    );
+    *ui.inner.station_handler.borrow_mut() = Some(handler);
+}
+
+fn bind_schedule_events(ui: &MainWindowUi) {
+    use nwg::Event as E;
+    let weak = Rc::downgrade(&ui.inner);
+    let handler = nwg::full_bind_event_handler(
+        &ui.inner.schedule_window.handle,
+        move |evt, evt_data, handle| {
+            let Some(app) = weak.upgrade() else {
+                return;
+            };
+            match evt {
+                E::OnWindowClose if handle == app.schedule_window => {
+                    app.on_schedule_window_close(&evt_data)
+                }
+                E::OnButtonClick if handle == app.schedule_ok => app.save_schedule_dialog(),
+                E::OnButtonClick if handle == app.schedule_cancel => app.hide_schedule_dialog(),
+                _ => {}
+            }
+        },
+    );
+    *ui.inner.schedule_handler.borrow_mut() = Some(handler);
 }
 
 fn bind_settings_events(ui: &MainWindowUi) {
@@ -832,6 +1081,12 @@ fn bind_settings_events(ui: &MainWindowUi) {
                 E::OnButtonClick if handle == app.settings_recordings_folder_browse => {
                     app.browse_recordings_folder()
                 }
+                E::OnButtonClick if handle == app.settings_gpac_install => {
+                    app.install_or_update_gpac_from_settings()
+                }
+                E::OnButtonClick if handle == app.settings_gpac_check => {
+                    app.check_gpac_updates_from_settings()
+                }
                 E::OnButtonClick if handle == app.settings_save => app.save_settings_dialog(),
                 E::OnButtonClick if handle == app.settings_cancel => app.hide_settings_dialog(),
                 _ => {}
@@ -844,10 +1099,10 @@ fn bind_settings_events(ui: &MainWindowUi) {
 impl MainWindow {
     fn setup(&self) {
         self.log_box.set_visible(false);
-        self.new_station();
         self.update_show_log_button();
         self.apply_saved_runtime_settings();
         self.refresh_ui();
+        self.station_list.set_focus();
 
         let settings = app_context().settings_snapshot();
         if settings.start_minimized {
@@ -902,6 +1157,7 @@ impl MainWindow {
             self.station_rows.borrow_mut().push(station.id);
         }
 
+        let mut next_selected = None;
         if let Some(selected_id) = selected_id {
             if let Some(index) = self
                 .station_rows
@@ -910,11 +1166,22 @@ impl MainWindow {
                 .position(|value| *value == selected_id)
             {
                 self.station_list.select_item(index, true);
+                next_selected = Some(selected_id);
             }
         }
 
+        if next_selected.is_none() {
+            next_selected = self.station_rows.borrow().first().copied();
+            if next_selected.is_some() {
+                self.station_list.select_item(0, true);
+            }
+        }
+
+        *self.current_station_id.borrow_mut() = next_selected;
+
         self.station_list.set_redraw(true);
         self.station_list.invalidate();
+        self.update_station_actions();
     }
 
     fn refresh_logs(&self) {
@@ -943,23 +1210,63 @@ impl MainWindow {
             tr("Currently recording:"),
             active
         ));
+        self.update_station_actions();
     }
 
-    fn new_station(&self) {
-        *self.current_station_id.borrow_mut() = None;
-        if let Some(index) = self.station_list.selected_item() {
-            self.station_list.select_item(index, false);
-        }
-        self.name_input.set_text("");
-        self.url_input.set_text("");
-        self.user_input.set_text("");
-        self.pass_input.set_text("");
-        self.schedule_enabled
-            .set_check_state(nwg::CheckBoxState::Unchecked);
-        set_day_checks(self, &[true, true, true, true, true, true, true]);
-        self.start_input.set_text("00:00");
-        self.end_input.set_text("23:59");
+    fn open_new_station_dialog(&self) {
+        *self.station_editor_station_id.borrow_mut() = None;
+        self.station_window.set_text(tr("Add station"));
+        self.populate_station_dialog(None);
+        self.show_station_dialog();
+    }
+
+    fn open_selected_station_dialog(&self) {
+        let Some(station_id) = self.selected_station_id() else {
+            return;
+        };
+        let Some(station) = app_context().station(station_id) else {
+            return;
+        };
+        *self.station_editor_station_id.borrow_mut() = Some(station_id);
+        self.station_window.set_text(tr("Edit station"));
+        self.populate_station_dialog(Some(&station));
+        self.show_station_dialog();
+    }
+
+    fn show_station_dialog(&self) {
+        let (x, y) = self.window.position();
+        self.station_window.set_position(x + 40, y + 40);
+        self.window.set_enabled(false);
+        self.station_window.set_visible(true);
+        self.station_window.restore();
         self.name_input.set_focus();
+    }
+
+    fn hide_station_dialog(&self) {
+        *self.station_editor_station_id.borrow_mut() = None;
+        self.station_window.set_visible(false);
+        self.window.set_enabled(true);
+        self.window.set_focus();
+        self.station_list.set_focus();
+    }
+
+    fn populate_station_dialog(&self, station: Option<&Station>) {
+        if let Some(station) = station {
+            self.name_input.set_text(&station.name);
+            self.url_input.set_text(&station.url);
+            if let Some(credentials) = &station.credentials {
+                self.user_input.set_text(&credentials.username);
+                self.pass_input.set_text(&credentials.password);
+            } else {
+                self.user_input.set_text("");
+                self.pass_input.set_text("");
+            }
+        } else {
+            self.name_input.set_text("");
+            self.url_input.set_text("");
+            self.user_input.set_text("");
+            self.pass_input.set_text("");
+        }
     }
 
     fn save_station(&self) {
@@ -971,6 +1278,7 @@ impl MainWindow {
                     nwg::modal_error_message(&self.window, tr("Error"), &error.to_string());
                     return;
                 }
+                self.hide_station_dialog();
                 *self.current_station_id.borrow_mut() = Some(id);
                 app_context()
                     .logs
@@ -1005,7 +1313,9 @@ impl MainWindow {
                 nwg::modal_error_message(&self.window, tr("Error"), &error.to_string());
                 return;
             }
-            self.new_station();
+            if *self.current_station_id.borrow() == Some(station_id) {
+                *self.current_station_id.borrow_mut() = None;
+            }
             self.refresh_ui();
         }
     }
@@ -1016,7 +1326,9 @@ impl MainWindow {
         };
         if let Err(error) = app_context().start_station(station_id) {
             nwg::modal_error_message(&self.window, tr("Recording error"), &error.to_string());
+            return;
         }
+        self.update_station_actions();
     }
 
     fn stop_selected(&self) {
@@ -1024,33 +1336,95 @@ impl MainWindow {
             return;
         };
         app_context().stop_station(station_id);
+        self.update_station_actions();
     }
 
-    fn open_properties(&self) {
+    fn open_schedule_dialog(&self) {
         let Some(station_id) = self.selected_station_id() else {
             return;
         };
-        self.show_from_tray();
-        self.focus_station(station_id);
-        self.name_input.set_focus();
-    }
-
-    fn focus_schedule(&self) {
-        let Some(station_id) = self.selected_station_id() else {
+        let Some(station) = app_context().station(station_id) else {
             return;
         };
-        self.show_from_tray();
-        self.focus_station(station_id);
+        *self.schedule_station_id.borrow_mut() = Some(station_id);
+        self.schedule_window
+            .set_text(&format!("{} - {}", tr("Schedule"), station.name));
+        self.populate_schedule_dialog(&station);
+        let (x, y) = self.window.position();
+        self.schedule_window.set_position(x + 60, y + 60);
+        self.window.set_enabled(false);
+        self.schedule_window.set_visible(true);
+        self.schedule_window.restore();
         self.schedule_enabled.set_focus();
+    }
+
+    fn hide_schedule_dialog(&self) {
+        *self.schedule_station_id.borrow_mut() = None;
+        self.schedule_window.set_visible(false);
+        self.window.set_enabled(true);
+        self.window.set_focus();
+        self.station_list.set_focus();
+    }
+
+    fn populate_schedule_dialog(&self, station: &Station) {
+        self.schedule_station_label
+            .set_text(&format!("{} {}", tr("Station:"), station.name));
+        if let Some(rule) = station.schedules.first() {
+            self.schedule_enabled.set_check_state(check(rule.enabled));
+            set_day_checks(self, &rule.weekdays);
+            self.start_input
+                .set_text(&format!("{:02}:{:02}", rule.start_hour, rule.start_minute));
+            self.end_input
+                .set_text(&format!("{:02}:{:02}", rule.end_hour, rule.end_minute));
+        } else {
+            self.schedule_enabled
+                .set_check_state(nwg::CheckBoxState::Unchecked);
+            set_day_checks(self, &[true, true, true, true, true, true, true]);
+            self.start_input.set_text("00:00");
+            self.end_input.set_text("23:59");
+        }
+    }
+
+    fn save_schedule_dialog(&self) {
+        let Some(station_id) = *self.schedule_station_id.borrow() else {
+            return;
+        };
+        let Some(mut station) = app_context().station(station_id) else {
+            return;
+        };
+        match self.schedules_from_dialog() {
+            Ok(schedules) => {
+                station.schedules = schedules;
+                if let Err(error) = app_context().upsert_station(station) {
+                    nwg::modal_error_message(
+                        &self.schedule_window,
+                        tr("Error"),
+                        &error.to_string(),
+                    );
+                    return;
+                }
+                self.hide_schedule_dialog();
+                self.refresh_ui();
+                self.focus_station(station_id);
+            }
+            Err(error) => {
+                nwg::modal_error_message(&self.schedule_window, tr("Invalid data"), &error);
+            }
+        }
     }
 
     fn on_station_selected(&self, data: &nwg::EventData) {
         let (row_index, _, selected) = data.on_list_view_item_changed();
-        if !selected || row_index == usize::MAX {
+        if row_index == usize::MAX {
             return;
         }
-        if let Some(station_id) = self.station_rows.borrow().get(row_index).copied() {
-            self.focus_station(station_id);
+        if selected {
+            if let Some(station_id) = self.station_rows.borrow().get(row_index).copied() {
+                self.focus_station(station_id);
+            }
+        } else if self.station_list.selected_item().is_none() {
+            *self.current_station_id.borrow_mut() = None;
+            self.update_station_actions();
         }
     }
 
@@ -1062,38 +1436,34 @@ impl MainWindow {
                 self.focus_station(station_id);
             }
         }
-        let (x, y) = nwg::GlobalCursor::position();
-        self.popup_menu.popup(x, y);
+        self.show_station_menu_at_cursor();
     }
 
     fn focus_station(&self, station_id: Uuid) {
         *self.current_station_id.borrow_mut() = Some(station_id);
-        if let Some(station) = app_context().station(station_id) {
-            self.name_input.set_text(&station.name);
-            self.url_input.set_text(&station.url);
-            if let Some(credentials) = station.credentials {
-                self.user_input.set_text(&credentials.username);
-                self.pass_input.set_text(&credentials.password);
-            } else {
-                self.user_input.set_text("");
-                self.pass_input.set_text("");
-            }
+        self.update_station_actions();
+    }
 
-            if let Some(rule) = station.schedules.first() {
-                self.schedule_enabled.set_check_state(check(rule.enabled));
-                set_day_checks(self, &rule.weekdays);
-                self.start_input
-                    .set_text(&format!("{:02}:{:02}", rule.start_hour, rule.start_minute));
-                self.end_input
-                    .set_text(&format!("{:02}:{:02}", rule.end_hour, rule.end_minute));
-            } else {
-                self.schedule_enabled
-                    .set_check_state(nwg::CheckBoxState::Unchecked);
-                set_day_checks(self, &[true, true, true, true, true, true, true]);
-                self.start_input.set_text("00:00");
-                self.end_input.set_text("23:59");
-            }
-        }
+    fn show_station_menu_at_cursor(&self) {
+        self.update_station_actions();
+        let (x, y) = nwg::GlobalCursor::position();
+        self.popup_menu.popup(x, y);
+    }
+
+    fn show_station_menu_at_keyboard_anchor(&self) {
+        self.update_station_actions();
+        let (x, y) = self.station_menu_anchor();
+        self.popup_menu.popup(x, y);
+    }
+
+    fn station_menu_anchor(&self) -> (i32, i32) {
+        let selected_row = self.station_list.selected_item().unwrap_or(0) as i32;
+        let (window_x, window_y) = self.window.position();
+        let (list_x, list_y) = self.station_list.position();
+        (
+            window_x + list_x + 24,
+            window_y + list_y + 32 + selected_row.saturating_mul(22),
+        )
     }
 
     fn station_from_form(&self) -> Result<Station, String> {
@@ -1106,30 +1476,13 @@ impl MainWindow {
             return Err(tr("The stream URL is not valid.").to_string());
         }
 
-        let schedules = if is_checked(&self.schedule_enabled) {
-            let weekdays = day_checks(self);
-            if !weekdays.iter().any(|value| *value) {
-                return Err(tr("Select at least one weekday for the schedule.").to_string());
-            }
-            let (start_hour, start_minute) = parse_time_value(&self.start_input.text())?;
-            let (end_hour, end_minute) = parse_time_value(&self.end_input.text())?;
-            vec![ScheduleRule {
-                enabled: true,
-                weekdays,
-                start_hour,
-                start_minute,
-                end_hour,
-                end_minute,
-            }]
-        } else {
-            Vec::new()
-        };
+        let station_id = *self.station_editor_station_id.borrow();
+        let schedules = station_id
+            .and_then(|id| app_context().station(id).map(|station| station.schedules))
+            .unwrap_or_default();
 
         Ok(Station {
-            id: self
-                .current_station_id
-                .borrow()
-                .unwrap_or_else(Uuid::new_v4),
+            id: station_id.unwrap_or_else(Uuid::new_v4),
             name,
             url,
             credentials: {
@@ -1138,11 +1491,33 @@ impl MainWindow {
                 if username.is_empty() && password.trim().is_empty() {
                     None
                 } else {
-                    Some(streamrecorder::models::Credentials { username, password })
+                    Some(Credentials { username, password })
                 }
             },
             schedules,
         })
+    }
+
+    fn schedules_from_dialog(&self) -> Result<Vec<ScheduleRule>, String> {
+        if !is_checked(&self.schedule_enabled) {
+            return Ok(Vec::new());
+        }
+
+        let weekdays = day_checks(self);
+        if !weekdays.iter().any(|value| *value) {
+            return Err(tr("Select at least one weekday for the schedule.").to_string());
+        }
+
+        let (start_hour, start_minute) = parse_time_value(&self.start_input.text())?;
+        let (end_hour, end_minute) = parse_time_value(&self.end_input.text())?;
+        Ok(vec![ScheduleRule {
+            enabled: true,
+            weekdays,
+            start_hour,
+            start_minute,
+            end_hour,
+            end_minute,
+        }])
     }
 
     fn toggle_log(&self) {
@@ -1150,10 +1525,7 @@ impl MainWindow {
         *self.log_visible.borrow_mut() = visible;
         self.log_box.set_visible(visible);
         self.update_show_log_button();
-        if visible {
-            self.log_box.set_focus();
-            self.log_box.scroll_lastline();
-        }
+        self.log_box.scroll_lastline();
     }
 
     fn update_show_log_button(&self) {
@@ -1163,6 +1535,44 @@ impl MainWindow {
             } else {
                 tr("Show log")
             });
+    }
+
+    fn update_station_actions(&self) {
+        let selected_station = self.selected_station_id_silent();
+        let recording = selected_station
+            .map(|station_id| app_context().recorder.is_recording(station_id))
+            .unwrap_or(false);
+        let has_selection = selected_station.is_some();
+
+        self.edit_button.set_enabled(has_selection);
+        self.delete_button.set_enabled(has_selection);
+        self.start_button.set_enabled(has_selection && !recording);
+        self.stop_button.set_enabled(has_selection && recording);
+
+        self.file_edit.set_enabled(has_selection);
+        self.file_schedule.set_enabled(has_selection);
+
+        self.popup_edit.set_enabled(has_selection);
+        self.popup_start.set_enabled(has_selection && !recording);
+        self.popup_stop.set_enabled(has_selection && recording);
+        self.popup_schedule.set_enabled(has_selection);
+        self.popup_delete.set_enabled(has_selection);
+    }
+
+    fn on_station_window_close(&self, data: &nwg::EventData) {
+        if let nwg::EventData::OnWindowClose(close_data) = data {
+            close_data.close(false);
+        }
+        *self.station_editor_station_id.borrow_mut() = None;
+        self.hide_station_dialog();
+    }
+
+    fn on_schedule_window_close(&self, data: &nwg::EventData) {
+        if let nwg::EventData::OnWindowClose(close_data) = data {
+            close_data.close(false);
+        }
+        *self.schedule_station_id.borrow_mut() = None;
+        self.hide_schedule_dialog();
     }
 
     fn open_settings_dialog(&self) {
@@ -1180,10 +1590,11 @@ impl MainWindow {
         self.settings_window.set_visible(false);
         self.window.set_enabled(true);
         self.window.set_focus();
+        self.station_list.set_focus();
     }
 
     fn populate_settings_dialog(&self) {
-        let settings = app_context().settings_snapshot();
+        let settings = self.refresh_detected_gpac_settings(None);
         self.settings_launch_on_startup
             .set_check_state(check(settings.launch_on_startup));
         self.settings_always_on_top
@@ -1206,8 +1617,14 @@ impl MainWindow {
             .set_check_state(check(settings.remux_raw_aac_to_m4a));
         self.settings_language_combo
             .set_selection(Some(language_selection_index_for(&settings.language)));
+        self.settings_gpac_channel_combo
+            .set_selection(Some(gpac_channel_selection_index_for(
+                &settings.gpac_release_channel,
+            )));
         self.settings_update_repo_input
             .set_text(&settings.update_repo);
+        self.settings_gpac_status_label
+            .set_text(&self.gpac_status_text(&settings));
     }
 
     fn save_settings_dialog(&self) {
@@ -1258,6 +1675,7 @@ impl MainWindow {
     }
 
     fn settings_from_dialog(&self, previous: &AppSettings) -> Result<AppSettings, String> {
+        let detected_gpac = self.detect_gpac_info(previous);
         let recordings_folder = {
             let text = self.settings_recordings_folder_input.text();
             let trimmed = text.trim();
@@ -1281,8 +1699,213 @@ impl MainWindow {
             file_name_template: self.settings_template_input.text().trim().to_string(),
             language: language_from_selection(self.settings_language_combo.selection()),
             update_repo: normalize_update_repo(&self.settings_update_repo_input.text()),
-            remux_tool_path: previous.remux_tool_path.clone(),
+            remux_tool_path: resolve_mp4box_path(&app_context().paths, previous),
+            gpac_release_channel: gpac_channel_from_selection(
+                self.settings_gpac_channel_combo.selection(),
+            ),
+            gpac_installed_version: detected_gpac
+                .as_ref()
+                .map(|info| info.version.clone())
+                .unwrap_or_else(|| previous.gpac_installed_version.clone()),
+            gpac_installed_source: detected_gpac
+                .as_ref()
+                .map(|info| info.source_id.clone())
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| previous.gpac_installed_source.clone()),
         })
+    }
+
+    fn gpac_status_text(&self, settings: &AppSettings) -> String {
+        match self.detect_gpac_info(settings) {
+            Some(info) => {
+                let version = if info.version.trim().is_empty() {
+                    tr("Unknown").to_string()
+                } else {
+                    info.version
+                };
+                format!(
+                    "{}: {}\n{}: {}",
+                    tr("Detected MP4Box path"),
+                    info.path.display(),
+                    tr("Installed GPAC version"),
+                    version
+                )
+            }
+            None => format!(
+                "{}\n{}",
+                tr("MP4Box.exe was not detected."),
+                tr("Install GPAC to enable RAW AAC to M4A remuxing.")
+            ),
+        }
+    }
+
+    fn detect_gpac_info(&self, settings: &AppSettings) -> Option<InstalledGpacInfo> {
+        streamrecorder::gpac::detect_mp4box(&app_context().paths, settings)
+    }
+
+    fn refresh_detected_gpac_settings(
+        &self,
+        channel_override: Option<GpacReleaseChannel>,
+    ) -> AppSettings {
+        let mut settings = app_context().settings_snapshot();
+        let mut changed = false;
+
+        if let Some(channel) = channel_override {
+            if settings.gpac_release_channel != channel {
+                settings.gpac_release_channel = channel;
+                changed = true;
+            }
+        }
+
+        if let Some(info) = self.detect_gpac_info(&settings) {
+            if settings.remux_tool_path.as_ref() != Some(&info.path) {
+                settings.remux_tool_path = Some(info.path.clone());
+                changed = true;
+            }
+            if settings.gpac_installed_version != info.version {
+                settings.gpac_installed_version = info.version.clone();
+                changed = true;
+            }
+            if !info.source_id.trim().is_empty() && settings.gpac_installed_source != info.source_id
+            {
+                settings.gpac_installed_source = info.source_id.clone();
+                changed = true;
+            }
+        }
+
+        if changed {
+            let _ = app_context().save_settings(settings.clone());
+        }
+
+        settings
+    }
+
+    fn gpac_channel_for_context(&self, use_dialog_selection: bool) -> GpacReleaseChannel {
+        if use_dialog_selection {
+            gpac_channel_from_selection(self.settings_gpac_channel_combo.selection())
+        } else {
+            app_context().settings_snapshot().gpac_release_channel
+        }
+    }
+
+    fn check_gpac_updates_from_main(&self) {
+        self.check_gpac_updates_with_context(&self.window, false, false);
+    }
+
+    fn check_gpac_updates_from_settings(&self) {
+        self.check_gpac_updates_with_context(&self.settings_window, true, false);
+    }
+
+    fn install_or_update_gpac_from_settings(&self) {
+        self.check_gpac_updates_with_context(&self.settings_window, true, true);
+    }
+
+    fn check_gpac_updates_with_context(
+        &self,
+        parent: &nwg::Window,
+        use_dialog_selection: bool,
+        force_install_prompt: bool,
+    ) {
+        let channel = self.gpac_channel_for_context(use_dialog_selection);
+        let settings = self.refresh_detected_gpac_settings(Some(channel.clone()));
+        let installed = self.detect_gpac_info(&settings);
+
+        let available = match fetch_gpac_release(channel.clone()) {
+            Ok(release) => release,
+            Err(error) => {
+                nwg::modal_error_message(parent, tr("MP4Box / GPAC"), &error.to_string());
+                return;
+            }
+        };
+
+        let is_current = installed
+            .as_ref()
+            .map(|info| is_gpac_release_current(info, &available, &settings))
+            .unwrap_or(false);
+
+        if is_current && !force_install_prompt {
+            let installed_text = installed
+                .as_ref()
+                .map(|info| info.version.as_str())
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or("-");
+            nwg::modal_info_message(
+                parent,
+                tr("MP4Box / GPAC"),
+                &format!(
+                    "{}\n{}: {}\n{}: {}",
+                    tr("MP4Box is up to date."),
+                    tr("Installed GPAC version"),
+                    installed_text,
+                    tr("Available GPAC version"),
+                    available.version
+                ),
+            );
+            return;
+        }
+
+        let content = if let Some(installed) = &installed {
+            format!(
+                "{}: {}\n{}: {}\n{}: {}\n\n{}",
+                tr("Installed GPAC version"),
+                if installed.version.trim().is_empty() {
+                    tr("Unknown")
+                } else {
+                    &installed.version
+                },
+                tr("Available GPAC version"),
+                available.version,
+                tr("Detected MP4Box path"),
+                installed.path.display(),
+                tr("Download and launch the GPAC installer now?")
+            )
+        } else {
+            format!(
+                "{}\n{}: {}\n\n{}",
+                tr("MP4Box.exe was not detected."),
+                tr("Available GPAC version"),
+                available.version,
+                tr("Download and launch the GPAC installer now?")
+            )
+        };
+
+        let answer = nwg::modal_message(
+            parent,
+            &nwg::MessageParams {
+                title: tr("MP4Box / GPAC"),
+                content: &content,
+                buttons: nwg::MessageButtons::YesNo,
+                icons: nwg::MessageIcons::Info,
+            },
+        );
+        if answer != nwg::MessageChoice::Yes {
+            return;
+        }
+
+        match download_gpac_installer(&app_context().paths, &available)
+            .and_then(|path| launch_gpac_installer(&path).map(|_| path))
+        {
+            Ok(path) => {
+                app_context().logs.push(format!(
+                    "{}: {}",
+                    tr("Started GPAC installer"),
+                    path.display()
+                ));
+                nwg::modal_info_message(
+                    parent,
+                    tr("MP4Box / GPAC"),
+                    tr(
+                        "The GPAC installer has been started. Finish the setup and then reopen Settings or check MP4Box updates again. StreamRecorder will auto-detect MP4Box.exe.",
+                    ),
+                );
+                let refreshed = self.refresh_detected_gpac_settings(Some(channel));
+                self.settings_gpac_status_label
+                    .set_text(&self.gpac_status_text(&refreshed));
+            }
+            Err(error) => {
+                nwg::modal_error_message(parent, tr("MP4Box / GPAC"), &error.to_string());
+            }
+        }
     }
 
     fn browse_recordings_folder(&self) {
@@ -1308,17 +1931,26 @@ impl MainWindow {
         }
     }
 
-    fn selected_station_id(&self) -> Option<Uuid> {
+    fn selected_station_id_silent(&self) -> Option<Uuid> {
         if let Some(station_id) = *self.current_station_id.borrow() {
-            Some(station_id)
-        } else {
+            return Some(station_id);
+        }
+
+        self.station_list
+            .selected_item()
+            .and_then(|index| self.station_rows.borrow().get(index).copied())
+    }
+
+    fn selected_station_id(&self) -> Option<Uuid> {
+        let selected = self.selected_station_id_silent();
+        if selected.is_none() {
             nwg::modal_info_message(
                 &self.window,
                 tr("No station selected"),
                 tr("Select a station from the list or add a new one."),
             );
-            None
         }
+        selected
     }
 
     fn open_recordings_folder(&self) {
@@ -1485,6 +2117,7 @@ impl MainWindow {
         self.window.set_visible(true);
         self.window.restore();
         self.window.set_focus();
+        self.station_list.set_focus();
     }
 
     fn on_window_minimize(&self) {
@@ -1494,6 +2127,8 @@ impl MainWindow {
     }
 
     fn on_window_close(&self, data: &nwg::EventData) {
+        self.station_window.set_visible(false);
+        self.schedule_window.set_visible(false);
         self.settings_window.set_visible(false);
         if app_context().settings_snapshot().confirm_on_exit {
             let answer = nwg::modal_message(
@@ -1517,6 +2152,8 @@ impl MainWindow {
     }
 
     fn exit_for_update(&self) {
+        self.station_window.set_visible(false);
+        self.schedule_window.set_visible(false);
         self.settings_window.set_visible(false);
         self.window.set_visible(false);
         app_context().shutdown();
@@ -1551,6 +2188,12 @@ impl MainWindow {
 impl Drop for MainWindowUi {
     fn drop(&mut self) {
         if let Some(handler) = self.inner.handler.borrow_mut().take() {
+            nwg::unbind_event_handler(&handler);
+        }
+        if let Some(handler) = self.inner.station_handler.borrow_mut().take() {
+            nwg::unbind_event_handler(&handler);
+        }
+        if let Some(handler) = self.inner.schedule_handler.borrow_mut().take() {
             nwg::unbind_event_handler(&handler);
         }
         if let Some(handler) = self.inner.settings_handler.borrow_mut().take() {
@@ -1649,6 +2292,28 @@ fn language_from_selection(index: Option<usize>) -> streamrecorder::models::Lang
     match index {
         Some(1) => streamrecorder::models::Language::English,
         _ => streamrecorder::models::Language::Polish,
+    }
+}
+
+fn gpac_channel_options() -> Vec<String> {
+    vec![tr("Stable").to_string(), tr("Nightly").to_string()]
+}
+
+fn gpac_channel_selection_index() -> usize {
+    gpac_channel_selection_index_for(&GpacReleaseChannel::Stable)
+}
+
+fn gpac_channel_selection_index_for(channel: &GpacReleaseChannel) -> usize {
+    match channel {
+        GpacReleaseChannel::Stable => 0,
+        GpacReleaseChannel::Nightly => 1,
+    }
+}
+
+fn gpac_channel_from_selection(index: Option<usize>) -> GpacReleaseChannel {
+    match index {
+        Some(1) => GpacReleaseChannel::Nightly,
+        _ => GpacReleaseChannel::Stable,
     }
 }
 
