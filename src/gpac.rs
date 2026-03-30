@@ -380,7 +380,7 @@ fn normalize_version_token(value: &str) -> String {
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.2")
+        .user_agent("StreamRecorder/0.1.3")
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(60))
         .redirect(reqwest::redirect::Policy::limited(10))
