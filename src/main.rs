@@ -30,7 +30,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 const GUARDED_ARG: &str = "--guarded";
 const TAB_KEY: u32 = 0x09;
+const LEFT_KEY: u32 = 0x25;
+const RIGHT_KEY: u32 = 0x27;
 const SHIFT_KEY: i32 = 0x10;
+const DLGC_WANTARROWS_VALUE: isize = 0x0001;
 const DLGC_WANTTAB_VALUE: isize = 0x0002;
 
 static APP_CONTEXT: OnceCell<Arc<AppContext>> = OnceCell::new();
@@ -1071,10 +1074,22 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
                 return None;
             };
             if msg == WM_GETDLGCODE {
-                return Some(DLGC_WANTTAB_VALUE);
+                return Some(DLGC_WANTTAB_VALUE | DLGC_WANTARROWS_VALUE);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY && is_shift_pressed() {
+                app.station_cancel.set_focus();
+                return Some(0);
             }
             if msg == WM_KEYDOWN && w as u32 == TAB_KEY && !is_shift_pressed() {
                 app.focus_first_station_tab_control();
+                return Some(0);
+            }
+            if msg == WM_KEYDOWN && w as u32 == LEFT_KEY {
+                app.cycle_station_tab(-1);
+                return Some(0);
+            }
+            if msg == WM_KEYDOWN && w as u32 == RIGHT_KEY {
+                app.cycle_station_tab(1);
                 return Some(0);
             }
             None
@@ -1125,6 +1140,27 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
                 } else {
                     app.day_mon.set_focus();
                 }
+                return Some(0);
+            }
+            None
+        },
+    ) {
+        ui.inner.raw_handlers.borrow_mut().push(handler);
+    }
+
+    let weak = Rc::downgrade(&ui.inner);
+    if let Ok(handler) = nwg::bind_raw_event_handler(
+        &ui.inner.station_cancel.handle,
+        0x10015,
+        move |_hwnd, msg, w, _l| {
+            let Some(app) = weak.upgrade() else {
+                return None;
+            };
+            if msg == WM_GETDLGCODE {
+                return Some(DLGC_WANTTAB_VALUE);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY && !is_shift_pressed() {
+                app.station_tabs.set_focus();
                 return Some(0);
             }
             None
@@ -1293,6 +1329,25 @@ impl MainWindow {
             1 => self.schedule_enabled.set_focus(),
             _ => self.name_input.set_focus(),
         }
+    }
+
+    fn cycle_station_tab(&self, direction: isize) {
+        let count = self.station_tabs.tab_count();
+        if count == 0 {
+            return;
+        }
+
+        let current = self.station_tabs.selected_tab();
+        let next = if direction < 0 {
+            if current == 0 { count - 1 } else { current - 1 }
+        } else if current + 1 >= count {
+            0
+        } else {
+            current + 1
+        };
+
+        self.station_tabs.set_selected_tab(next);
+        self.station_tabs.set_focus();
     }
 
     fn hide_station_dialog(&self) {

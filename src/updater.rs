@@ -281,7 +281,7 @@ fn asset_score(asset: &UpdateAsset) -> i32 {
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.5")
+        .user_agent("StreamRecorder/0.1.6")
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(60))
         .build()

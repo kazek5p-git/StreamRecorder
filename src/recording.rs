@@ -736,7 +736,7 @@ async fn remux_aac(
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.5")
+        .user_agent("StreamRecorder/0.1.6")
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()
