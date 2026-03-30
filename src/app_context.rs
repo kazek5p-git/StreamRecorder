@@ -1,3 +1,4 @@
+use crate::APP_VERSION;
 use crate::config::{AppPaths, load_or_create, save};
 use crate::localization;
 use crate::logging::LogBus;
@@ -122,7 +123,7 @@ impl AppContext {
 
     pub fn check_for_updates(&self) -> Result<Option<UpdateInfo>> {
         let repo = self.settings_snapshot().update_repo;
-        check_for_updates(env!("CARGO_PKG_VERSION"), &repo)
+        check_for_updates(APP_VERSION, &repo)
     }
 
     pub fn shutdown(&self) {

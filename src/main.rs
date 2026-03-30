@@ -10,6 +10,7 @@ use std::process::Command;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
+use streamrecorder::APP_VERSION;
 use streamrecorder::app_context::AppContext;
 use streamrecorder::config::{AppPaths, load_or_create};
 use streamrecorder::localization::{current_language, tr};
@@ -32,6 +33,7 @@ const GUARDED_ARG: &str = "--guarded";
 const TAB_KEY: u32 = 0x09;
 const LEFT_KEY: u32 = 0x25;
 const RIGHT_KEY: u32 = 0x27;
+const ESC_KEY: u32 = 0x1B;
 const SHIFT_KEY: i32 = 0x10;
 const DLGC_WANTARROWS_VALUE: isize = 0x0001;
 const DLGC_WANTTAB_VALUE: isize = 0x0002;
@@ -260,7 +262,7 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
                     | nwg::WindowFlags::MINIMIZE_BOX
                     | nwg::WindowFlags::VISIBLE,
             )
-            .size((980, 580))
+            .size((1040, 620))
             .position((100, 60))
             .title("StreamRecorder")
             .icon(Some(&data.icon))
@@ -323,21 +325,21 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.window,
             &mut data.new_button,
             tr("Add station"),
-            (10, 10),
-            (120, 28),
+            (14, 14),
+            (138, 30),
         )?;
         build_button(
             &data.window,
             &mut data.show_log_button,
             tr("Show log"),
-            (840, 10),
-            (130, 28),
+            (888, 14),
+            (138, 30),
         )?;
 
         nwg::ListView::builder()
             .parent(&data.window)
-            .position((10, 45))
-            .size((960, 455))
+            .position((14, 58))
+            .size((1012, 484))
             .focus(true)
             .list_style(nwg::ListViewStyle::Detailed)
             .flags(
@@ -353,13 +355,13 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.window,
             &mut data.status_bar,
             &format!("{} 0", tr("Currently recording:")),
-            (10, 510),
-            (320, 22),
+            (14, 556),
+            (360, 22),
         )?;
 
         nwg::Window::builder()
             .flags(nwg::WindowFlags::WINDOW)
-            .size((760, 430))
+            .size((820, 470))
             .position((140, 100))
             .title(tr("Log"))
             .icon(Some(&data.icon))
@@ -369,13 +371,13 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.log_window,
             &mut data.log_close,
             tr("Close"),
-            (660, 365),
+            (716, 402),
             (90, 28),
         )?;
         nwg::ListBox::builder()
             .parent(&data.log_window)
-            .position((10, 10))
-            .size((740, 340))
+            .position((14, 14))
+            .size((792, 374))
             .flags(nwg::ListBoxFlags::VISIBLE | nwg::ListBoxFlags::TAB_STOP)
             .build(&mut data.log_box)?;
 
@@ -433,13 +435,13 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
 
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(0),
-            width: Some(240),
+            width: Some(260),
             text: Some(tr("Station").to_string()),
             ..Default::default()
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(1),
-            width: Some(280),
+            width: Some(320),
             text: Some("URL".to_string()),
             ..Default::default()
         });
@@ -451,13 +453,13 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(3),
-            width: Some(80),
+            width: Some(90),
             text: Some(tr("Format").to_string()),
             ..Default::default()
         });
         data.station_list.insert_column(nwg::InsertListViewColumn {
             index: Some(4),
-            width: Some(210),
+            width: Some(192),
             text: Some(tr("File").to_string()),
             ..Default::default()
         });
@@ -465,7 +467,7 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
 
         nwg::Window::builder()
             .flags(nwg::WindowFlags::WINDOW)
-            .size((540, 420))
+            .size((580, 460))
             .position((170, 100))
             .title(tr("Add station"))
             .icon(Some(&data.icon))
@@ -473,8 +475,8 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .build(&mut data.station_window)?;
         nwg::TabsContainer::builder()
             .parent(&data.station_window)
-            .position((10, 10))
-            .size((510, 325))
+            .position((14, 14))
+            .size((552, 344))
             .build(&mut data.station_tabs)?;
         nwg::Tab::builder()
             .text(tr("Information"))
@@ -488,158 +490,158 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.station_info_tab,
             &mut data.station_name_label,
             tr("Name:"),
-            (20, 20),
-            (90, 22),
+            (24, 24),
+            (96, 22),
         )?;
         build_input(
             &data.station_info_tab,
             &mut data.name_input,
             "",
-            (120, 17),
-            (350, 26),
+            (132, 21),
+            (396, 26),
             false,
         )?;
         build_label(
             &data.station_info_tab,
             &mut data.url_label,
             "URL:",
-            (20, 55),
-            (90, 22),
+            (24, 62),
+            (96, 22),
         )?;
         build_input(
             &data.station_info_tab,
             &mut data.url_input,
             "",
-            (120, 52),
-            (350, 26),
+            (132, 59),
+            (396, 26),
             false,
         )?;
         build_label(
             &data.station_info_tab,
             &mut data.user_label,
             tr("Username:"),
-            (20, 90),
-            (90, 22),
+            (24, 100),
+            (96, 22),
         )?;
         build_input(
             &data.station_info_tab,
             &mut data.user_input,
             "",
-            (120, 87),
-            (350, 26),
+            (132, 97),
+            (396, 26),
             false,
         )?;
         build_label(
             &data.station_info_tab,
             &mut data.pass_label,
             tr("Password:"),
-            (20, 125),
-            (90, 22),
+            (24, 138),
+            (96, 22),
         )?;
         build_input(
             &data.station_info_tab,
             &mut data.pass_input,
             "",
-            (120, 122),
-            (350, 26),
+            (132, 135),
+            (396, 26),
             true,
         )?;
         nwg::CheckBox::builder()
             .text(tr("Enable schedule"))
             .parent(&data.station_schedule_tab)
-            .position((20, 20))
-            .size((180, 24))
+            .position((24, 24))
+            .size((220, 24))
             .build(&mut data.schedule_enabled)?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_mon,
             tr("Mon"),
-            (20, 60),
+            (24, 70),
         )?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_tue,
             tr("Tue"),
-            (80, 60),
+            (94, 70),
         )?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_wed,
             tr("Wed"),
-            (140, 60),
+            (164, 70),
         )?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_thu,
             tr("Thu"),
-            (200, 60),
+            (234, 70),
         )?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_fri,
             tr("Fri"),
-            (260, 60),
+            (304, 70),
         )?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_sat,
             tr("Sat"),
-            (20, 90),
+            (374, 70),
         )?;
         build_day(
             &data.station_schedule_tab,
             &mut data.day_sun,
             tr("Sun"),
-            (80, 90),
+            (444, 70),
         )?;
         build_label(
             &data.station_schedule_tab,
             &mut data.start_label,
             tr("Start HH:MM:"),
-            (20, 135),
-            (90, 22),
+            (24, 128),
+            (100, 22),
         )?;
         build_input(
             &data.station_schedule_tab,
             &mut data.start_input,
             "00:00",
-            (120, 132),
-            (90, 26),
+            (132, 125),
+            (96, 26),
             false,
         )?;
         build_label(
             &data.station_schedule_tab,
             &mut data.end_label,
             tr("End HH:MM:"),
-            (230, 135),
-            (90, 22),
+            (286, 128),
+            (100, 22),
         )?;
         build_input(
             &data.station_schedule_tab,
             &mut data.end_input,
             "23:59",
-            (320, 132),
-            (90, 26),
+            (394, 125),
+            (96, 26),
             false,
         )?;
         build_button(
             &data.station_window,
             &mut data.station_ok,
             tr("OK"),
-            (330, 350),
-            (90, 28),
+            (370, 392),
+            (96, 30),
         )?;
         build_button(
             &data.station_window,
             &mut data.station_cancel,
             tr("Cancel"),
-            (430, 350),
-            (90, 28),
+            (470, 392),
+            (96, 30),
         )?;
 
         nwg::Window::builder()
             .flags(nwg::WindowFlags::WINDOW)
-            .size((660, 520))
+            .size((720, 570))
             .position((160, 110))
             .title(tr("Settings"))
             .icon(Some(&data.icon))
@@ -650,118 +652,118 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.settings_window,
             &mut data.settings_general_label,
             tr("General"),
-            (10, 10),
+            (16, 12),
             (140, 20),
         )?;
         nwg::CheckBox::builder()
             .text(tr("Launch application at Windows startup"))
             .parent(&data.settings_window)
-            .position((20, 35))
+            .position((28, 42))
             .size((360, 22))
             .build(&mut data.settings_launch_on_startup)?;
         nwg::CheckBox::builder()
             .text(tr("Always on top"))
             .parent(&data.settings_window)
-            .position((20, 60))
+            .position((28, 70))
             .size((260, 22))
             .build(&mut data.settings_always_on_top)?;
         nwg::CheckBox::builder()
             .text(tr("Minimize to system tray"))
             .parent(&data.settings_window)
-            .position((20, 85))
+            .position((28, 98))
             .size((320, 22))
             .build(&mut data.settings_minimize_to_tray)?;
         nwg::CheckBox::builder()
             .text(tr("Ask for confirmation before exit"))
             .parent(&data.settings_window)
-            .position((20, 110))
+            .position((28, 126))
             .size((300, 22))
             .build(&mut data.settings_confirm_on_exit)?;
         nwg::CheckBox::builder()
             .text(tr("Restart program after a crash"))
             .parent(&data.settings_window)
-            .position((20, 135))
+            .position((28, 154))
             .size((280, 22))
             .build(&mut data.settings_restart_on_crash)?;
         nwg::CheckBox::builder()
             .text(tr("Prevent the computer from sleeping"))
             .parent(&data.settings_window)
-            .position((20, 160))
+            .position((28, 182))
             .size((380, 22))
             .build(&mut data.settings_prevent_sleep)?;
         nwg::CheckBox::builder()
             .text(tr("Start minimized"))
             .parent(&data.settings_window)
-            .position((20, 185))
+            .position((28, 210))
             .size((260, 22))
             .build(&mut data.settings_start_minimized)?;
         build_label(
             &data.settings_window,
             &mut data.settings_folder_label,
             tr("Recordings folder:"),
-            (20, 230),
-            (120, 22),
+            (28, 258),
+            (140, 22),
         )?;
         build_input(
             &data.settings_window,
             &mut data.settings_recordings_folder_input,
             "",
-            (150, 227),
-            (370, 26),
+            (190, 255),
+            (400, 26),
             false,
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_recordings_folder_browse,
             tr("Browse"),
-            (530, 225),
+            (600, 253),
             (90, 28),
         )?;
         build_label(
             &data.settings_window,
             &mut data.settings_template_label,
             tr("File name template:"),
-            (20, 265),
-            (130, 22),
+            (28, 298),
+            (150, 22),
         )?;
         build_input(
             &data.settings_window,
             &mut data.settings_template_input,
             "",
-            (150, 262),
-            (470, 26),
+            (190, 295),
+            (500, 26),
             false,
         )?;
         build_label(
             &data.settings_window,
             &mut data.settings_template_help,
             tr("Tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second"),
-            (20, 295),
-            (600, 36),
+            (28, 329),
+            (662, 36),
         )?;
         build_label(
             &data.settings_window,
             &mut data.settings_other_label,
             tr("Other"),
-            (10, 340),
+            (16, 382),
             (140, 20),
         )?;
         nwg::CheckBox::builder()
             .text(tr("Remux RAW AAC to M4A after recording"))
             .parent(&data.settings_window)
-            .position((20, 365))
+            .position((28, 412))
             .size((360, 22))
             .build(&mut data.settings_remux_raw_aac)?;
         build_label(
             &data.settings_window,
             &mut data.settings_language_label,
             tr("Language:"),
-            (20, 395),
+            (28, 444),
             (140, 22),
         )?;
         nwg::ComboBox::builder()
             .parent(&data.settings_window)
-            .position((170, 392))
+            .position((190, 441))
             .size((150, 120))
             .collection(language_options())
             .selected_index(Some(language_selection_index()))
@@ -770,29 +772,29 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             &data.settings_window,
             &mut data.settings_update_repo_label,
             tr("Update repository:"),
-            (20, 427),
-            (140, 22),
+            (28, 476),
+            (150, 22),
         )?;
         build_input(
             &data.settings_window,
             &mut data.settings_update_repo_input,
             "",
-            (170, 424),
-            (470, 26),
+            (190, 473),
+            (500, 26),
             false,
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_save,
             tr("Save"),
-            (450, 455),
+            (500, 520),
             (90, 28),
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_cancel,
             tr("Cancel"),
-            (550, 455),
+            (600, 520),
             (90, 28),
         )?;
         nwg::FileDialog::builder()
@@ -950,6 +952,7 @@ fn bind_station_events(ui: &MainWindowUi) {
                 E::OnWindowClose if handle == app.station_window => {
                     app.on_station_window_close(&evt_data)
                 }
+                E::OnKeyEsc => app.hide_station_dialog(),
                 E::OnButtonClick if handle == app.station_ok => app.save_station(),
                 E::OnButtonClick if handle == app.station_cancel => app.hide_station_dialog(),
                 _ => {}
@@ -1076,6 +1079,10 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
             if msg == WM_GETDLGCODE {
                 return Some(DLGC_WANTTAB_VALUE | DLGC_WANTARROWS_VALUE);
             }
+            if msg == WM_KEYDOWN && w as u32 == ESC_KEY {
+                app.hide_station_dialog();
+                return Some(0);
+            }
             if msg == WM_KEYDOWN && w as u32 == TAB_KEY && is_shift_pressed() {
                 app.station_cancel.set_focus();
                 return Some(0);
@@ -1106,15 +1113,15 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
             let Some(app) = weak.upgrade() else {
                 return None;
             };
-            if msg == WM_GETDLGCODE {
+            if msg == WM_GETDLGCODE && w as u32 == TAB_KEY && is_shift_pressed() {
                 return Some(DLGC_WANTTAB_VALUE);
             }
-            if msg == WM_KEYDOWN && w as u32 == TAB_KEY {
-                if is_shift_pressed() {
-                    app.station_tabs.set_focus();
-                } else {
-                    app.url_input.set_focus();
-                }
+            if msg == WM_KEYDOWN && w as u32 == ESC_KEY {
+                app.hide_station_dialog();
+                return Some(0);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY && is_shift_pressed() {
+                app.station_tabs.set_focus();
                 return Some(0);
             }
             None
@@ -1122,6 +1129,20 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
     ) {
         ui.inner.raw_handlers.borrow_mut().push(handler);
     }
+
+    bind_station_escape_handler(ui, &ui.inner.url_input.handle, 0x10016);
+    bind_station_escape_handler(ui, &ui.inner.user_input.handle, 0x10017);
+    bind_station_escape_handler(ui, &ui.inner.pass_input.handle, 0x10018);
+    bind_station_escape_handler(ui, &ui.inner.day_mon.handle, 0x10019);
+    bind_station_escape_handler(ui, &ui.inner.day_tue.handle, 0x1001A);
+    bind_station_escape_handler(ui, &ui.inner.day_wed.handle, 0x1001B);
+    bind_station_escape_handler(ui, &ui.inner.day_thu.handle, 0x1001C);
+    bind_station_escape_handler(ui, &ui.inner.day_fri.handle, 0x1001D);
+    bind_station_escape_handler(ui, &ui.inner.day_sat.handle, 0x1001E);
+    bind_station_escape_handler(ui, &ui.inner.day_sun.handle, 0x1001F);
+    bind_station_escape_handler(ui, &ui.inner.start_input.handle, 0x10020);
+    bind_station_escape_handler(ui, &ui.inner.end_input.handle, 0x10021);
+    bind_station_escape_handler(ui, &ui.inner.station_ok.handle, 0x10022);
 
     let weak = Rc::downgrade(&ui.inner);
     if let Ok(handler) = nwg::bind_raw_event_handler(
@@ -1133,6 +1154,10 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
             };
             if msg == WM_GETDLGCODE {
                 return Some(DLGC_WANTTAB_VALUE);
+            }
+            if msg == WM_KEYDOWN && w as u32 == ESC_KEY {
+                app.hide_station_dialog();
+                return Some(0);
             }
             if msg == WM_KEYDOWN && w as u32 == TAB_KEY {
                 if is_shift_pressed() {
@@ -1159,6 +1184,14 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
             if msg == WM_GETDLGCODE {
                 return Some(DLGC_WANTTAB_VALUE);
             }
+            if msg == WM_KEYDOWN && w as u32 == ESC_KEY {
+                app.hide_station_dialog();
+                return Some(0);
+            }
+            if msg == WM_KEYDOWN && w as u32 == TAB_KEY && is_shift_pressed() {
+                app.station_ok.set_focus();
+                return Some(0);
+            }
             if msg == WM_KEYDOWN && w as u32 == TAB_KEY && !is_shift_pressed() {
                 app.station_tabs.set_focus();
                 return Some(0);
@@ -1166,6 +1199,24 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
             None
         },
     ) {
+        ui.inner.raw_handlers.borrow_mut().push(handler);
+    }
+}
+
+fn bind_station_escape_handler(ui: &MainWindowUi, handle: &nwg::ControlHandle, handler_id: usize) {
+    let weak = Rc::downgrade(&ui.inner);
+    if let Ok(handler) =
+        nwg::bind_raw_event_handler(handle, handler_id, move |_hwnd, msg, w, _l| {
+            let Some(app) = weak.upgrade() else {
+                return None;
+            };
+            if msg == WM_KEYDOWN && w as u32 == ESC_KEY {
+                app.hide_station_dialog();
+                return Some(0);
+            }
+            None
+        })
+    {
         ui.inner.raw_handlers.borrow_mut().push(handler);
     }
 }
@@ -1977,7 +2028,7 @@ impl MainWindow {
             tr("About"),
             &format!(
                 "StreamRecorder {}\n{}",
-                env!("CARGO_PKG_VERSION"),
+                APP_VERSION,
                 tr("Portable audio stream recorder.")
             ),
         );

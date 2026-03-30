@@ -1,3 +1,4 @@
+use crate::APP_VERSION;
 use crate::config::AppPaths;
 use anyhow::{Context, Result, anyhow};
 use reqwest::blocking::Client;
@@ -281,7 +282,7 @@ fn asset_score(asset: &UpdateAsset) -> i32 {
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.6")
+        .user_agent(format!("StreamRecorder/{APP_VERSION}"))
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(60))
         .build()

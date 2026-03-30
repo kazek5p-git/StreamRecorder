@@ -1,3 +1,4 @@
+use crate::APP_VERSION;
 use crate::config::AppPaths;
 use crate::gpac::resolve_mp4box_path;
 use crate::localization::tr;
@@ -736,7 +737,7 @@ async fn remux_aac(
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.6")
+        .user_agent(format!("StreamRecorder/{APP_VERSION}"))
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()
