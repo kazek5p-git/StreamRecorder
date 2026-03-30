@@ -9,7 +9,7 @@ Portable Windows application written in Rust for recording audio streams without
 - HTTP/HTTPS and HLS recording with automatic reconnect handling.
 - Basic format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS streams.
 - One schedule rule per station.
-- Optional RAW AAC to M4A remuxing through `MP4Box.exe`, with GPAC detection and installer/update actions available from the app.
+- Optional RAW AAC to M4A remuxing through a locally available `MP4Box.exe`.
 - Separate settings window for startup, topmost, tray, sleep prevention, recording folder, file naming template, remux, language, and updates.
 - Runtime localization based on `locale/streamrecorder.pot`, `locale/en.po`, and `locale/pl.po`.
 - Tray integration and `streamrecorder_guard.exe` crash monitoring with guarded relaunch support.
@@ -34,12 +34,11 @@ Update checks use GitHub Releases after `owner/repo` is configured in the app se
 
 ## GPAC / MP4Box
 
-StreamRecorder looks for `MP4Box.exe` in the portable app folder first and can also detect standard GPAC installations in Windows program directories. The settings dialog includes a GPAC section with:
+StreamRecorder looks for `MP4Box.exe` in the portable app folder first and can also detect standard GPAC installations in Windows program directories.
 
-- installed component status
-- stable/nightly release channel selection
-- install/update action for the official GPAC Windows installer
-- manual update check for MP4Box / GPAC
+If you want a lightweight Windows build of MP4Box/GPAC instead of the full official package, use:
+
+- https://www.free-codecs.com/mp4box-gpac_download.htm
 
 ## Release Packaging
 

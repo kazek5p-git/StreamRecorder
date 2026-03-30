@@ -689,11 +689,11 @@ async fn finalize_output(
 
 async fn remux_aac(
     paths: &AppPaths,
-    settings: &AppSettings,
+    _settings: &AppSettings,
     logs: &LogBus,
     input_path: &Path,
 ) -> Result<Option<PathBuf>> {
-    let Some(tool_path) = resolve_mp4box_path(paths, settings) else {
+    let Some(tool_path) = resolve_mp4box_path(paths) else {
         logs.push(tr("Skipping AAC to M4A remux: MP4Box.exe was not found"));
         return Ok(None);
     };
@@ -736,7 +736,7 @@ async fn remux_aac(
 
 fn build_client() -> Result<Client> {
     Client::builder()
-        .user_agent("StreamRecorder/0.1.3")
+        .user_agent("StreamRecorder/0.1.4")
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()

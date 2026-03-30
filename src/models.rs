@@ -14,18 +14,6 @@ impl Default for Language {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum GpacReleaseChannel {
-    Stable,
-    Nightly,
-}
-
-impl Default for GpacReleaseChannel {
-    fn default() -> Self {
-        Self::Stable
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credentials {
     pub username: String,
@@ -91,10 +79,6 @@ pub struct AppSettings {
     pub file_name_template: String,
     pub language: Language,
     pub update_repo: String,
-    pub remux_tool_path: Option<PathBuf>,
-    pub gpac_release_channel: GpacReleaseChannel,
-    pub gpac_installed_version: String,
-    pub gpac_installed_source: String,
 }
 
 impl Default for AppSettings {
@@ -112,10 +96,6 @@ impl Default for AppSettings {
             file_name_template: "%t_%r-%M-%d_%h-%m-%s".to_string(),
             language: Language::Polish,
             update_repo: String::new(),
-            remux_tool_path: None,
-            gpac_release_channel: GpacReleaseChannel::Stable,
-            gpac_installed_version: String::new(),
-            gpac_installed_source: String::new(),
         }
     }
 }

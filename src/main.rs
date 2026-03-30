@@ -12,12 +12,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use streamrecorder::app_context::AppContext;
 use streamrecorder::config::{AppPaths, load_or_create};
-use streamrecorder::gpac::{
-    InstalledGpacInfo, download_gpac_installer, fetch_gpac_release, is_gpac_release_current,
-    launch_gpac_installer, resolve_mp4box_path,
-};
 use streamrecorder::localization::{current_language, tr};
-use streamrecorder::models::{AppSettings, Credentials, GpacReleaseChannel, ScheduleRule, Station};
+use streamrecorder::models::{AppSettings, Credentials, ScheduleRule, Station};
+use streamrecorder::recording::RecordingSnapshot;
 use streamrecorder::updater::{download_update, install_downloaded_update};
 use uuid::Uuid;
 use windows::Win32::Foundation::HWND;
@@ -25,7 +22,8 @@ use windows::Win32::System::Power::{
     ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED, SetThreadExecutionState,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SetWindowPos, WM_CONTEXTMENU,
+    BringWindowToTop, GWL_STYLE, GetWindowLongW, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
+    SWP_NOSIZE, SetForegroundWindow, SetWindowLongW, SetWindowPos, WM_CONTEXTMENU, WS_TABSTOP,
 };
 
 const GUARDED_ARG: &str = "--guarded";
@@ -49,13 +47,11 @@ struct MainWindow {
     file_start: nwg::MenuItem,
     file_stop: nwg::MenuItem,
     file_delete: nwg::MenuItem,
-    system_menu: nwg::Menu,
     system_open_recordings: nwg::MenuItem,
     system_open_settings: nwg::MenuItem,
     file_settings: nwg::MenuItem,
     file_exit: nwg::MenuItem,
     help_menu: nwg::Menu,
-    help_gpac_updates: nwg::MenuItem,
     help_updates: nwg::MenuItem,
     help_about: nwg::MenuItem,
     new_button: nwg::Button,
@@ -111,7 +107,6 @@ struct MainWindow {
     settings_template_label: nwg::Label,
     settings_template_help: nwg::Label,
     settings_other_label: nwg::Label,
-    settings_gpac_label: nwg::Label,
     settings_launch_on_startup: nwg::CheckBox,
     settings_always_on_top: nwg::CheckBox,
     settings_minimize_to_tray: nwg::CheckBox,
@@ -125,11 +120,6 @@ struct MainWindow {
     settings_remux_raw_aac: nwg::CheckBox,
     settings_language_label: nwg::Label,
     settings_language_combo: nwg::ComboBox<String>,
-    settings_gpac_status_label: nwg::Label,
-    settings_gpac_channel_label: nwg::Label,
-    settings_gpac_channel_combo: nwg::ComboBox<String>,
-    settings_gpac_install: nwg::Button,
-    settings_gpac_check: nwg::Button,
     settings_update_repo_label: nwg::Label,
     settings_update_repo_input: nwg::TextInput,
     settings_save: nwg::Button,
@@ -158,13 +148,11 @@ impl Default for MainWindow {
             file_start: Default::default(),
             file_stop: Default::default(),
             file_delete: Default::default(),
-            system_menu: Default::default(),
             system_open_recordings: Default::default(),
             system_open_settings: Default::default(),
             file_settings: Default::default(),
             file_exit: Default::default(),
             help_menu: Default::default(),
-            help_gpac_updates: Default::default(),
             help_updates: Default::default(),
             help_about: Default::default(),
             new_button: Default::default(),
@@ -220,7 +208,6 @@ impl Default for MainWindow {
             settings_template_label: Default::default(),
             settings_template_help: Default::default(),
             settings_other_label: Default::default(),
-            settings_gpac_label: Default::default(),
             settings_launch_on_startup: Default::default(),
             settings_always_on_top: Default::default(),
             settings_minimize_to_tray: Default::default(),
@@ -234,11 +221,6 @@ impl Default for MainWindow {
             settings_remux_raw_aac: Default::default(),
             settings_language_label: Default::default(),
             settings_language_combo: Default::default(),
-            settings_gpac_status_label: Default::default(),
-            settings_gpac_channel_label: Default::default(),
-            settings_gpac_channel_combo: Default::default(),
-            settings_gpac_install: Default::default(),
-            settings_gpac_check: Default::default(),
             settings_update_repo_label: Default::default(),
             settings_update_repo_input: Default::default(),
             settings_save: Default::default(),
@@ -301,6 +283,18 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .parent(&data.file_menu)
             .build(&mut data.file_delete)?;
         nwg::MenuItem::builder()
+            .text(tr("Open recordings folder"))
+            .parent(&data.file_menu)
+            .build(&mut data.system_open_recordings)?;
+        nwg::MenuItem::builder()
+            .text(tr("Open settings folder"))
+            .parent(&data.file_menu)
+            .build(&mut data.system_open_settings)?;
+        nwg::MenuItem::builder()
+            .text(tr("Settings"))
+            .parent(&data.file_menu)
+            .build(&mut data.file_settings)?;
+        nwg::MenuItem::builder()
             .text(tr("Exit"))
             .parent(&data.file_menu)
             .build(&mut data.file_exit)?;
@@ -309,10 +303,6 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .parent(&data.window)
             .build(&mut data.help_menu)?;
         nwg::MenuItem::builder()
-            .text(tr("Check MP4Box updates"))
-            .parent(&data.help_menu)
-            .build(&mut data.help_gpac_updates)?;
-        nwg::MenuItem::builder()
             .text(tr("Check for updates"))
             .parent(&data.help_menu)
             .build(&mut data.help_updates)?;
@@ -320,22 +310,6 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .text(tr("About"))
             .parent(&data.help_menu)
             .build(&mut data.help_about)?;
-        nwg::Menu::builder()
-            .text(tr("&System"))
-            .parent(&data.window)
-            .build(&mut data.system_menu)?;
-        nwg::MenuItem::builder()
-            .text(tr("Open recordings folder"))
-            .parent(&data.system_menu)
-            .build(&mut data.system_open_recordings)?;
-        nwg::MenuItem::builder()
-            .text(tr("Open settings folder"))
-            .parent(&data.system_menu)
-            .build(&mut data.system_open_settings)?;
-        nwg::MenuItem::builder()
-            .text(tr("Settings"))
-            .parent(&data.system_menu)
-            .build(&mut data.file_settings)?;
 
         build_button(
             &data.window,
@@ -652,7 +626,7 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
 
         nwg::Window::builder()
             .flags(nwg::WindowFlags::WINDOW)
-            .size((660, 690))
+            .size((660, 520))
             .position((160, 110))
             .title(tr("Settings"))
             .icon(Some(&data.icon))
@@ -794,60 +768,18 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             (470, 26),
             false,
         )?;
-        build_label(
-            &data.settings_window,
-            &mut data.settings_gpac_label,
-            tr("MP4Box / GPAC"),
-            (10, 465),
-            (180, 20),
-        )?;
-        build_label(
-            &data.settings_window,
-            &mut data.settings_gpac_status_label,
-            "",
-            (20, 490),
-            (620, 52),
-        )?;
-        build_label(
-            &data.settings_window,
-            &mut data.settings_gpac_channel_label,
-            tr("GPAC update channel:"),
-            (20, 550),
-            (150, 22),
-        )?;
-        nwg::ComboBox::builder()
-            .parent(&data.settings_window)
-            .position((180, 547))
-            .size((150, 120))
-            .collection(gpac_channel_options())
-            .selected_index(Some(gpac_channel_selection_index()))
-            .build(&mut data.settings_gpac_channel_combo)?;
-        build_button(
-            &data.settings_window,
-            &mut data.settings_gpac_install,
-            tr("Install or update MP4Box"),
-            (20, 585),
-            (220, 28),
-        )?;
-        build_button(
-            &data.settings_window,
-            &mut data.settings_gpac_check,
-            tr("Check MP4Box updates"),
-            (250, 585),
-            (180, 28),
-        )?;
         build_button(
             &data.settings_window,
             &mut data.settings_save,
             tr("Save"),
-            (450, 625),
+            (450, 455),
             (90, 28),
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_cancel,
             tr("Cancel"),
-            (550, 625),
+            (550, 455),
             (90, 28),
         )?;
         nwg::FileDialog::builder()
@@ -864,6 +796,7 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
         bind_log_events(&ui);
         bind_tray_events(&ui);
         bind_raw_handlers(&ui);
+        add_tab_stop_style(&ui.inner.station_tabs.handle);
         ui.inner.setup();
         Ok(ui)
     }
@@ -959,17 +892,8 @@ fn bind_events(ui: &MainWindowUi) {
                 }
                 E::OnMenuItemSelected if handle == app.file_settings => app.open_settings_dialog(),
                 E::OnMenuItemSelected if handle == app.file_exit => app.window.close(),
-                E::OnMenuItemSelected if handle == app.help_gpac_updates => {
-                    app.check_gpac_updates_from_main()
-                }
                 E::OnMenuItemSelected if handle == app.help_updates => app.check_updates(),
                 E::OnMenuItemSelected if handle == app.help_about => app.about(),
-                E::OnMenuItemSelected if handle == app.tray_show => app.show_from_tray(),
-                E::OnMenuItemSelected if handle == app.tray_settings => {
-                    app.show_from_tray();
-                    app.open_settings_dialog();
-                }
-                E::OnMenuItemSelected if handle == app.tray_exit => app.window.close(),
                 E::OnMenuItemSelected if handle == app.popup_add => app.open_new_station_dialog(),
                 E::OnMenuItemSelected if handle == app.popup_edit => {
                     app.open_selected_station_dialog()
@@ -983,9 +907,6 @@ fn bind_events(ui: &MainWindowUi) {
                 }
                 E::OnContextMenu if handle == app.window && app.station_list.focus() => {
                     app.show_station_menu_at_keyboard_anchor()
-                }
-                E::OnMousePress(nwg::MousePressEvent::MousePressLeftUp) if handle == app.tray => {
-                    app.show_from_tray()
                 }
                 E::OnTimerTick if handle == app.timer => app.refresh_ui(),
                 E::OnListViewItemChanged if handle == app.station_list => {
@@ -1040,12 +961,6 @@ fn bind_settings_events(ui: &MainWindowUi) {
                 }
                 E::OnButtonClick if handle == app.settings_recordings_folder_browse => {
                     app.browse_recordings_folder()
-                }
-                E::OnButtonClick if handle == app.settings_gpac_install => {
-                    app.install_or_update_gpac_from_settings()
-                }
-                E::OnButtonClick if handle == app.settings_gpac_check => {
-                    app.check_gpac_updates_from_settings()
                 }
                 E::OnButtonClick if handle == app.settings_save => app.save_settings_dialog(),
                 E::OnButtonClick if handle == app.settings_cancel => app.hide_settings_dialog(),
@@ -1164,60 +1079,62 @@ impl MainWindow {
 
     fn refresh_station_list(&self) {
         let stations = app_context().stations_snapshot();
-        let selected_id = *self.current_station_id.borrow();
+        let selected_id = self.selected_station_id_silent();
         let snapshots = app_context().recorder.snapshots();
+        let expected_rows = stations
+            .iter()
+            .map(|station| station.id)
+            .collect::<Vec<_>>();
+        let needs_rebuild = *self.station_rows.borrow() != expected_rows;
 
         self.station_list.set_redraw(false);
-        self.station_list.clear();
-        self.station_rows.borrow_mut().clear();
-
-        for station in stations {
-            let snapshot = snapshots.get(&station.id);
-            let status = snapshot
-                .map(|value| display_state_label(&value.state_label))
-                .unwrap_or_else(|| tr("Idle").to_string());
-            let format = snapshot
-                .and_then(|value| value.format)
-                .map(|value| value.display_name().to_string())
-                .unwrap_or_else(|| "-".to_string());
-            let output = snapshot
-                .and_then(|value| value.output_path.as_ref())
-                .and_then(|path| path.file_name())
-                .and_then(|value| value.to_str())
-                .unwrap_or("-")
-                .to_string();
-
-            self.station_list.insert_items_row(
-                None,
-                &[
-                    station.name.clone(),
-                    station.url.clone(),
-                    status,
-                    format,
-                    output,
-                ],
-            );
-            self.station_rows.borrow_mut().push(station.id);
+        if needs_rebuild {
+            self.station_list.clear();
+            self.station_rows.borrow_mut().clear();
         }
 
-        let mut next_selected = None;
-        if let Some(selected_id) = selected_id {
-            if let Some(index) = self
-                .station_rows
-                .borrow()
-                .iter()
-                .position(|value| *value == selected_id)
-            {
-                self.station_list.select_item(index, true);
-                next_selected = Some(selected_id);
+        for (index, station) in stations.iter().enumerate() {
+            let row = station_list_row(station, snapshots.get(&station.id));
+            if needs_rebuild {
+                self.station_list.insert_items_row(None, &row);
+                self.station_rows.borrow_mut().push(station.id);
+            } else {
+                for (column, value) in row.iter().enumerate() {
+                    self.station_list.update_item(
+                        index,
+                        nwg::InsertListViewItem {
+                            column_index: column as i32,
+                            text: Some(value.clone()),
+                            ..Default::default()
+                        },
+                    );
+                }
             }
         }
 
-        if next_selected.is_none() {
+        let mut next_selected = selected_id;
+        if needs_rebuild {
+            next_selected = None;
+            if let Some(selected_id) = selected_id {
+                if let Some(index) = self
+                    .station_rows
+                    .borrow()
+                    .iter()
+                    .position(|value| *value == selected_id)
+                {
+                    self.station_list.select_item(index, true);
+                    next_selected = Some(selected_id);
+                }
+            }
+
+            if next_selected.is_none() {
+                next_selected = self.station_rows.borrow().first().copied();
+                if next_selected.is_some() {
+                    self.station_list.select_item(0, true);
+                }
+            }
+        } else if next_selected.is_none() {
             next_selected = self.station_rows.borrow().first().copied();
-            if next_selected.is_some() {
-                self.station_list.select_item(0, true);
-            }
         }
 
         *self.current_station_id.borrow_mut() = next_selected;
@@ -1287,7 +1204,7 @@ impl MainWindow {
         self.window.set_enabled(false);
         self.station_window.set_visible(true);
         self.station_window.restore();
-        self.name_input.set_focus();
+        self.station_tabs.set_focus();
     }
 
     fn hide_station_dialog(&self) {
@@ -1621,7 +1538,7 @@ impl MainWindow {
     }
 
     fn populate_settings_dialog(&self) {
-        let settings = self.refresh_detected_gpac_settings(None);
+        let settings = app_context().settings_snapshot();
         self.settings_launch_on_startup
             .set_check_state(check(settings.launch_on_startup));
         self.settings_always_on_top
@@ -1644,14 +1561,8 @@ impl MainWindow {
             .set_check_state(check(settings.remux_raw_aac_to_m4a));
         self.settings_language_combo
             .set_selection(Some(language_selection_index_for(&settings.language)));
-        self.settings_gpac_channel_combo
-            .set_selection(Some(gpac_channel_selection_index_for(
-                &settings.gpac_release_channel,
-            )));
         self.settings_update_repo_input
             .set_text(&settings.update_repo);
-        self.settings_gpac_status_label
-            .set_text(&self.gpac_status_text(&settings));
     }
 
     fn save_settings_dialog(&self) {
@@ -1702,7 +1613,6 @@ impl MainWindow {
     }
 
     fn settings_from_dialog(&self, previous: &AppSettings) -> Result<AppSettings, String> {
-        let detected_gpac = self.detect_gpac_info(previous);
         let recordings_folder = {
             let text = self.settings_recordings_folder_input.text();
             let trimmed = text.trim();
@@ -1726,213 +1636,8 @@ impl MainWindow {
             file_name_template: self.settings_template_input.text().trim().to_string(),
             language: language_from_selection(self.settings_language_combo.selection()),
             update_repo: normalize_update_repo(&self.settings_update_repo_input.text()),
-            remux_tool_path: resolve_mp4box_path(&app_context().paths, previous),
-            gpac_release_channel: gpac_channel_from_selection(
-                self.settings_gpac_channel_combo.selection(),
-            ),
-            gpac_installed_version: detected_gpac
-                .as_ref()
-                .map(|info| info.version.clone())
-                .unwrap_or_else(|| previous.gpac_installed_version.clone()),
-            gpac_installed_source: detected_gpac
-                .as_ref()
-                .map(|info| info.source_id.clone())
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| previous.gpac_installed_source.clone()),
+            ..previous.clone()
         })
-    }
-
-    fn gpac_status_text(&self, settings: &AppSettings) -> String {
-        match self.detect_gpac_info(settings) {
-            Some(info) => {
-                let version = if info.version.trim().is_empty() {
-                    tr("Unknown").to_string()
-                } else {
-                    info.version
-                };
-                format!(
-                    "{}: {}\n{}: {}",
-                    tr("Detected MP4Box path"),
-                    info.path.display(),
-                    tr("Installed GPAC version"),
-                    version
-                )
-            }
-            None => format!(
-                "{}\n{}",
-                tr("MP4Box.exe was not detected."),
-                tr("Install GPAC to enable RAW AAC to M4A remuxing.")
-            ),
-        }
-    }
-
-    fn detect_gpac_info(&self, settings: &AppSettings) -> Option<InstalledGpacInfo> {
-        streamrecorder::gpac::detect_mp4box(&app_context().paths, settings)
-    }
-
-    fn refresh_detected_gpac_settings(
-        &self,
-        channel_override: Option<GpacReleaseChannel>,
-    ) -> AppSettings {
-        let mut settings = app_context().settings_snapshot();
-        let mut changed = false;
-
-        if let Some(channel) = channel_override {
-            if settings.gpac_release_channel != channel {
-                settings.gpac_release_channel = channel;
-                changed = true;
-            }
-        }
-
-        if let Some(info) = self.detect_gpac_info(&settings) {
-            if settings.remux_tool_path.as_ref() != Some(&info.path) {
-                settings.remux_tool_path = Some(info.path.clone());
-                changed = true;
-            }
-            if settings.gpac_installed_version != info.version {
-                settings.gpac_installed_version = info.version.clone();
-                changed = true;
-            }
-            if !info.source_id.trim().is_empty() && settings.gpac_installed_source != info.source_id
-            {
-                settings.gpac_installed_source = info.source_id.clone();
-                changed = true;
-            }
-        }
-
-        if changed {
-            let _ = app_context().save_settings(settings.clone());
-        }
-
-        settings
-    }
-
-    fn gpac_channel_for_context(&self, use_dialog_selection: bool) -> GpacReleaseChannel {
-        if use_dialog_selection {
-            gpac_channel_from_selection(self.settings_gpac_channel_combo.selection())
-        } else {
-            app_context().settings_snapshot().gpac_release_channel
-        }
-    }
-
-    fn check_gpac_updates_from_main(&self) {
-        self.check_gpac_updates_with_context(&self.window, false, false);
-    }
-
-    fn check_gpac_updates_from_settings(&self) {
-        self.check_gpac_updates_with_context(&self.settings_window, true, false);
-    }
-
-    fn install_or_update_gpac_from_settings(&self) {
-        self.check_gpac_updates_with_context(&self.settings_window, true, true);
-    }
-
-    fn check_gpac_updates_with_context(
-        &self,
-        parent: &nwg::Window,
-        use_dialog_selection: bool,
-        force_install_prompt: bool,
-    ) {
-        let channel = self.gpac_channel_for_context(use_dialog_selection);
-        let settings = self.refresh_detected_gpac_settings(Some(channel.clone()));
-        let installed = self.detect_gpac_info(&settings);
-
-        let available = match fetch_gpac_release(channel.clone()) {
-            Ok(release) => release,
-            Err(error) => {
-                nwg::modal_error_message(parent, tr("MP4Box / GPAC"), &error.to_string());
-                return;
-            }
-        };
-
-        let is_current = installed
-            .as_ref()
-            .map(|info| is_gpac_release_current(info, &available, &settings))
-            .unwrap_or(false);
-
-        if is_current && !force_install_prompt {
-            let installed_text = installed
-                .as_ref()
-                .map(|info| info.version.as_str())
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or("-");
-            nwg::modal_info_message(
-                parent,
-                tr("MP4Box / GPAC"),
-                &format!(
-                    "{}\n{}: {}\n{}: {}",
-                    tr("MP4Box is up to date."),
-                    tr("Installed GPAC version"),
-                    installed_text,
-                    tr("Available GPAC version"),
-                    available.version
-                ),
-            );
-            return;
-        }
-
-        let content = if let Some(installed) = &installed {
-            format!(
-                "{}: {}\n{}: {}\n{}: {}\n\n{}",
-                tr("Installed GPAC version"),
-                if installed.version.trim().is_empty() {
-                    tr("Unknown")
-                } else {
-                    &installed.version
-                },
-                tr("Available GPAC version"),
-                available.version,
-                tr("Detected MP4Box path"),
-                installed.path.display(),
-                tr("Download and launch the GPAC installer now?")
-            )
-        } else {
-            format!(
-                "{}\n{}: {}\n\n{}",
-                tr("MP4Box.exe was not detected."),
-                tr("Available GPAC version"),
-                available.version,
-                tr("Download and launch the GPAC installer now?")
-            )
-        };
-
-        let answer = nwg::modal_message(
-            parent,
-            &nwg::MessageParams {
-                title: tr("MP4Box / GPAC"),
-                content: &content,
-                buttons: nwg::MessageButtons::YesNo,
-                icons: nwg::MessageIcons::Info,
-            },
-        );
-        if answer != nwg::MessageChoice::Yes {
-            return;
-        }
-
-        match download_gpac_installer(&app_context().paths, &available)
-            .and_then(|path| launch_gpac_installer(&path).map(|_| path))
-        {
-            Ok(path) => {
-                app_context().logs.push(format!(
-                    "{}: {}",
-                    tr("Started GPAC installer"),
-                    path.display()
-                ));
-                nwg::modal_info_message(
-                    parent,
-                    tr("MP4Box / GPAC"),
-                    tr(
-                        "The GPAC installer has been started. Finish the setup and then reopen Settings or check MP4Box updates again. StreamRecorder will auto-detect MP4Box.exe.",
-                    ),
-                );
-                let refreshed = self.refresh_detected_gpac_settings(Some(channel));
-                self.settings_gpac_status_label
-                    .set_text(&self.gpac_status_text(&refreshed));
-            }
-            Err(error) => {
-                nwg::modal_error_message(parent, tr("MP4Box / GPAC"), &error.to_string());
-            }
-        }
     }
 
     fn browse_recordings_folder(&self) {
@@ -2143,6 +1848,7 @@ impl MainWindow {
     fn show_from_tray(&self) {
         self.window.restore();
         self.window.set_visible(true);
+        activate_window(&self.window);
         self.window.set_focus();
         self.station_list.set_focus();
     }
@@ -2319,6 +2025,30 @@ fn display_state_label(label: &str) -> String {
     }
 }
 
+fn station_list_row(station: &Station, snapshot: Option<&RecordingSnapshot>) -> Vec<String> {
+    let status = snapshot
+        .map(|value| display_state_label(&value.state_label))
+        .unwrap_or_else(|| tr("Idle").to_string());
+    let format = snapshot
+        .and_then(|value| value.format)
+        .map(|value| value.display_name().to_string())
+        .unwrap_or_else(|| "-".to_string());
+    let output = snapshot
+        .and_then(|value| value.output_path.as_ref())
+        .and_then(|path| path.file_name())
+        .and_then(|value| value.to_str())
+        .unwrap_or("-")
+        .to_string();
+
+    vec![
+        station.name.clone(),
+        station.url.clone(),
+        status,
+        format,
+        output,
+    ]
+}
+
 fn language_options() -> Vec<String> {
     vec![tr("Polish").to_string(), tr("English").to_string()]
 }
@@ -2338,28 +2068,6 @@ fn language_from_selection(index: Option<usize>) -> streamrecorder::models::Lang
     match index {
         Some(1) => streamrecorder::models::Language::English,
         _ => streamrecorder::models::Language::Polish,
-    }
-}
-
-fn gpac_channel_options() -> Vec<String> {
-    vec![tr("Stable").to_string(), tr("Nightly").to_string()]
-}
-
-fn gpac_channel_selection_index() -> usize {
-    gpac_channel_selection_index_for(&GpacReleaseChannel::Stable)
-}
-
-fn gpac_channel_selection_index_for(channel: &GpacReleaseChannel) -> usize {
-    match channel {
-        GpacReleaseChannel::Stable => 0,
-        GpacReleaseChannel::Nightly => 1,
-    }
-}
-
-fn gpac_channel_from_selection(index: Option<usize>) -> GpacReleaseChannel {
-    match index {
-        Some(1) => GpacReleaseChannel::Nightly,
-        _ => GpacReleaseChannel::Stable,
     }
 }
 
@@ -2394,8 +2102,7 @@ fn take_repo_segments(value: &str) -> Option<String> {
 }
 
 fn set_topmost(window: &nwg::Window, topmost: bool) {
-    if let Some(raw) = window.handle.hwnd() {
-        let handle = HWND(raw as *mut _);
+    if let Some(handle) = control_hwnd(&window.handle) {
         let target = if topmost {
             HWND_TOPMOST
         } else {
@@ -2404,6 +2111,34 @@ fn set_topmost(window: &nwg::Window, topmost: bool) {
         unsafe {
             let _ = SetWindowPos(handle, Some(target), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         }
+    }
+}
+
+fn control_hwnd(handle: &nwg::ControlHandle) -> Option<HWND> {
+    handle.hwnd().map(|raw| HWND(raw as *mut _))
+}
+
+fn add_tab_stop_style(handle: &nwg::ControlHandle) {
+    let Some(hwnd) = control_hwnd(handle) else {
+        return;
+    };
+
+    unsafe {
+        let style = GetWindowLongW(hwnd, GWL_STYLE) as u32;
+        if style & WS_TABSTOP.0 == 0 {
+            let _ = SetWindowLongW(hwnd, GWL_STYLE, (style | WS_TABSTOP.0) as i32);
+        }
+    }
+}
+
+fn activate_window(window: &nwg::Window) {
+    let Some(handle) = control_hwnd(&window.handle) else {
+        return;
+    };
+
+    unsafe {
+        let _ = SetForegroundWindow(handle);
+        let _ = BringWindowToTop(handle);
     }
 }
 
