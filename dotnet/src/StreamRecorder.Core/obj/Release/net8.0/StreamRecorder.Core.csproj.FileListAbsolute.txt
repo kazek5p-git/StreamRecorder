@@ -1,0 +1,13 @@
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\bin\Release\net8.0\StreamRecorder.Core.deps.json
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\bin\Release\net8.0\StreamRecorder.Core.dll
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\bin\Release\net8.0\StreamRecorder.Core.pdb
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.csproj.AssemblyReference.cache
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.AssemblyInfoInputs.cache
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.AssemblyInfo.cs
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.csproj.CoreCompileInputs.cache
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.sourcelink.json
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.dll
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\refint\StreamRecorder.Core.dll
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\StreamRecorder.Core.pdb
+C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.Core\obj\Release\net8.0\ref\StreamRecorder.Core.dll
