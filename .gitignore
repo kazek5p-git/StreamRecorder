@@ -4,3 +4,5 @@
 *.log
 *.user
 *.pdb
+**/bin/
+**/obj/
