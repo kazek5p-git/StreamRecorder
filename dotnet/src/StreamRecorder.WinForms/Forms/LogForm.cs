@@ -16,16 +16,22 @@ public sealed class LogForm : Form
         StartPosition = FormStartPosition.CenterParent;
         Size = new Size(820, 470);
         ShowInTaskbar = false;
+        MinimizeBox = false;
 
         logList.Dock = DockStyle.Top;
         logList.Height = 380;
         logList.HorizontalScrollbar = true;
+        logList.TabIndex = 0;
 
         closeButton.Text = "Close";
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         closeButton.Location = new Point(700, 390);
         closeButton.Size = new Size(90, 30);
+        closeButton.TabIndex = 1;
         closeButton.Click += (_, _) => Hide();
+
+        AcceptButton = closeButton;
+        CancelButton = closeButton;
 
         Controls.Add(logList);
         Controls.Add(closeButton);
@@ -37,6 +43,12 @@ public sealed class LogForm : Form
             e.Cancel = true;
             Hide();
         };
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        FocusLogList();
     }
 
     protected override void Dispose(bool disposing)
@@ -67,6 +79,14 @@ public sealed class LogForm : Form
                 logList.Items.Add(entry.FormatLine());
                 logList.TopIndex = logList.Items.Count - 1;
             }));
+        }
+    }
+
+    public void FocusLogList()
+    {
+        if (IsHandleCreated)
+        {
+            BeginInvoke((Action)(() => logList.Focus()));
         }
     }
 }

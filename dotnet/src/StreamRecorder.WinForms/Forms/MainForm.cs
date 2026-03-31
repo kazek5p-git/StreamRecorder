@@ -9,6 +9,12 @@ public sealed class MainForm : Form
 {
     private readonly StreamRecorderApp app;
     private readonly MenuStrip menuStrip = new();
+    private readonly ToolStripMenuItem addStationMenuItem = new("Add station");
+    private readonly ToolStripMenuItem startRecordingMenuItem = new("Start recording");
+    private readonly ToolStripMenuItem stopRecordingMenuItem = new("Stop recording");
+    private readonly ToolStripMenuItem editStationMenuItem = new("Edit station");
+    private readonly ToolStripMenuItem schedulesMenuItem = new("Schedules...");
+    private readonly ToolStripMenuItem deleteStationMenuItem = new("Delete station");
     private readonly Button addStationButton = new();
     private readonly Button showLogButton = new();
     private readonly ListView stationList = new();
@@ -46,7 +52,7 @@ public sealed class MainForm : Form
 
         app.ConfigChanged += OnConfigChanged;
         app.Recorder.SnapshotsChanged += OnSnapshotsChanged;
-        logForm.VisibleChanged += (_, _) => UpdateLogButtonText();
+        logForm.VisibleChanged += OnLogFormVisibleChanged;
 
         Resize += OnMainResize;
         FormClosing += OnMainFormClosing;
@@ -128,6 +134,7 @@ public sealed class MainForm : Form
         stationList.Columns.Add("Status", 180);
         stationList.Columns.Add("Format", 90);
         stationList.Columns.Add("File", 260);
+        stationList.Resize += (_, _) => UpdateStationColumns();
         stationList.DoubleClick += (_, _) => EditSelectedStation();
         stationList.KeyDown += (_, e) =>
         {
@@ -135,6 +142,13 @@ public sealed class MainForm : Form
             {
                 EditSelectedStation();
                 e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Delete)
+            {
+                DeleteSelectedStation();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
             }
         };
         Controls.Add(stationList);
@@ -147,12 +161,21 @@ public sealed class MainForm : Form
     private void BuildStationMenu()
     {
         stationMenu.Opening += (_, _) => UpdateStationMenuState();
-        stationMenu.Items.Add("Start recording", null, async (_, _) => await StartSelectedStationAsync());
-        stationMenu.Items.Add("Stop recording", null, (_, _) => StopSelectedStation());
+        addStationMenuItem.Click += (_, _) => AddStation();
+        startRecordingMenuItem.Click += async (_, _) => await StartSelectedStationAsync();
+        stopRecordingMenuItem.Click += (_, _) => StopSelectedStation();
+        editStationMenuItem.Click += (_, _) => EditSelectedStation();
+        schedulesMenuItem.Click += (_, _) => OpenSchedules();
+        deleteStationMenuItem.Click += (_, _) => DeleteSelectedStation();
+
+        stationMenu.Items.Add(addStationMenuItem);
         stationMenu.Items.Add(new ToolStripSeparator());
-        stationMenu.Items.Add("Edit station", null, (_, _) => EditSelectedStation());
-        stationMenu.Items.Add("Schedules...", null, (_, _) => OpenSchedules());
-        stationMenu.Items.Add("Delete station", null, (_, _) => DeleteSelectedStation());
+        stationMenu.Items.Add(startRecordingMenuItem);
+        stationMenu.Items.Add(stopRecordingMenuItem);
+        stationMenu.Items.Add(new ToolStripSeparator());
+        stationMenu.Items.Add(editStationMenuItem);
+        stationMenu.Items.Add(schedulesMenuItem);
+        stationMenu.Items.Add(deleteStationMenuItem);
     }
 
     private void BuildTray()
@@ -182,37 +205,12 @@ public sealed class MainForm : Form
     private void RefreshUi()
     {
         var selectedId = GetSelectedStationId();
+        var focusedId = GetFocusedStationId();
+        var topId = GetTopStationId();
         var stations = app.GetStations();
         var snapshots = app.Recorder.GetSnapshots();
 
-        stationList.BeginUpdate();
-        stationList.Items.Clear();
-
-        foreach (var station in stations)
-        {
-            snapshots.TryGetValue(station.Id, out var snapshot);
-            var item = new ListViewItem(station.Name)
-            {
-                Tag = station.Id,
-            };
-            item.SubItems.Add(station.Url);
-            item.SubItems.Add(snapshot?.StateLabel ?? "Idle");
-            item.SubItems.Add(snapshot?.Format?.GetDisplayName() ?? "-");
-            item.SubItems.Add(snapshot?.OutputPath is { Length: > 0 } output ? Path.GetFileName(output) : "-");
-            stationList.Items.Add(item);
-
-            if (selectedId == station.Id)
-            {
-                item.Selected = true;
-            }
-        }
-
-        if (stationList.SelectedItems.Count == 0 && stationList.Items.Count > 0)
-        {
-            stationList.Items[0].Selected = true;
-        }
-
-        stationList.EndUpdate();
+        UpdateStationList(stations, snapshots, selectedId, focusedId, topId);
 
         var recordingCount = snapshots.Values.Count(static snapshot => snapshot.Active);
         statusLabel.Text = $"Currently recording: {recordingCount}";
@@ -224,11 +222,12 @@ public sealed class MainForm : Form
         var hasSelection = GetSelectedStation() is not null;
         var isRecording = hasSelection && app.Recorder.IsRecording(GetSelectedStation()!.Id);
 
-        stationMenu.Items[0].Enabled = hasSelection && !isRecording;
-        stationMenu.Items[1].Enabled = hasSelection && isRecording;
-        stationMenu.Items[3].Enabled = hasSelection;
-        stationMenu.Items[4].Enabled = hasSelection;
-        stationMenu.Items[5].Enabled = hasSelection;
+        addStationMenuItem.Enabled = true;
+        startRecordingMenuItem.Enabled = hasSelection && !isRecording;
+        stopRecordingMenuItem.Enabled = hasSelection && isRecording;
+        editStationMenuItem.Enabled = hasSelection;
+        schedulesMenuItem.Enabled = hasSelection;
+        deleteStationMenuItem.Enabled = hasSelection;
     }
 
     private Guid? GetSelectedStationId()
@@ -328,12 +327,12 @@ public sealed class MainForm : Form
         if (logForm.Visible)
         {
             logForm.Hide();
-            stationList.Focus();
         }
         else
         {
             logForm.Show(this);
             logForm.BringToFront();
+            logForm.FocusLogList();
         }
 
         UpdateLogButtonText();
@@ -525,7 +524,191 @@ public sealed class MainForm : Form
 
     private void MinimizeIntoTray()
     {
+        if (logForm.Visible)
+        {
+            logForm.Hide();
+        }
+
         Hide();
         ShowInTaskbar = false;
+    }
+
+    private void OnLogFormVisibleChanged(object? sender, EventArgs e)
+    {
+        UpdateLogButtonText();
+
+        if (!logForm.Visible && Visible && WindowState != FormWindowState.Minimized)
+        {
+            BeginInvoke((Action)(() => showLogButton.Focus()));
+        }
+    }
+
+    private void UpdateStationList(
+        IReadOnlyList<Station> stations,
+        IReadOnlyDictionary<Guid, RecordingSnapshot> snapshots,
+        Guid? selectedId,
+        Guid? focusedId,
+        Guid? topId)
+    {
+        var existingItems = stationList.Items
+            .Cast<ListViewItem>()
+            .Where(static item => item.Tag is Guid)
+            .ToDictionary(item => (Guid)item.Tag!, item => item);
+
+        stationList.BeginUpdate();
+        try
+        {
+            for (var index = 0; index < stations.Count; index++)
+            {
+                var station = stations[index];
+                snapshots.TryGetValue(station.Id, out var snapshot);
+
+                if (!existingItems.TryGetValue(station.Id, out var item))
+                {
+                    item = new ListViewItem
+                    {
+                        Tag = station.Id,
+                    };
+                    EnsureSubItemCount(item, 5);
+                    stationList.Items.Add(item);
+                }
+
+                ApplyStationToItem(item, station, snapshot);
+                if (item.Index != index)
+                {
+                    stationList.Items.Remove(item);
+                    stationList.Items.Insert(index, item);
+                }
+
+                existingItems.Remove(station.Id);
+            }
+
+            foreach (var stale in existingItems.Values)
+            {
+                stationList.Items.Remove(stale);
+            }
+
+            ListViewItem? selectedItem = null;
+            ListViewItem? focusedItem = null;
+            ListViewItem? topItem = null;
+
+            foreach (ListViewItem item in stationList.Items)
+            {
+                var stationId = (Guid)item.Tag!;
+                item.Selected = selectedId == stationId;
+                item.Focused = focusedId == stationId;
+
+                if (item.Selected)
+                {
+                    selectedItem = item;
+                }
+                if (item.Focused)
+                {
+                    focusedItem = item;
+                }
+                if (topId == stationId)
+                {
+                    topItem = item;
+                }
+            }
+
+            if (selectedItem is null && stationList.Items.Count > 0)
+            {
+                selectedItem = stationList.Items[0];
+                selectedItem.Selected = true;
+            }
+
+            if (focusedItem is null)
+            {
+                focusedItem = selectedItem;
+                if (focusedItem is not null)
+                {
+                    focusedItem.Focused = true;
+                }
+            }
+
+            TryRestoreTopItem(topItem);
+            UpdateStationColumns();
+        }
+        finally
+        {
+            stationList.EndUpdate();
+        }
+    }
+
+    private void ApplyStationToItem(ListViewItem item, Station station, RecordingSnapshot? snapshot)
+    {
+        EnsureSubItemCount(item, 5);
+        item.Text = station.Name;
+        item.SubItems[1].Text = station.Url;
+        item.SubItems[2].Text = FormatStatus(snapshot);
+        item.SubItems[3].Text = snapshot?.Format?.GetDisplayName() ?? "-";
+        item.SubItems[4].Text = snapshot?.OutputPath is { Length: > 0 } output ? Path.GetFileName(output) : "-";
+    }
+
+    private static void EnsureSubItemCount(ListViewItem item, int count)
+    {
+        while (item.SubItems.Count < count)
+        {
+            item.SubItems.Add(string.Empty);
+        }
+    }
+
+    private static string FormatStatus(RecordingSnapshot? snapshot)
+    {
+        return snapshot?.StateLabel switch
+        {
+            null or "" => "Idle",
+            "Waiting for reconnect" => "Connection lost, reconnecting",
+            "Waiting for playlist" => "Playlist unavailable, retrying",
+            _ => snapshot.StateLabel,
+        };
+    }
+
+    private Guid? GetFocusedStationId()
+    {
+        return stationList.FocusedItem?.Tag as Guid?;
+    }
+
+    private Guid? GetTopStationId()
+    {
+        return stationList.TopItem?.Tag as Guid?;
+    }
+
+    private void TryRestoreTopItem(ListViewItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        try
+        {
+            stationList.TopItem = item;
+        }
+        catch
+        {
+        }
+    }
+
+    private void UpdateStationColumns()
+    {
+        if (stationList.Columns.Count != 5)
+        {
+            return;
+        }
+
+        var available = Math.Max(600, stationList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 8);
+        var stationWidth = Math.Max(240, (int)(available * 0.20));
+        var urlWidth = Math.Max(300, (int)(available * 0.31));
+        var statusWidth = Math.Max(190, (int)(available * 0.19));
+        var formatWidth = Math.Max(90, (int)(available * 0.10));
+        var fileWidth = Math.Max(220, available - stationWidth - urlWidth - statusWidth - formatWidth);
+
+        stationList.Columns[0].Width = stationWidth;
+        stationList.Columns[1].Width = urlWidth;
+        stationList.Columns[2].Width = statusWidth;
+        stationList.Columns[3].Width = formatWidth;
+        stationList.Columns[4].Width = fileWidth;
     }
 }

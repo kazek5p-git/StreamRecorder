@@ -28,6 +28,12 @@ public sealed class ScheduleListForm : Form
         RefreshSchedules();
     }
 
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        scheduleList.Focus();
+    }
+
     private void BuildLayout()
     {
         scheduleList.Location = new Point(14, 14);
@@ -41,6 +47,22 @@ public sealed class ScheduleListForm : Form
         scheduleList.Columns.Add("Time", 140);
         scheduleList.Columns.Add("Action", 180);
         scheduleList.Columns.Add("Enabled", 120);
+        scheduleList.DoubleClick += (_, _) => EditSchedule();
+        scheduleList.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                EditSchedule();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Delete)
+            {
+                DeleteSchedule();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        };
 
         addButton.Location = new Point(14, 330);
         addButton.Size = new Size(90, 30);
@@ -59,11 +81,13 @@ public sealed class ScheduleListForm : Form
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         closeButton.Click += (_, _) => Close();
 
+        CancelButton = closeButton;
         Controls.AddRange([scheduleList, addButton, editButton, deleteButton, closeButton]);
     }
 
     private void RefreshSchedules()
     {
+        var selectedId = GetSelectedSchedule()?.Id;
         scheduleList.BeginUpdate();
         scheduleList.Items.Clear();
 
@@ -77,11 +101,18 @@ public sealed class ScheduleListForm : Form
             item.SubItems.Add(schedule.Action == ScheduleAction.StartRecording ? "Start recording" : "Stop recording");
             item.SubItems.Add(schedule.Enabled ? "Yes" : "No");
             scheduleList.Items.Add(item);
+
+            if (selectedId == schedule.Id)
+            {
+                item.Selected = true;
+                item.Focused = true;
+            }
         }
 
-        if (scheduleList.Items.Count > 0)
+        if (scheduleList.SelectedItems.Count == 0 && scheduleList.Items.Count > 0)
         {
             scheduleList.Items[0].Selected = true;
+            scheduleList.Items[0].Focused = true;
         }
 
         scheduleList.EndUpdate();
