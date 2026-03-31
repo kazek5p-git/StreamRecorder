@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using StreamRecorder.Core.Configuration;
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Logging;
 using StreamRecorder.Core.Models;
 using StreamRecorder.Core.Naming;
@@ -58,6 +59,7 @@ public sealed class RecordingService : IDisposable
             return Task.CompletedTask;
         }
 
+        var localizer = AppLocalizer.For(settings.Language);
         var snapshot = RecordingSnapshot.CreateInitial(station);
         snapshot.Active = true;
         snapshot.StateLabel = "Connecting";
@@ -81,7 +83,7 @@ public sealed class RecordingService : IDisposable
                 UpdateSnapshot(station.Id, value =>
                 {
                     value.Active = false;
-                    value.StateLabel = $"Error: {ex.Message}";
+                    value.StateLabel = localizer.ErrorPrefix + ex.Message;
                     value.LastError = ex.Message;
                 });
             }
@@ -139,102 +141,107 @@ public sealed class RecordingService : IDisposable
         CancellationToken cancellationToken)
     {
         OutputSession? output = null;
-
-        while (!cancellationToken.IsCancellationRequested)
+        var localizer = AppLocalizer.For(settings.Language);
+        try
         {
-            UpdateSnapshot(station.Id, value =>
-            {
-                value.StateLabel = value.OutputPath is not null ? "Reconnecting" : "Connecting";
-            });
-
-            HttpResponseMessage? response = null;
-            try
-            {
-                using var request = BuildRequest(station, null);
-                response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                response.EnsureSuccessStatusCode();
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logs.Push($"Connection failed for {station.Name}: {ex.Message}");
-                NoteReconnect(station.Id, "Waiting for reconnect");
-                await WaitBeforeRetryAsync(cancellationToken);
-                continue;
-            }
-
-            await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var contentType = response.Content.Headers.ContentType?.MediaType;
-            var initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
-            if (initialBytes.Length == 0)
-            {
-                response.Dispose();
-                logs.Push($"Stream {station.Name} temporarily produced no data, retrying");
-                NoteReconnect(station.Id, "Waiting for reconnect");
-                await WaitBeforeRetryAsync(cancellationToken);
-                continue;
-            }
-
-            if (output is null)
-            {
-                var probe = StreamProbeService.ProbeStream(station.Url, contentType, initialBytes);
-                if (probe.Protocol == StreamProtocol.Hls)
-                {
-                    response.Dispose();
-                    await RecordHlsLoopAsync(station, settings, paths, logs, cancellationToken);
-                    return;
-                }
-
-                LogUnknownFormatDetails(logs, station.Name, station.Url, probe, initialBytes);
-                var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
-                var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
-                await file.WriteAsync(initialBytes, cancellationToken);
-                output = new OutputSession(file, outputPath, probe.Format);
-                MarkOutputStarted(station, probe.Format, outputPath);
-                IncrementBytesWritten(station.Id, initialBytes.LongLength);
-                logs.Push($"Recording started: {station.Name} -> {outputPath} ({probe.Format.GetDisplayName()})");
-            }
-            else
-            {
-                await output.File.WriteAsync(initialBytes, cancellationToken);
-                IncrementBytesWritten(station.Id, initialBytes.LongLength);
-            }
-
-            var chunkBuffer = new byte[8192];
             while (!cancellationToken.IsCancellationRequested)
             {
+                UpdateSnapshot(station.Id, value =>
+                {
+                    value.StateLabel = value.OutputPath is not null ? "Reconnecting" : "Connecting";
+                });
+
+                HttpResponseMessage? response = null;
                 try
                 {
-                    var read = await responseStream.ReadAsync(chunkBuffer.AsMemory(0, chunkBuffer.Length), cancellationToken);
-                    if (read == 0)
+                    using var request = BuildRequest(station, null);
+                    response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logs.Push(localizer.ConnectionFailed(station.Name, ex.Message));
+                    NoteReconnect(station.Id, "Waiting for reconnect");
+                    await WaitBeforeRetryAsync(cancellationToken);
+                    continue;
+                }
+
+                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                var contentType = response.Content.Headers.ContentType?.MediaType;
+                var initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
+                if (initialBytes.Length == 0)
+                {
+                    response.Dispose();
+                    logs.Push(localizer.StreamProducedNoDataRetrying(station.Name));
+                    NoteReconnect(station.Id, "Waiting for reconnect");
+                    await WaitBeforeRetryAsync(cancellationToken);
+                    continue;
+                }
+
+                if (output is null)
+                {
+                    var probe = StreamProbeService.ProbeStream(station.Url, contentType, initialBytes);
+                    if (probe.Protocol == StreamProtocol.Hls)
                     {
-                        logs.Push($"Connection ended for {station.Name}, retrying");
+                        response.Dispose();
+                        await RecordHlsLoopAsync(station, settings, paths, logs, cancellationToken);
+                        return;
+                    }
+
+                    LogUnknownFormatDetails(logs, localizer, station.Name, station.Url, probe, initialBytes);
+                    var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
+                    var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
+                    await file.WriteAsync(initialBytes, cancellationToken);
+                    output = new OutputSession(file, outputPath, probe.Format);
+                    MarkOutputStarted(station, probe.Format, outputPath);
+                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                    logs.Push(localizer.RecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                }
+                else
+                {
+                    await output.File.WriteAsync(initialBytes, cancellationToken);
+                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                }
+
+                var chunkBuffer = new byte[8192];
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var read = await responseStream.ReadAsync(chunkBuffer.AsMemory(0, chunkBuffer.Length), cancellationToken);
+                        if (read == 0)
+                        {
+                            logs.Push(localizer.ConnectionEndedRetrying(station.Name));
+                            NoteReconnect(station.Id, "Waiting for reconnect");
+                            break;
+                        }
+
+                        await output.File.WriteAsync(chunkBuffer.AsMemory(0, read), cancellationToken);
+                        IncrementBytesWritten(station.Id, read);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        logs.Push(localizer.ConnectionInterrupted(station.Name, ex.Message));
                         NoteReconnect(station.Id, "Waiting for reconnect");
                         break;
                     }
+                }
 
-                    await output.File.WriteAsync(chunkBuffer.AsMemory(0, read), cancellationToken);
-                    IncrementBytesWritten(station.Id, read);
-                }
-                catch (OperationCanceledException)
+                response.Dispose();
+                if (!cancellationToken.IsCancellationRequested)
                 {
-                    break;
+                    await WaitBeforeRetryAsync(cancellationToken);
                 }
-                catch (Exception ex)
-                {
-                    logs.Push($"Connection interrupted for {station.Name}: {ex.Message}");
-                    NoteReconnect(station.Id, "Waiting for reconnect");
-                    break;
-                }
-            }
-
-            response.Dispose();
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                await WaitBeforeRetryAsync(cancellationToken);
             }
         }
-
-        await FinalizeOutputAsync(station, settings, paths, logs, output);
+        finally
+        {
+            await FinalizeOutputAsync(station, settings, paths, logs, output);
+        }
     }
 
     private async Task RecordHlsLoopAsync(
@@ -248,100 +255,105 @@ public sealed class RecordingService : IDisposable
         var playlistUrl = new Uri(station.Url, UriKind.Absolute);
         var seenSegments = new HashSet<string>(StringComparer.Ordinal);
         var segmentOrder = new Queue<string>();
-
-        while (!cancellationToken.IsCancellationRequested)
+        var localizer = AppLocalizer.For(settings.Language);
+        try
         {
-            string playlistBody;
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                using var request = BuildRequest(station, playlistUrl.ToString());
-                using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                response.EnsureSuccessStatusCode();
-                playlistBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logs.Push($"HLS playlist error for {station.Name}: {ex.Message}");
-                NoteReconnect(station.Id, "Waiting for playlist");
-                await WaitBeforeRetryAsync(cancellationToken);
-                continue;
-            }
-
-            var parsed = ParsePlaylist(playlistUrl, playlistBody);
-            if (parsed.MasterPlaylist is not null)
-            {
-                playlistUrl = parsed.MasterPlaylist;
-                continue;
-            }
-
-            var wroteSegment = false;
-            foreach (var segmentUrl in parsed.Segments)
-            {
-                if (cancellationToken.IsCancellationRequested)
+                string playlistBody;
+                try
                 {
-                    break;
+                    using var request = BuildRequest(station, playlistUrl.ToString());
+                    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                    playlistBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 }
-
-                var key = segmentUrl.ToString();
-                if (!seenSegments.Add(key))
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    logs.Push(localizer.HlsPlaylistError(station.Name, ex.Message));
+                    NoteReconnect(station.Id, "Waiting for playlist");
+                    await WaitBeforeRetryAsync(cancellationToken);
                     continue;
                 }
 
-                try
+                var parsed = ParsePlaylist(playlistUrl, playlistBody);
+                if (parsed.MasterPlaylist is not null)
                 {
-                    using var request = BuildRequest(station, segmentUrl.ToString());
-                    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    response.EnsureSuccessStatusCode();
-                    var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                    if (bytes.Length == 0)
+                    playlistUrl = parsed.MasterPlaylist;
+                    continue;
+                }
+
+                var wroteSegment = false;
+                foreach (var segmentUrl in parsed.Segments)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    var key = segmentUrl.ToString();
+                    if (!seenSegments.Add(key))
                     {
                         continue;
                     }
 
-                    if (output is null)
+                    try
                     {
-                        var contentType = response.Content.Headers.ContentType?.MediaType;
-                        var probe = StreamProbeService.ProbeStream(segmentUrl.ToString(), contentType, bytes);
-                        LogUnknownFormatDetails(logs, station.Name, segmentUrl.ToString(), probe, bytes);
-                        var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
-                        var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
-                        await file.WriteAsync(bytes, cancellationToken);
-                        output = new OutputSession(file, outputPath, probe.Format);
+                        using var request = BuildRequest(station, segmentUrl.ToString());
+                        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                        if (bytes.Length == 0)
+                        {
+                            continue;
+                        }
 
-                        MarkOutputStarted(station, probe.Format, outputPath);
-                        IncrementBytesWritten(station.Id, bytes.LongLength);
-                        logs.Push($"HLS recording started: {station.Name} -> {outputPath} ({probe.Format.GetDisplayName()})");
+                        if (output is null)
+                        {
+                            var contentType = response.Content.Headers.ContentType?.MediaType;
+                            var probe = StreamProbeService.ProbeStream(segmentUrl.ToString(), contentType, bytes);
+                            LogUnknownFormatDetails(logs, localizer, station.Name, segmentUrl.ToString(), probe, bytes);
+                            var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
+                            var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
+                            await file.WriteAsync(bytes, cancellationToken);
+                            output = new OutputSession(file, outputPath, probe.Format);
+
+                            MarkOutputStarted(station, probe.Format, outputPath);
+                            IncrementBytesWritten(station.Id, bytes.LongLength);
+                            logs.Push(localizer.HlsRecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                        }
+                        else
+                        {
+                            await output.File.WriteAsync(bytes, cancellationToken);
+                            IncrementBytesWritten(station.Id, bytes.LongLength);
+                        }
+
+                        segmentOrder.Enqueue(key);
+                        while (segmentOrder.Count > SegmentHistoryLimit)
+                        {
+                            seenSegments.Remove(segmentOrder.Dequeue());
+                        }
+
+                        wroteSegment = true;
                     }
-                    else
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        await output.File.WriteAsync(bytes, cancellationToken);
-                        IncrementBytesWritten(station.Id, bytes.LongLength);
+                        logs.Push(localizer.HlsSegmentError(station.Name, ex.Message));
                     }
-
-                    segmentOrder.Enqueue(key);
-                    while (segmentOrder.Count > SegmentHistoryLimit)
-                    {
-                        seenSegments.Remove(segmentOrder.Dequeue());
-                    }
-
-                    wroteSegment = true;
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+
+                if (!wroteSegment)
                 {
-                    logs.Push($"HLS segment error for {station.Name}: {ex.Message}");
+                    UpdateSnapshot(station.Id, value => value.StateLabel = "Waiting for HLS segments");
                 }
-            }
 
-            if (!wroteSegment)
-            {
-                UpdateSnapshot(station.Id, value => value.StateLabel = "Waiting for HLS segments");
+                await Task.Delay(parsed.PollInterval, cancellationToken);
             }
-
-            await Task.Delay(parsed.PollInterval, cancellationToken);
         }
-
-        await FinalizeOutputAsync(station, settings, paths, logs, output);
+        finally
+        {
+            await FinalizeOutputAsync(station, settings, paths, logs, output);
+        }
     }
 
     private async Task FinalizeOutputAsync(
@@ -359,7 +371,7 @@ public sealed class RecordingService : IDisposable
             var finalOutputPath = output.Path;
             if (output.Format == StreamFormat.AacRaw && settings.RemuxRawAacToM4A)
             {
-                finalOutputPath = await Mp4BoxRemuxer.RemuxRawAacAsync(paths, logs, output.Path);
+                finalOutputPath = await Mp4BoxRemuxer.RemuxRawAacAsync(paths, logs, settings.Language, output.Path);
             }
 
             UpdateSnapshot(station.Id, value =>
@@ -368,7 +380,7 @@ public sealed class RecordingService : IDisposable
                 value.StateLabel = "Stopped";
                 value.OutputPath = finalOutputPath;
             });
-            logs.Push($"Recording stopped: {station.Name}");
+            logs.Push(AppLocalizer.For(settings.Language).RecordingStopped(station.Name));
         }
         else
         {
@@ -587,6 +599,7 @@ public sealed class RecordingService : IDisposable
 
     private static void LogUnknownFormatDetails(
         LogBus logs,
+        AppLocalizer localizer,
         string stationName,
         string sourceUrl,
         StreamProbe probe,
@@ -598,9 +611,7 @@ public sealed class RecordingService : IDisposable
         }
 
         var mime = string.IsNullOrWhiteSpace(probe.Mime) ? "(none)" : probe.Mime;
-        logs.Push(
-            $"Unknown stream format for {stationName}. Recording will continue as BIN. " +
-            $"Source={sourceUrl}, content type={mime}, first bytes={DescribeByteSample(firstBytes)}");
+        logs.Push(localizer.UnknownStreamFormat(stationName, sourceUrl, mime, DescribeByteSample(firstBytes)));
     }
 
     private static string DescribeByteSample(byte[] bytes)

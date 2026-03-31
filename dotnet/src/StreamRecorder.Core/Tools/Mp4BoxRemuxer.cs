@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using StreamRecorder.Core.Configuration;
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Logging;
+using StreamRecorder.Core.Models;
 
 namespace StreamRecorder.Core.Tools;
 
@@ -9,11 +11,13 @@ public static class Mp4BoxRemuxer
     public static async Task<string> RemuxRawAacAsync(
         AppPaths paths,
         LogBus logs,
+        Language language,
         string inputPath,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(logs);
+        var localizer = AppLocalizer.For(language);
 
         if (string.IsNullOrWhiteSpace(inputPath) || !File.Exists(inputPath))
         {
@@ -23,12 +27,12 @@ public static class Mp4BoxRemuxer
         var toolPath = Mp4BoxLocator.ResolveExecutablePath(paths);
         if (string.IsNullOrWhiteSpace(toolPath) || !File.Exists(toolPath))
         {
-            logs.Push("Skipping AAC to M4A remux: MP4Box.exe was not found");
+            logs.Push(localizer.RemuxSkippingMp4BoxMissing);
             return inputPath;
         }
 
         var outputPath = EnsureUniqueOutputPath(Path.ChangeExtension(inputPath, ".m4a"));
-        logs.Push($"AAC to M4A remux: {outputPath}");
+        logs.Push(localizer.RemuxStarted(outputPath));
 
         using var process = new Process
         {
@@ -47,7 +51,7 @@ public static class Mp4BoxRemuxer
 
         if (!process.Start())
         {
-            logs.Push("AAC to M4A remux failed");
+            logs.Push(localizer.RemuxFailed);
             return inputPath;
         }
 
@@ -68,7 +72,7 @@ public static class Mp4BoxRemuxer
         }
 
         TryDelete(outputPath);
-        logs.Push("AAC to M4A remux failed");
+        logs.Push(localizer.RemuxFailed);
         return inputPath;
     }
 

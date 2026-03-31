@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Logging;
 using StreamRecorder.Core.Models;
 
@@ -14,6 +15,7 @@ public sealed class SchedulerService : IDisposable
     public void Start(
         Func<IReadOnlyList<ScheduleEntry>> schedulesProvider,
         Func<Guid, Station?> stationProvider,
+        Func<Language> languageProvider,
         Func<Guid, bool> isRecording,
         Func<Guid, Task> startRecordingAsync,
         Action<Guid> stopRecording,
@@ -52,18 +54,20 @@ public sealed class SchedulerService : IDisposable
                         continue;
                     }
 
+                    var localizer = AppLocalizer.For(languageProvider());
+
                     if (schedule.Action == ScheduleAction.StartRecording)
                     {
                         if (!isRecording(station.Id))
                         {
                             await startRecordingAsync(station.Id);
-                            logs.Push($"Schedule started recording: {station.Name}");
+                            logs.Push(localizer.ScheduleStartedRecording(station.Name));
                         }
                     }
                     else if (isRecording(station.Id))
                     {
                         stopRecording(station.Id);
-                        logs.Push($"Schedule stopped recording: {station.Name}");
+                        logs.Push(localizer.ScheduleStoppedRecording(station.Name));
                     }
                 }
             }

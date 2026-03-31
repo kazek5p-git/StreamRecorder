@@ -43,7 +43,7 @@ public sealed class UpdaterService
 
         var latest = release.TagName.TrimStart('v');
         var current = currentVersion.TrimStart('v');
-        if (string.Equals(latest, current, StringComparison.OrdinalIgnoreCase))
+        if (CompareVersions(latest, current) <= 0)
         {
             return null;
         }
@@ -54,6 +54,31 @@ public sealed class UpdaterService
             HtmlUrl = release.HtmlUrl,
             Asset = ChoosePreferredAsset(release.Assets),
         };
+    }
+
+    public static int CompareVersions(string left, string right)
+    {
+        var leftParts = ParsedVersion.Parse(left);
+        var rightParts = ParsedVersion.Parse(right);
+
+        var maxLength = Math.Max(leftParts.NumericParts.Count, rightParts.NumericParts.Count);
+        for (var index = 0; index < maxLength; index++)
+        {
+            var leftPart = index < leftParts.NumericParts.Count ? leftParts.NumericParts[index] : 0;
+            var rightPart = index < rightParts.NumericParts.Count ? rightParts.NumericParts[index] : 0;
+            var numericComparison = leftPart.CompareTo(rightPart);
+            if (numericComparison != 0)
+            {
+                return numericComparison;
+            }
+        }
+
+        if (leftParts.HasSuffix != rightParts.HasSuffix)
+        {
+            return leftParts.HasSuffix ? -1 : 1;
+        }
+
+        return string.Compare(leftParts.Suffix, rightParts.Suffix, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<string> DownloadUpdateAsync(AppPaths paths, UpdateInfo update, CancellationToken cancellationToken = default)
@@ -337,5 +362,38 @@ public sealed class UpdaterService
 
         [JsonPropertyName("size")]
         public long Size { get; set; }
+    }
+
+    private sealed class ParsedVersion
+    {
+        public List<int> NumericParts { get; init; } = [];
+
+        public string? Suffix { get; init; }
+
+        public bool HasSuffix => !string.IsNullOrWhiteSpace(Suffix);
+
+        public static ParsedVersion Parse(string value)
+        {
+            var trimmed = (value ?? string.Empty).Trim().TrimStart('v', 'V');
+            if (trimmed.Length == 0)
+            {
+                return new ParsedVersion();
+            }
+
+            var hyphenIndex = trimmed.IndexOf('-');
+            var numericPart = hyphenIndex >= 0 ? trimmed[..hyphenIndex] : trimmed;
+            var suffix = hyphenIndex >= 0 ? trimmed[(hyphenIndex + 1)..] : null;
+
+            var parts = numericPart
+                .Split('.', StringSplitOptions.RemoveEmptyEntries)
+                .Select(static segment => int.TryParse(segment, out var parsed) ? parsed : 0)
+                .ToList();
+
+            return new ParsedVersion
+            {
+                NumericParts = parts,
+                Suffix = suffix,
+            };
+        }
     }
 }

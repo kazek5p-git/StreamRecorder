@@ -1,33 +1,43 @@
 using StreamRecorder.Core;
 using StreamRecorder.Core.Configuration;
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
 
 namespace StreamRecorder.WinForms.Forms;
 
 public sealed class SettingsForm : Form
 {
-    private readonly CheckBox launchOnStartupCheckBox = new() { Text = "Launch application at Windows startup", AutoSize = true, TabIndex = 0 };
-    private readonly CheckBox alwaysOnTopCheckBox = new() { Text = "Always on top", AutoSize = true, TabIndex = 1 };
-    private readonly CheckBox minimizeToTrayCheckBox = new() { Text = "Minimize to system tray", AutoSize = true, TabIndex = 2 };
-    private readonly CheckBox confirmOnExitCheckBox = new() { Text = "Ask for confirmation before exit", AutoSize = true, TabIndex = 3 };
-    private readonly CheckBox restartOnCrashCheckBox = new() { Text = "Restart program after a crash", AutoSize = true, TabIndex = 4 };
-    private readonly CheckBox preventSleepCheckBox = new() { Text = "Prevent the computer from sleeping", AutoSize = true, TabIndex = 5 };
-    private readonly CheckBox startMinimizedCheckBox = new() { Text = "Start minimized", AutoSize = true, TabIndex = 6 };
-    private readonly CheckBox remuxAacCheckBox = new() { Text = "Remux RAW AAC to M4A after recording", AutoSize = true, TabIndex = 10 };
+    private readonly AppLocalizer localizer;
+    private readonly AppPaths paths;
+    private readonly CheckBox launchOnStartupCheckBox = new() { AutoSize = true, TabIndex = 0 };
+    private readonly CheckBox alwaysOnTopCheckBox = new() { AutoSize = true, TabIndex = 1 };
+    private readonly CheckBox minimizeToTrayCheckBox = new() { AutoSize = true, TabIndex = 2 };
+    private readonly CheckBox confirmOnExitCheckBox = new() { AutoSize = true, TabIndex = 3 };
+    private readonly CheckBox restartOnCrashCheckBox = new() { AutoSize = true, TabIndex = 4 };
+    private readonly CheckBox preventSleepCheckBox = new() { AutoSize = true, TabIndex = 5 };
+    private readonly CheckBox startMinimizedCheckBox = new() { AutoSize = true, TabIndex = 6 };
+    private readonly CheckBox remuxAacCheckBox = new() { AutoSize = true, TabIndex = 10 };
     private readonly TextBox recordingsFolderTextBox = new();
     private readonly TextBox fileNameTemplateTextBox = new();
     private readonly ComboBox languageComboBox = new();
-    private readonly Button browseButton = new() { Text = "B&rowse", AutoSize = true, TabIndex = 8 };
-    private readonly Button saveButton = new() { Text = "OK", AutoSize = true };
-    private readonly Button cancelButton = new() { Text = "Cancel", AutoSize = true };
+    private readonly Button browseButton = new() { AutoSize = true, TabIndex = 8 };
+    private readonly Button saveButton = new() { AutoSize = true };
+    private readonly Button cancelButton = new() { AutoSize = true };
     private readonly FolderBrowserDialog folderDialog = new();
-    private readonly AppPaths paths;
+    private readonly Label introLabel = new() { AutoSize = true, Margin = new Padding(0, 0, 0, 8) };
+    private readonly GroupBox generalGroup = new() { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(12, 10, 12, 12) };
+    private readonly GroupBox recordingGroup = new() { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(12, 10, 12, 12) };
+    private readonly GroupBox otherGroup = new() { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(12, 10, 12, 12) };
+    private readonly Label recordingsLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+    private readonly Label templateLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+    private readonly Label tokensLabel = new() { AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
+    private readonly Label languageLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
 
-    public SettingsForm(AppSettings settings, AppPaths paths)
+    public SettingsForm(AppLocalizer localizer, AppSettings settings, AppPaths paths)
     {
+        this.localizer = localizer;
         this.paths = paths;
 
-        Text = "Settings";
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -37,6 +47,7 @@ public sealed class SettingsForm : Form
         ClientSize = new Size(760, 560);
 
         BuildLayout();
+        ApplyLocalization();
         ApplySettings(settings);
     }
 
@@ -54,7 +65,7 @@ public sealed class SettingsForm : Form
             RemuxRawAacToM4A = remuxAacCheckBox.Checked,
             RecordingsFolder = string.IsNullOrWhiteSpace(recordingsFolderTextBox.Text) ? AppDefaults.DefaultRecordingsFolder : recordingsFolderTextBox.Text.Trim(),
             FileNameTemplate = string.IsNullOrWhiteSpace(fileNameTemplateTextBox.Text) ? AppDefaults.DefaultFileNameTemplate : fileNameTemplateTextBox.Text.Trim(),
-            Language = languageComboBox.SelectedIndex == 1 ? Language.English : Language.Polish,
+            Language = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Value : Language.Polish,
         };
     }
 
@@ -79,21 +90,6 @@ public sealed class SettingsForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var introLabel = new Label
-        {
-            AutoSize = true,
-            Text = "These settings control startup behavior, the recording folder, file naming, and optional AAC remuxing.",
-            Margin = new Padding(0, 0, 0, 8),
-        };
-
-        var generalGroup = new GroupBox
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Text = "General",
-            Padding = new Padding(12, 10, 12, 12),
-        };
         generalGroup.Controls.Add(BuildCheckboxStack(
             launchOnStartupCheckBox,
             alwaysOnTopCheckBox,
@@ -103,24 +99,7 @@ public sealed class SettingsForm : Form
             preventSleepCheckBox,
             startMinimizedCheckBox));
 
-        var recordingGroup = new GroupBox
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Text = "Recording",
-            Padding = new Padding(12, 10, 12, 12),
-        };
         recordingGroup.Controls.Add(BuildRecordingSettingsLayout());
-
-        var otherGroup = new GroupBox
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Text = "Other",
-            Padding = new Padding(12, 10, 12, 12),
-        };
         otherGroup.Controls.Add(BuildOtherSettingsLayout());
 
         var buttonsPanel = new FlowLayoutPanel
@@ -169,16 +148,10 @@ public sealed class SettingsForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        var recordingsLabel = new Label
-        {
-            Text = "Recording &folder:",
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 6, 8, 6),
-        };
         recordingsFolderTextBox.Dock = DockStyle.Fill;
-        recordingsFolderTextBox.AccessibleName = "Recording folder";
+        recordingsFolderTextBox.AccessibleName = localizer.RecordingFolderAccessibleName;
         recordingsFolderTextBox.TabIndex = 7;
+
         browseButton.MinimumSize = new Size(90, 32);
         browseButton.Click += (_, _) =>
         {
@@ -191,23 +164,9 @@ public sealed class SettingsForm : Form
             }
         };
 
-        var templateLabel = new Label
-        {
-            Text = "File name &template:",
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 6, 8, 6),
-        };
         fileNameTemplateTextBox.Dock = DockStyle.Fill;
-        fileNameTemplateTextBox.AccessibleName = "File name template";
+        fileNameTemplateTextBox.AccessibleName = localizer.FileNameTemplateAccessibleName;
         fileNameTemplateTextBox.TabIndex = 9;
-
-        var tokensLabel = new Label
-        {
-            AutoSize = true,
-            Text = "Available tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second",
-            Margin = new Padding(0, 0, 0, 4),
-        };
 
         layout.Controls.Add(recordingsLabel, 0, 0);
         layout.Controls.Add(recordingsFolderTextBox, 1, 0);
@@ -236,17 +195,8 @@ public sealed class SettingsForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        var languageLabel = new Label
-        {
-            Text = "&Language:",
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 6, 8, 6),
-        };
-
         languageComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-        languageComboBox.Items.AddRange(["Polish", "English"]);
-        languageComboBox.AccessibleName = "Language";
+        languageComboBox.AccessibleName = localizer.LanguageAccessibleName;
         languageComboBox.Width = 180;
         languageComboBox.TabIndex = 11;
 
@@ -254,6 +204,55 @@ public sealed class SettingsForm : Form
         layout.Controls.Add(languageComboBox, 1, 0);
 
         return layout;
+    }
+
+    private void ApplyLocalization()
+    {
+        Text = localizer.SettingsTitle;
+        introLabel.Text = localizer.SettingsIntro;
+        generalGroup.Text = localizer.GeneralGroup;
+        recordingGroup.Text = localizer.RecordingGroup;
+        otherGroup.Text = localizer.OtherGroup;
+
+        launchOnStartupCheckBox.Text = localizer.LaunchOnStartup;
+        alwaysOnTopCheckBox.Text = localizer.AlwaysOnTop;
+        minimizeToTrayCheckBox.Text = localizer.MinimizeToTray;
+        confirmOnExitCheckBox.Text = localizer.ConfirmOnExit;
+        restartOnCrashCheckBox.Text = localizer.RestartOnCrash;
+        preventSleepCheckBox.Text = localizer.PreventSleep;
+        startMinimizedCheckBox.Text = localizer.StartMinimized;
+        remuxAacCheckBox.Text = localizer.RemuxRawAacToM4A;
+
+        recordingsLabel.Text = localizer.RecordingFolderLabel;
+        templateLabel.Text = localizer.FileNameTemplateLabel;
+        tokensLabel.Text = localizer.FileNameTokens;
+        languageLabel.Text = localizer.LanguageLabel;
+        browseButton.Text = localizer.Browse;
+        saveButton.Text = localizer.Ok;
+        cancelButton.Text = localizer.Cancel;
+
+        PopulateLanguages();
+    }
+
+    private void PopulateLanguages()
+    {
+        var selected = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Value : (Language?)null;
+        languageComboBox.BeginUpdate();
+        try
+        {
+            languageComboBox.Items.Clear();
+            languageComboBox.Items.Add(new LanguageChoice(Language.Polish, localizer.PolishLanguageName));
+            languageComboBox.Items.Add(new LanguageChoice(Language.English, localizer.EnglishLanguageName));
+
+            if (selected is not null)
+            {
+                SelectLanguage(selected.Value);
+            }
+        }
+        finally
+        {
+            languageComboBox.EndUpdate();
+        }
     }
 
     private static Control BuildCheckboxStack(params CheckBox[] checkBoxes)
@@ -288,6 +287,31 @@ public sealed class SettingsForm : Form
         remuxAacCheckBox.Checked = settings.RemuxRawAacToM4A;
         recordingsFolderTextBox.Text = settings.RecordingsFolder;
         fileNameTemplateTextBox.Text = settings.FileNameTemplate;
-        languageComboBox.SelectedIndex = settings.Language == Language.English ? 1 : 0;
+        SelectLanguage(settings.Language);
+    }
+
+    private void SelectLanguage(Language language)
+    {
+        for (var index = 0; index < languageComboBox.Items.Count; index++)
+        {
+            if (languageComboBox.Items[index] is LanguageChoice choice && choice.Value == language)
+            {
+                languageComboBox.SelectedIndex = index;
+                return;
+            }
+        }
+
+        if (languageComboBox.Items.Count > 0)
+        {
+            languageComboBox.SelectedIndex = 0;
+        }
+    }
+
+    private sealed record LanguageChoice(Language Value, string Name)
+    {
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }

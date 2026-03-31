@@ -2,6 +2,23 @@
 
 Portable Windows application written in Rust for recording audio streams without transcoding.
 
+## Experimental WinForms Rewrite
+
+An in-progress C# + WinForms rewrite is available in `dotnet/`.
+
+The rewrite is prepared for preview builds and documented further in:
+
+- `dotnet/README.md`
+- `docs/winforms-rewrite-status.md`
+- `CHANGELOG.md`
+
+### Requirements
+
+- The framework-dependent WinForms build requires `Microsoft .NET Desktop Runtime 8` for `Windows x64`.
+- Official Microsoft download page: https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+- On the Microsoft page, choose `Windows x64` under `.NET Desktop Runtime 8`.
+- The current stable Rust release does not require `.NET`.
+
 ## Current Scope
 
 - Native Windows GUI with a station list, station editor, schedule management, and a toggleable log view.

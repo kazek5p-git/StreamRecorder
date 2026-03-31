@@ -1,4 +1,5 @@
 using StreamRecorder.Core.Configuration;
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Logging;
 using StreamRecorder.Core.Models;
 using StreamRecorder.Core.Recording;
@@ -37,6 +38,14 @@ public sealed class StreamRecorderApp : IDisposable
     public UpdaterService Updater { get; }
 
     public event Action? ConfigChanged;
+
+    public AppLocalizer GetLocalizer()
+    {
+        lock (gate)
+        {
+            return AppLocalizer.For(config.Settings.Language);
+        }
+    }
 
     public AppSettings GetSettings()
     {
@@ -191,6 +200,7 @@ public sealed class StreamRecorderApp : IDisposable
         Scheduler.Start(
             schedulesProvider: GetSchedules,
             stationProvider: GetStation,
+            languageProvider: () => GetSettings().Language,
             isRecording: Recorder.IsRecording,
             startRecordingAsync: StartRecordingAsync,
             stopRecording: StopRecording,

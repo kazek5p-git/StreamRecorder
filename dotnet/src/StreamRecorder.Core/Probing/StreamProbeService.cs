@@ -46,7 +46,9 @@ public static class StreamProbeService
             {
                 return StreamFormat.Mp3;
             }
-            if (contentType.Contains("audio/aac", StringComparison.Ordinal) || contentType.Contains("audio/aacp", StringComparison.Ordinal))
+            if (contentType.Contains("audio/aac", StringComparison.Ordinal)
+                || contentType.Contains("audio/aacp", StringComparison.Ordinal)
+                || contentType.Contains("audio/x-aac", StringComparison.Ordinal))
             {
                 return StreamFormat.AacRaw;
             }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using StreamRecorder.Core;
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
 using StreamRecorder.WinForms.Services;
 
@@ -9,12 +10,20 @@ public sealed class MainForm : Form
 {
     private readonly StreamRecorderApp app;
     private readonly MenuStrip menuStrip = new();
-    private readonly ToolStripMenuItem addStationMenuItem = new("&Add station");
-    private readonly ToolStripMenuItem startRecordingMenuItem = new("&Start recording");
-    private readonly ToolStripMenuItem stopRecordingMenuItem = new("S&top recording");
-    private readonly ToolStripMenuItem editStationMenuItem = new("&Edit station");
-    private readonly ToolStripMenuItem schedulesMenuItem = new("Sche&dules...");
-    private readonly ToolStripMenuItem deleteStationMenuItem = new("&Delete station");
+    private readonly ToolStripMenuItem fileMenu = new();
+    private readonly ToolStripMenuItem helpMenu = new();
+    private readonly ToolStripMenuItem openRecordingsFolderMenuItem = new();
+    private readonly ToolStripMenuItem openSettingsFolderMenuItem = new();
+    private readonly ToolStripMenuItem settingsMenuItem = new();
+    private readonly ToolStripMenuItem exitMenuItem = new();
+    private readonly ToolStripMenuItem checkForUpdatesMenuItem = new();
+    private readonly ToolStripMenuItem aboutMenuItem = new();
+    private readonly ToolStripMenuItem addStationMenuItem = new();
+    private readonly ToolStripMenuItem startRecordingMenuItem = new();
+    private readonly ToolStripMenuItem stopRecordingMenuItem = new();
+    private readonly ToolStripMenuItem editStationMenuItem = new();
+    private readonly ToolStripMenuItem schedulesMenuItem = new();
+    private readonly ToolStripMenuItem deleteStationMenuItem = new();
     private readonly Button addStationButton = new();
     private readonly Button showLogButton = new();
     private readonly ListView stationList = new();
@@ -23,6 +32,9 @@ public sealed class MainForm : Form
     private readonly ContextMenuStrip stationMenu = new();
     private readonly NotifyIcon trayIcon = new();
     private readonly ContextMenuStrip trayMenu = new();
+    private readonly ToolStripMenuItem trayShowMenuItem = new();
+    private readonly ToolStripMenuItem traySettingsMenuItem = new();
+    private readonly ToolStripMenuItem trayExitMenuItem = new();
     private readonly System.Windows.Forms.Timer refreshTimer = new();
     private readonly WindowsStartupRegistration startupRegistration = new();
     private readonly WindowsPowerAssertion powerAssertion = new();
@@ -33,9 +45,9 @@ public sealed class MainForm : Form
     public MainForm(StreamRecorderApp app)
     {
         this.app = app ?? throw new ArgumentNullException(nameof(app));
-        logForm = new LogForm(app.Logs);
+        logForm = new LogForm(app.Logs, app.GetLocalizer());
 
-        Text = "StreamRecorder";
+        Text = app.GetLocalizer().AppTitle;
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(900, 560);
         Size = new Size(1080, 680);
@@ -45,6 +57,7 @@ public sealed class MainForm : Form
         BuildMainLayout();
         BuildStationMenu();
         BuildTray();
+        ApplyLocalization();
 
         refreshTimer.Interval = 1000;
         refreshTimer.Tick += (_, _) => RefreshUi();
@@ -88,16 +101,20 @@ public sealed class MainForm : Form
 
     private void BuildMenu()
     {
-        var fileMenu = new ToolStripMenuItem("&File");
-        fileMenu.DropDownItems.Add("&Open recordings folder", null, (_, _) => OpenPath(app.GetSettings().RecordingsFolder, useRoot: true));
-        fileMenu.DropDownItems.Add("Open se&ttings folder", null, (_, _) => OpenPath(app.Paths.ConfigDirectory, useRoot: false));
-        fileMenu.DropDownItems.Add("&Settings", null, (_, _) => OpenSettings());
+        openRecordingsFolderMenuItem.Click += (_, _) => OpenPath(app.GetSettings().RecordingsFolder, useRoot: true);
+        openSettingsFolderMenuItem.Click += (_, _) => OpenPath(app.Paths.ConfigDirectory, useRoot: false);
+        settingsMenuItem.Click += (_, _) => OpenSettings();
+        exitMenuItem.Click += (_, _) => ExitApplication();
+        fileMenu.DropDownItems.Add(openRecordingsFolderMenuItem);
+        fileMenu.DropDownItems.Add(openSettingsFolderMenuItem);
+        fileMenu.DropDownItems.Add(settingsMenuItem);
         fileMenu.DropDownItems.Add(new ToolStripSeparator());
-        fileMenu.DropDownItems.Add("E&xit", null, (_, _) => ExitApplication());
+        fileMenu.DropDownItems.Add(exitMenuItem);
 
-        var helpMenu = new ToolStripMenuItem("&Help");
-        helpMenu.DropDownItems.Add("&Check for updates", null, async (_, _) => await CheckForUpdatesAsync());
-        helpMenu.DropDownItems.Add("&About", null, (_, _) => ShowAbout());
+        checkForUpdatesMenuItem.Click += async (_, _) => await CheckForUpdatesAsync();
+        aboutMenuItem.Click += (_, _) => ShowAbout();
+        helpMenu.DropDownItems.Add(checkForUpdatesMenuItem);
+        helpMenu.DropDownItems.Add(aboutMenuItem);
 
         menuStrip.Items.Add(fileMenu);
         menuStrip.Items.Add(helpMenu);
@@ -107,16 +124,12 @@ public sealed class MainForm : Form
 
     private void BuildMainLayout()
     {
-        addStationButton.Text = "&Add station";
-        addStationButton.AccessibleName = "Add station";
         addStationButton.Location = new Point(14, 40);
         addStationButton.Size = new Size(140, 30);
         addStationButton.TabIndex = 0;
         addStationButton.Click += (_, _) => AddStation();
         Controls.Add(addStationButton);
 
-        showLogButton.Text = "Show &log";
-        showLogButton.AccessibleName = "Show log";
         showLogButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         showLogButton.Location = new Point(ClientSize.Width - 160, 40);
         showLogButton.Size = new Size(140, 30);
@@ -133,15 +146,13 @@ public sealed class MainForm : Form
         stationList.HideSelection = false;
         stationList.LabelEdit = false;
         stationList.Name = "Stations";
-        stationList.AccessibleName = "Stations";
-        stationList.AccessibleDescription = "List of configured stations.";
         stationList.TabIndex = 2;
         stationList.ContextMenuStrip = stationMenu;
-        stationList.Columns.Add("Station", 260);
-        stationList.Columns.Add("URL", 320);
-        stationList.Columns.Add("Status", 180);
-        stationList.Columns.Add("Format", 90);
-        stationList.Columns.Add("File", 260);
+        stationList.Columns.Add(string.Empty, 260);
+        stationList.Columns.Add(string.Empty, 320);
+        stationList.Columns.Add(string.Empty, 180);
+        stationList.Columns.Add(string.Empty, 90);
+        stationList.Columns.Add(string.Empty, 260);
         stationList.Resize += (_, _) => UpdateStationColumns();
         stationList.DoubleClick += (_, _) => EditSelectedStation();
         stationList.KeyDown += (_, e) =>
@@ -188,16 +199,20 @@ public sealed class MainForm : Form
 
     private void BuildTray()
     {
-        trayMenu.Items.Add("&Show", null, (_, _) => RestoreFromTray());
-        trayMenu.Items.Add("&Settings", null, (_, _) =>
+        trayShowMenuItem.Click += (_, _) => RestoreFromTray();
+        traySettingsMenuItem.Click += (_, _) =>
         {
             RestoreFromTray();
             OpenSettings();
-        });
-        trayMenu.Items.Add(new ToolStripSeparator());
-        trayMenu.Items.Add("E&xit", null, (_, _) => ExitApplication());
+        };
+        trayExitMenuItem.Click += (_, _) => ExitApplication();
 
-        trayIcon.Text = "StreamRecorder";
+        trayMenu.Items.Add(trayShowMenuItem);
+        trayMenu.Items.Add(traySettingsMenuItem);
+        trayMenu.Items.Add(new ToolStripSeparator());
+        trayMenu.Items.Add(trayExitMenuItem);
+
+        trayIcon.Text = app.GetLocalizer().AppTitle;
         trayIcon.Icon = SystemIcons.Application;
         trayIcon.Visible = true;
         trayIcon.ContextMenuStrip = trayMenu;
@@ -212,6 +227,7 @@ public sealed class MainForm : Form
 
     private void RefreshUi()
     {
+        var localizer = app.GetLocalizer();
         var selectedId = GetSelectedStationId();
         var focusedId = GetFocusedStationId();
         var topId = GetTopStationId();
@@ -221,7 +237,7 @@ public sealed class MainForm : Form
         UpdateStationList(stations, snapshots, selectedId, focusedId, topId);
 
         var recordingCount = snapshots.Values.Count(static snapshot => snapshot.Active);
-        statusLabel.Text = $"Currently recording: {recordingCount}";
+        statusLabel.Text = localizer.CurrentlyRecording(recordingCount);
         UpdateLogButtonText();
     }
 
@@ -251,7 +267,7 @@ public sealed class MainForm : Form
 
     private void AddStation()
     {
-        using var dialog = new StationDialog();
+        using var dialog = new StationDialog(app.GetLocalizer());
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             var station = dialog.BuildStation();
@@ -260,6 +276,7 @@ public sealed class MainForm : Form
             SelectStation(station.Id);
         }
 
+        Activate();
         FocusStationList();
     }
 
@@ -271,7 +288,7 @@ public sealed class MainForm : Form
             return;
         }
 
-        using var dialog = new StationDialog(station);
+        using var dialog = new StationDialog(app.GetLocalizer(), station);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             app.UpsertStation(dialog.BuildStation(station.Id));
@@ -279,6 +296,7 @@ public sealed class MainForm : Form
             SelectStation(station.Id);
         }
 
+        Activate();
         FocusStationList();
     }
 
@@ -314,7 +332,8 @@ public sealed class MainForm : Form
             return;
         }
 
-        if (MessageBox.Show(this, $"Delete station '{station.Name}'?", "Delete station", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+        var localizer = app.GetLocalizer();
+        if (MessageBox.Show(this, localizer.DeleteStationPrompt(station.Name), localizer.DeleteStationTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Question)
             != DialogResult.Yes)
         {
             return;
@@ -332,10 +351,11 @@ public sealed class MainForm : Form
             return;
         }
 
-        using var dialog = new ScheduleListForm(app, station.Id);
+        using var dialog = new ScheduleListForm(app, app.GetLocalizer(), station.Id);
         dialog.ShowDialog(this);
         RefreshUi();
         SelectStation(station.Id);
+        Activate();
         FocusStationList();
     }
 
@@ -357,13 +377,15 @@ public sealed class MainForm : Form
 
     private void UpdateLogButtonText()
     {
-        showLogButton.Text = logForm.Visible ? "Hide &log" : "Show &log";
+        var localizer = app.GetLocalizer();
+        showLogButton.Text = logForm.Visible ? localizer.HideLog : localizer.ShowLog;
+        showLogButton.AccessibleName = logForm.Visible ? localizer.HideLog.Replace("&", string.Empty, StringComparison.Ordinal) : localizer.ShowLog.Replace("&", string.Empty, StringComparison.Ordinal);
     }
 
     private void OpenSettings()
     {
         var selectedId = GetSelectedStationId();
-        using var dialog = new SettingsForm(app.GetSettings(), app.Paths);
+        using var dialog = new SettingsForm(app.GetLocalizer(), app.GetSettings(), app.Paths);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             app.SaveSettings(dialog.BuildSettings());
@@ -373,6 +395,7 @@ public sealed class MainForm : Form
         {
             SelectStation(selectedId.Value);
         }
+        Activate();
         FocusStationList();
     }
 
@@ -381,15 +404,16 @@ public sealed class MainForm : Form
         try
         {
             var update = await app.Updater.CheckForUpdatesAsync(app.Version);
+            var localizer = app.GetLocalizer();
             if (update is null)
             {
-                MessageBox.Show(this, "No newer version is available.", "Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, localizer.NoNewerVersion, localizer.UpdatesTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             if (update.Asset is null)
             {
-                if (MessageBox.Show(this, $"Available version: {update.Version}{Environment.NewLine}{Environment.NewLine}Open the release page in your browser?", "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information)
+                if (MessageBox.Show(this, localizer.OpenReleasePagePrompt(update.Version), localizer.UpdateAvailableTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Information)
                     == DialogResult.Yes)
                 {
                     OpenUrl(update.HtmlUrl);
@@ -397,7 +421,7 @@ public sealed class MainForm : Form
                 return;
             }
 
-            if (MessageBox.Show(this, $"Available version: {update.Version}{Environment.NewLine}Downloadable asset: {update.Asset.Name}{Environment.NewLine}{Environment.NewLine}Download and install the update now?", "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information)
+            if (MessageBox.Show(this, localizer.DownloadUpdatePrompt(update.Version, update.Asset.Name), localizer.UpdateAvailableTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Information)
                 != DialogResult.Yes)
             {
                 return;
@@ -405,19 +429,20 @@ public sealed class MainForm : Form
 
             var downloaded = await app.Updater.DownloadUpdateAsync(app.Paths, update);
             await app.Updater.InstallDownloadedUpdateAsync(app.Paths, downloaded, update.Asset, Application.ExecutablePath, Environment.GetCommandLineArgs().Skip(1).ToArray());
-            MessageBox.Show(this, "The update has been downloaded. StreamRecorder will now close and install the update.", "Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, localizer.UpdateDownloadedAndClosing, localizer.UpdatesTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
             allowClose = true;
             Close();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Updates", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, app.GetLocalizer().UpdatesTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private void ShowAbout()
     {
-        MessageBox.Show(this, $"StreamRecorder {app.Version}{Environment.NewLine}WinForms rewrite shell", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        var localizer = app.GetLocalizer();
+        MessageBox.Show(this, localizer.AboutText(app.Version), localizer.AboutTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private void OnMainResize(object? sender, EventArgs e)
@@ -450,7 +475,8 @@ public sealed class MainForm : Form
 
         if (app.GetSettings().ConfirmOnExit)
         {
-            var answer = MessageBox.Show(this, "Do you really want to close StreamRecorder?", "Close StreamRecorder", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            var localizer = app.GetLocalizer();
+            var answer = MessageBox.Show(this, localizer.ConfirmClosePrompt, localizer.ConfirmCloseTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (answer != DialogResult.Yes)
             {
                 e.Cancel = true;
@@ -473,8 +499,10 @@ public sealed class MainForm : Form
         {
             BeginInvoke((Action)(() =>
             {
-                ApplyShellSettings(app.GetSettings(), persistExternalState: true);
-                RefreshUi();
+                var settings = app.GetSettings();
+                AppLocalizer.ApplyThreadCulture(settings.Language);
+                ApplyShellSettings(settings, persistExternalState: true);
+                ApplyLocalization();
             }));
         }
     }
@@ -525,7 +553,7 @@ public sealed class MainForm : Form
         }
         catch (Exception ex)
         {
-            app.Logs.Push($"Failed to sync startup setting: {ex.Message}");
+            app.Logs.Push(app.GetLocalizer().FailedSyncStartup(ex.Message));
         }
 
         try
@@ -534,7 +562,7 @@ public sealed class MainForm : Form
         }
         catch (Exception ex)
         {
-            app.Logs.Push($"Failed to sync sleep prevention: {ex.Message}");
+            app.Logs.Push(app.GetLocalizer().FailedSyncSleep(ex.Message));
         }
     }
 
@@ -658,11 +686,12 @@ public sealed class MainForm : Form
 
     private void ApplyStationToItem(ListViewItem item, Station station, RecordingSnapshot? snapshot)
     {
+        var localizer = app.GetLocalizer();
         EnsureSubItemCount(item, 5);
         item.Text = station.Name;
         item.SubItems[1].Text = station.Url;
-        item.SubItems[2].Text = FormatStatus(snapshot);
-        item.SubItems[3].Text = snapshot?.Format?.GetDisplayName() ?? "-";
+        item.SubItems[2].Text = FormatStatus(snapshot, localizer);
+        item.SubItems[3].Text = snapshot?.Format is { } format ? localizer.FormatDisplayName(format) : "-";
         item.SubItems[4].Text = snapshot?.OutputPath is { Length: > 0 } output ? Path.GetFileName(output) : "-";
     }
 
@@ -674,15 +703,50 @@ public sealed class MainForm : Form
         }
     }
 
-    private static string FormatStatus(RecordingSnapshot? snapshot)
+    private static string FormatStatus(RecordingSnapshot? snapshot, AppLocalizer localizer)
     {
-        return snapshot?.StateLabel switch
-        {
-            null or "" => "Idle",
-            "Waiting for reconnect" => "Connection lost, reconnecting",
-            "Waiting for playlist" => "Playlist unavailable, retrying",
-            _ => snapshot.StateLabel,
-        };
+        return localizer.TranslateStateLabel(snapshot?.StateLabel);
+    }
+
+    private void ApplyLocalization()
+    {
+        var localizer = app.GetLocalizer();
+
+        Text = localizer.AppTitle;
+        fileMenu.Text = localizer.FileMenu;
+        openRecordingsFolderMenuItem.Text = localizer.OpenRecordingsFolder;
+        openSettingsFolderMenuItem.Text = localizer.OpenSettingsFolder;
+        settingsMenuItem.Text = localizer.Settings;
+        exitMenuItem.Text = localizer.Exit;
+        helpMenu.Text = localizer.HelpMenu;
+        checkForUpdatesMenuItem.Text = localizer.CheckForUpdates;
+        aboutMenuItem.Text = localizer.About;
+
+        addStationButton.Text = localizer.AddStation;
+        addStationButton.AccessibleName = localizer.AddStation.Replace("&", string.Empty, StringComparison.Ordinal);
+        stationList.AccessibleName = localizer.StationsAccessibleName;
+        stationList.AccessibleDescription = localizer.StationsAccessibleDescription;
+        stationList.Columns[0].Text = localizer.StationColumn;
+        stationList.Columns[1].Text = localizer.UrlColumn;
+        stationList.Columns[2].Text = localizer.StatusColumn;
+        stationList.Columns[3].Text = localizer.FormatColumn;
+        stationList.Columns[4].Text = localizer.FileColumn;
+
+        addStationMenuItem.Text = localizer.AddStation;
+        startRecordingMenuItem.Text = localizer.StartRecording;
+        stopRecordingMenuItem.Text = localizer.StopRecording;
+        editStationMenuItem.Text = localizer.EditStation;
+        schedulesMenuItem.Text = localizer.Schedules;
+        deleteStationMenuItem.Text = localizer.DeleteStation;
+
+        trayShowMenuItem.Text = localizer.Show;
+        traySettingsMenuItem.Text = localizer.Settings;
+        trayExitMenuItem.Text = localizer.Exit;
+        trayIcon.Text = localizer.AppTitle;
+
+        logForm.ApplyLocalization(localizer);
+        UpdateLogButtonText();
+        RefreshUi();
     }
 
     private Guid? GetFocusedStationId()

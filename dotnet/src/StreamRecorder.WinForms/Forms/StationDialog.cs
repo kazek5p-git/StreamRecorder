@@ -1,19 +1,23 @@
+using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
 
 namespace StreamRecorder.WinForms.Forms;
 
 public sealed class StationDialog : Form
 {
+    private readonly AppLocalizer localizer;
     private readonly TextBox nameTextBox = new();
     private readonly TextBox urlTextBox = new();
     private readonly TextBox usernameTextBox = new();
     private readonly TextBox passwordTextBox = new();
-    private readonly Button okButton = new() { Text = "OK", AutoSize = true };
-    private readonly Button cancelButton = new() { Text = "Cancel", AutoSize = true };
+    private readonly Button okButton = new() { AutoSize = true };
+    private readonly Button cancelButton = new() { AutoSize = true };
 
-    public StationDialog(Station? station = null)
+    public StationDialog(AppLocalizer localizer, Station? station = null)
     {
-        Text = station is null ? "Add station" : "Edit station";
+        this.localizer = localizer;
+
+        Text = station is null ? localizer.StationDialogAddTitle : localizer.StationDialogEditTitle;
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -78,7 +82,7 @@ public sealed class StationDialog : Form
         var infoLabel = new Label
         {
             AutoSize = true,
-            Text = "Enter the stream details below. Username and password are optional.",
+            Text = localizer.StationDialogIntro,
             Margin = new Padding(0, 0, 0, 8),
         };
 
@@ -87,7 +91,7 @@ public sealed class StationDialog : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Text = "Station information",
+            Text = localizer.StationInformationGroup,
             Padding = new Padding(12, 10, 12, 12),
         };
         stationGroup.Controls.Add(BuildStationFields());
@@ -97,7 +101,7 @@ public sealed class StationDialog : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Text = "Optional credentials",
+            Text = localizer.OptionalCredentialsGroup,
             Padding = new Padding(12, 10, 12, 12),
         };
         credentialsGroup.Controls.Add(BuildCredentialsFields());
@@ -113,6 +117,7 @@ public sealed class StationDialog : Form
 
         okButton.MinimumSize = new Size(90, 32);
         okButton.TabIndex = 4;
+        okButton.Text = localizer.Ok;
         okButton.Click += (_, _) =>
         {
             if (ValidateInputs())
@@ -123,6 +128,7 @@ public sealed class StationDialog : Form
 
         cancelButton.MinimumSize = new Size(90, 32);
         cancelButton.TabIndex = 5;
+        cancelButton.Text = localizer.Cancel;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         buttonsPanel.Controls.Add(cancelButton);
@@ -143,14 +149,14 @@ public sealed class StationDialog : Form
     {
         var layout = CreateFormTable();
 
-        var nameLabel = new Label { Text = "&Name:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var nameLabel = new Label { Text = localizer.NameLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
         var urlLabel = new Label { Text = "&URL:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
 
         nameTextBox.Dock = DockStyle.Fill;
-        nameTextBox.AccessibleName = "Station name";
+        nameTextBox.AccessibleName = localizer.StationNameAccessibleName;
         nameTextBox.TabIndex = 0;
         urlTextBox.Dock = DockStyle.Fill;
-        urlTextBox.AccessibleName = "Stream URL";
+        urlTextBox.AccessibleName = localizer.StreamUrlAccessibleName;
         urlTextBox.TabIndex = 1;
 
         layout.Controls.Add(nameLabel, 0, 0);
@@ -165,14 +171,14 @@ public sealed class StationDialog : Form
     {
         var layout = CreateFormTable();
 
-        var usernameLabel = new Label { Text = "&Username:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
-        var passwordLabel = new Label { Text = "&Password:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var usernameLabel = new Label { Text = localizer.UsernameLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var passwordLabel = new Label { Text = localizer.PasswordLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
 
         usernameTextBox.Dock = DockStyle.Fill;
-        usernameTextBox.AccessibleName = "Username";
+        usernameTextBox.AccessibleName = localizer.UsernameAccessibleName;
         usernameTextBox.TabIndex = 2;
         passwordTextBox.Dock = DockStyle.Fill;
-        passwordTextBox.AccessibleName = "Password";
+        passwordTextBox.AccessibleName = localizer.PasswordAccessibleName;
         passwordTextBox.UseSystemPasswordChar = true;
         passwordTextBox.TabIndex = 3;
 
@@ -204,14 +210,14 @@ public sealed class StationDialog : Form
     {
         if (string.IsNullOrWhiteSpace(nameTextBox.Text))
         {
-            MessageBox.Show(this, "Station name cannot be empty.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, localizer.StationNameEmpty, localizer.ValidationTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             nameTextBox.Focus();
             return false;
         }
 
         if (!Uri.TryCreate(urlTextBox.Text.Trim(), UriKind.Absolute, out _))
         {
-            MessageBox.Show(this, "The stream URL is not valid.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, localizer.StreamUrlInvalid, localizer.ValidationTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             urlTextBox.Focus();
             return false;
         }

@@ -1,4 +1,5 @@
 using StreamRecorder.Core.Logging;
+using StreamRecorder.Core.Localization;
 
 namespace StreamRecorder.WinForms.Forms;
 
@@ -6,13 +7,14 @@ public sealed class LogForm : Form
 {
     private readonly LogBus logBus;
     private readonly ListBox logList = new();
-    private readonly Button closeButton = new() { Text = "&Close" };
+    private readonly Button closeButton = new();
+    private AppLocalizer localizer;
 
-    public LogForm(LogBus logBus)
+    public LogForm(LogBus logBus, AppLocalizer localizer)
     {
         this.logBus = logBus;
+        this.localizer = localizer;
 
-        Text = "Log";
         StartPosition = FormStartPosition.CenterParent;
         Size = new Size(820, 470);
         ShowInTaskbar = false;
@@ -22,8 +24,6 @@ public sealed class LogForm : Form
         logList.Height = 380;
         logList.HorizontalScrollbar = true;
         logList.Name = "LogEntries";
-        logList.AccessibleName = "Log entries";
-        logList.AccessibleDescription = "Application log entries.";
         logList.TabIndex = 0;
 
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
@@ -38,6 +38,7 @@ public sealed class LogForm : Form
         Controls.Add(logList);
         Controls.Add(closeButton);
 
+        ApplyLocalization(localizer);
         LoadEntries();
         logBus.EntryAdded += OnEntryAdded;
         FormClosing += (_, e) =>
@@ -90,5 +91,15 @@ public sealed class LogForm : Form
         {
             BeginInvoke((Action)(() => logList.Focus()));
         }
+    }
+
+    public void ApplyLocalization(AppLocalizer localizer)
+    {
+        this.localizer = localizer;
+        Text = localizer.LogTitle;
+        logList.AccessibleName = localizer.LogEntriesAccessibleName;
+        logList.AccessibleDescription = localizer.LogEntriesAccessibleDescription;
+        closeButton.Text = localizer.Close;
+        closeButton.AccessibleName = localizer.Close.Replace("&", string.Empty, StringComparison.Ordinal);
     }
 }
