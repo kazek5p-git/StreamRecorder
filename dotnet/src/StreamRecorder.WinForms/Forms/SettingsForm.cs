@@ -177,6 +177,7 @@ public sealed class SettingsForm : Form
             Margin = new Padding(0, 6, 8, 6),
         };
         recordingsFolderTextBox.Dock = DockStyle.Fill;
+        recordingsFolderTextBox.AccessibleName = "Recording folder";
         recordingsFolderTextBox.TabIndex = 7;
         browseButton.MinimumSize = new Size(90, 32);
         browseButton.Click += (_, _) =>
@@ -198,6 +199,7 @@ public sealed class SettingsForm : Form
             Margin = new Padding(0, 6, 8, 6),
         };
         fileNameTemplateTextBox.Dock = DockStyle.Fill;
+        fileNameTemplateTextBox.AccessibleName = "File name template";
         fileNameTemplateTextBox.TabIndex = 9;
 
         var tokensLabel = new Label
@@ -244,6 +246,7 @@ public sealed class SettingsForm : Form
 
         languageComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         languageComboBox.Items.AddRange(["Polish", "English"]);
+        languageComboBox.AccessibleName = "Language";
         languageComboBox.Width = 180;
         languageComboBox.TabIndex = 11;
 

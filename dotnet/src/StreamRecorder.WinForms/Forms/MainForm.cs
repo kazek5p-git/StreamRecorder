@@ -108,6 +108,7 @@ public sealed class MainForm : Form
     private void BuildMainLayout()
     {
         addStationButton.Text = "&Add station";
+        addStationButton.AccessibleName = "Add station";
         addStationButton.Location = new Point(14, 40);
         addStationButton.Size = new Size(140, 30);
         addStationButton.TabIndex = 0;
@@ -115,6 +116,7 @@ public sealed class MainForm : Form
         Controls.Add(addStationButton);
 
         showLogButton.Text = "Show &log";
+        showLogButton.AccessibleName = "Show log";
         showLogButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         showLogButton.Location = new Point(ClientSize.Width - 160, 40);
         showLogButton.Size = new Size(140, 30);
@@ -130,6 +132,9 @@ public sealed class MainForm : Form
         stationList.View = View.Details;
         stationList.HideSelection = false;
         stationList.LabelEdit = false;
+        stationList.Name = "Stations";
+        stationList.AccessibleName = "Stations";
+        stationList.AccessibleDescription = "List of configured stations.";
         stationList.TabIndex = 2;
         stationList.ContextMenuStrip = stationMenu;
         stationList.Columns.Add("Station", 260);

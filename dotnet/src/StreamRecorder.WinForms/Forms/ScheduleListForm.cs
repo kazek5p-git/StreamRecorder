@@ -44,6 +44,9 @@ public sealed class ScheduleListForm : Form
         scheduleList.FullRowSelect = true;
         scheduleList.MultiSelect = false;
         scheduleList.HideSelection = false;
+        scheduleList.Name = "ScheduleEntries";
+        scheduleList.AccessibleName = "Schedule entries";
+        scheduleList.AccessibleDescription = "List of schedule entries for all stations.";
         scheduleList.TabIndex = 0;
         scheduleList.ContextMenuStrip = scheduleMenu;
         scheduleList.Columns.Add("Station", 220);

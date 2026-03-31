@@ -21,6 +21,9 @@ public sealed class LogForm : Form
         logList.Dock = DockStyle.Top;
         logList.Height = 380;
         logList.HorizontalScrollbar = true;
+        logList.Name = "LogEntries";
+        logList.AccessibleName = "Log entries";
+        logList.AccessibleDescription = "Application log entries.";
         logList.TabIndex = 0;
 
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;

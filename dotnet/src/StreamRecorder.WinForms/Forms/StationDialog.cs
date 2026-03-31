@@ -147,8 +147,10 @@ public sealed class StationDialog : Form
         var urlLabel = new Label { Text = "&URL:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
 
         nameTextBox.Dock = DockStyle.Fill;
+        nameTextBox.AccessibleName = "Station name";
         nameTextBox.TabIndex = 0;
         urlTextBox.Dock = DockStyle.Fill;
+        urlTextBox.AccessibleName = "Stream URL";
         urlTextBox.TabIndex = 1;
 
         layout.Controls.Add(nameLabel, 0, 0);
@@ -167,8 +169,10 @@ public sealed class StationDialog : Form
         var passwordLabel = new Label { Text = "&Password:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
 
         usernameTextBox.Dock = DockStyle.Fill;
+        usernameTextBox.AccessibleName = "Username";
         usernameTextBox.TabIndex = 2;
         passwordTextBox.Dock = DockStyle.Fill;
+        passwordTextBox.AccessibleName = "Password";
         passwordTextBox.UseSystemPasswordChar = true;
         passwordTextBox.TabIndex = 3;
 

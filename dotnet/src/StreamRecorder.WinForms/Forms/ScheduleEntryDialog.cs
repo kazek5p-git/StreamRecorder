@@ -120,16 +120,19 @@ public sealed class ScheduleEntryDialog : Form
 
         stationComboBox.Dock = DockStyle.Fill;
         stationComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        stationComboBox.AccessibleName = "Station";
         stationComboBox.TabIndex = 0;
 
         dayComboBox.Dock = DockStyle.Fill;
         dayComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         dayComboBox.Items.AddRange(Enum.GetValues<DayOfWeek>().Cast<object>().ToArray());
+        dayComboBox.AccessibleName = "Day";
         dayComboBox.TabIndex = 1;
 
         actionComboBox.Dock = DockStyle.Fill;
         actionComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         actionComboBox.Items.AddRange(Enum.GetValues<ScheduleAction>().Cast<object>().ToArray());
+        actionComboBox.AccessibleName = "Action";
         actionComboBox.TabIndex = 2;
 
         timePicker.Dock = DockStyle.Left;
@@ -137,6 +140,7 @@ public sealed class ScheduleEntryDialog : Form
         timePicker.Format = DateTimePickerFormat.Custom;
         timePicker.CustomFormat = "HH:mm:ss";
         timePicker.ShowUpDown = true;
+        timePicker.AccessibleName = "Time";
         timePicker.TabIndex = 3;
 
         fields.Controls.Add(stationLabel, 0, 0);
