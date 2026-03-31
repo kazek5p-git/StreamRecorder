@@ -110,6 +110,7 @@ public sealed class MainForm : Form
         addStationButton.Text = "&Add station";
         addStationButton.Location = new Point(14, 40);
         addStationButton.Size = new Size(140, 30);
+        addStationButton.TabIndex = 0;
         addStationButton.Click += (_, _) => AddStation();
         Controls.Add(addStationButton);
 
@@ -117,6 +118,7 @@ public sealed class MainForm : Form
         showLogButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         showLogButton.Location = new Point(ClientSize.Width - 160, 40);
         showLogButton.Size = new Size(140, 30);
+        showLogButton.TabIndex = 1;
         showLogButton.Click += (_, _) => ToggleLogWindow();
         Controls.Add(showLogButton);
 
@@ -128,6 +130,7 @@ public sealed class MainForm : Form
         stationList.View = View.Details;
         stationList.HideSelection = false;
         stationList.LabelEdit = false;
+        stationList.TabIndex = 2;
         stationList.ContextMenuStrip = stationMenu;
         stationList.Columns.Add("Station", 260);
         stationList.Columns.Add("URL", 320);

@@ -112,6 +112,7 @@ public sealed class StationDialog : Form
         };
 
         okButton.MinimumSize = new Size(90, 32);
+        okButton.TabIndex = 4;
         okButton.Click += (_, _) =>
         {
             if (ValidateInputs())
@@ -121,6 +122,7 @@ public sealed class StationDialog : Form
         };
 
         cancelButton.MinimumSize = new Size(90, 32);
+        cancelButton.TabIndex = 5;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         buttonsPanel.Controls.Add(cancelButton);

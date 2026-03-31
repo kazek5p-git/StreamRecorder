@@ -161,9 +161,11 @@ public sealed class ScheduleEntryDialog : Form
         };
 
         okButton.MinimumSize = new Size(90, 32);
+        okButton.TabIndex = 5;
         okButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
         cancelButton.MinimumSize = new Size(90, 32);
+        cancelButton.TabIndex = 6;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = okButton;

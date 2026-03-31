@@ -44,6 +44,7 @@ public sealed class ScheduleListForm : Form
         scheduleList.FullRowSelect = true;
         scheduleList.MultiSelect = false;
         scheduleList.HideSelection = false;
+        scheduleList.TabIndex = 0;
         scheduleList.ContextMenuStrip = scheduleMenu;
         scheduleList.Columns.Add("Station", 220);
         scheduleList.Columns.Add("Day", 120);
@@ -74,19 +75,23 @@ public sealed class ScheduleListForm : Form
 
         addButton.Location = new Point(14, 350);
         addButton.Size = new Size(90, 30);
+        addButton.TabIndex = 1;
         addButton.Click += (_, _) => AddSchedule();
 
         editButton.Location = new Point(110, 350);
         editButton.Size = new Size(90, 30);
+        editButton.TabIndex = 2;
         editButton.Click += (_, _) => EditSchedule();
 
         deleteButton.Location = new Point(206, 350);
         deleteButton.Size = new Size(90, 30);
+        deleteButton.TabIndex = 3;
         deleteButton.Click += (_, _) => DeleteSchedule();
 
         closeButton.Location = new Point(740, 350);
         closeButton.Size = new Size(90, 30);
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+        closeButton.TabIndex = 4;
         closeButton.Click += (_, _) => Close();
 
         CancelButton = closeButton;

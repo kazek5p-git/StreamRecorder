@@ -133,9 +133,11 @@ public sealed class SettingsForm : Form
         };
 
         saveButton.MinimumSize = new Size(90, 32);
+        saveButton.TabIndex = 12;
         saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
         cancelButton.MinimumSize = new Size(90, 32);
+        cancelButton.TabIndex = 13;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = saveButton;
