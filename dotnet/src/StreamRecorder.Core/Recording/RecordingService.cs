@@ -184,6 +184,7 @@ public sealed class RecordingService : IDisposable
                     return;
                 }
 
+                LogUnknownFormatDetails(logs, station.Name, station.Url, probe, initialBytes);
                 var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
                 var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
                 await file.WriteAsync(initialBytes, cancellationToken);
@@ -300,7 +301,9 @@ public sealed class RecordingService : IDisposable
 
                     if (output is null)
                     {
-                        var probe = StreamProbeService.ProbeStream(segmentUrl.ToString(), null, bytes);
+                        var contentType = response.Content.Headers.ContentType?.MediaType;
+                        var probe = StreamProbeService.ProbeStream(segmentUrl.ToString(), contentType, bytes);
+                        LogUnknownFormatDetails(logs, station.Name, segmentUrl.ToString(), probe, bytes);
                         var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
                         var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
                         await file.WriteAsync(bytes, cancellationToken);
@@ -580,6 +583,37 @@ public sealed class RecordingService : IDisposable
         }
 
         return 0;
+    }
+
+    private static void LogUnknownFormatDetails(
+        LogBus logs,
+        string stationName,
+        string sourceUrl,
+        StreamProbe probe,
+        byte[] firstBytes)
+    {
+        if (probe.Format != StreamFormat.Unknown)
+        {
+            return;
+        }
+
+        var mime = string.IsNullOrWhiteSpace(probe.Mime) ? "(none)" : probe.Mime;
+        logs.Push(
+            $"Unknown stream format for {stationName}. Recording will continue as BIN. " +
+            $"Source={sourceUrl}, content type={mime}, first bytes={DescribeByteSample(firstBytes)}");
+    }
+
+    private static string DescribeByteSample(byte[] bytes)
+    {
+        if (bytes.Length == 0)
+        {
+            return "(empty sample)";
+        }
+
+        var previewLength = Math.Min(bytes.Length, 16);
+        var preview = string.Join(" ", bytes.Take(previewLength).Select(static value => value.ToString("X2")));
+        var truncated = bytes.Length > previewLength ? " ..." : string.Empty;
+        return $"{preview}{truncated} ({bytes.Length} bytes sampled)";
     }
 
     public void Dispose()
