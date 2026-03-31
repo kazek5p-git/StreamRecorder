@@ -6,7 +6,7 @@ public sealed class LogForm : Form
 {
     private readonly LogBus logBus;
     private readonly ListBox logList = new();
-    private readonly Button closeButton = new();
+    private readonly Button closeButton = new() { Text = "&Close" };
 
     public LogForm(LogBus logBus)
     {
@@ -23,7 +23,6 @@ public sealed class LogForm : Form
         logList.HorizontalScrollbar = true;
         logList.TabIndex = 0;
 
-        closeButton.Text = "Close";
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         closeButton.Location = new Point(700, 390);
         closeButton.Size = new Size(90, 30);

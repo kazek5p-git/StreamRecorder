@@ -6,23 +6,23 @@ namespace StreamRecorder.WinForms.Forms;
 public sealed class ScheduleListForm : Form
 {
     private readonly StreamRecorderApp app;
-    private readonly Station station;
+    private readonly Guid? preferredStationId;
     private readonly ListView scheduleList = new();
     private readonly ContextMenuStrip scheduleMenu = new();
-    private readonly Button addButton = new() { Text = "Add" };
-    private readonly Button editButton = new() { Text = "Edit" };
-    private readonly Button deleteButton = new() { Text = "Delete" };
-    private readonly Button closeButton = new() { Text = "Close" };
+    private readonly Button addButton = new() { Text = "&Add" };
+    private readonly Button editButton = new() { Text = "&Edit" };
+    private readonly Button deleteButton = new() { Text = "&Delete" };
+    private readonly Button closeButton = new() { Text = "&Close" };
 
-    public ScheduleListForm(StreamRecorderApp app, Station station)
+    public ScheduleListForm(StreamRecorderApp app, Guid? preferredStationId = null)
     {
         this.app = app;
-        this.station = station;
+        this.preferredStationId = preferredStationId;
 
-        Text = $"Schedules - {station.Name}";
+        Text = "Schedules";
         StartPosition = FormStartPosition.CenterParent;
-        Size = new Size(720, 420);
-        MinimumSize = new Size(640, 360);
+        Size = new Size(860, 440);
+        MinimumSize = new Size(760, 380);
         ShowInTaskbar = false;
 
         BuildLayout();
@@ -38,17 +38,18 @@ public sealed class ScheduleListForm : Form
     private void BuildLayout()
     {
         scheduleList.Location = new Point(14, 14);
-        scheduleList.Size = new Size(676, 300);
+        scheduleList.Size = new Size(816, 320);
         scheduleList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         scheduleList.View = View.Details;
         scheduleList.FullRowSelect = true;
         scheduleList.MultiSelect = false;
         scheduleList.HideSelection = false;
         scheduleList.ContextMenuStrip = scheduleMenu;
-        scheduleList.Columns.Add("Day", 140);
-        scheduleList.Columns.Add("Time", 140);
-        scheduleList.Columns.Add("Action", 180);
-        scheduleList.Columns.Add("Enabled", 120);
+        scheduleList.Columns.Add("Station", 220);
+        scheduleList.Columns.Add("Day", 120);
+        scheduleList.Columns.Add("Time", 120);
+        scheduleList.Columns.Add("Action", 170);
+        scheduleList.Columns.Add("Enabled", 100);
         scheduleList.DoubleClick += (_, _) => EditSchedule();
         scheduleList.KeyDown += (_, e) =>
         {
@@ -67,23 +68,23 @@ public sealed class ScheduleListForm : Form
         };
 
         scheduleMenu.Opening += (_, _) => UpdateScheduleMenuState();
-        scheduleMenu.Items.Add("Add", null, (_, _) => AddSchedule());
-        scheduleMenu.Items.Add("Edit", null, (_, _) => EditSchedule());
-        scheduleMenu.Items.Add("Delete", null, (_, _) => DeleteSchedule());
+        scheduleMenu.Items.Add("&Add", null, (_, _) => AddSchedule());
+        scheduleMenu.Items.Add("&Edit", null, (_, _) => EditSchedule());
+        scheduleMenu.Items.Add("&Delete", null, (_, _) => DeleteSchedule());
 
-        addButton.Location = new Point(14, 330);
+        addButton.Location = new Point(14, 350);
         addButton.Size = new Size(90, 30);
         addButton.Click += (_, _) => AddSchedule();
 
-        editButton.Location = new Point(110, 330);
+        editButton.Location = new Point(110, 350);
         editButton.Size = new Size(90, 30);
         editButton.Click += (_, _) => EditSchedule();
 
-        deleteButton.Location = new Point(206, 330);
+        deleteButton.Location = new Point(206, 350);
         deleteButton.Size = new Size(90, 30);
         deleteButton.Click += (_, _) => DeleteSchedule();
 
-        closeButton.Location = new Point(600, 330);
+        closeButton.Location = new Point(740, 350);
         closeButton.Size = new Size(90, 30);
         closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         closeButton.Click += (_, _) => Close();
@@ -94,16 +95,25 @@ public sealed class ScheduleListForm : Form
 
     private void RefreshSchedules()
     {
+        var stations = app.GetStations().ToDictionary(station => station.Id, station => station.Name);
         var selectedId = GetSelectedSchedule()?.Id;
+
         scheduleList.BeginUpdate();
         scheduleList.Items.Clear();
 
-        foreach (var schedule in app.GetSchedulesForStation(station.Id).OrderBy(entry => entry.DayOfWeek).ThenBy(entry => entry.Hour).ThenBy(entry => entry.Minute).ThenBy(entry => entry.Second))
+        foreach (var schedule in app.GetSchedules()
+                     .OrderBy(entry => stations.TryGetValue(entry.StationId, out var name) ? name : string.Empty, StringComparer.CurrentCultureIgnoreCase)
+                     .ThenBy(entry => entry.DayOfWeek)
+                     .ThenBy(entry => entry.Hour)
+                     .ThenBy(entry => entry.Minute)
+                     .ThenBy(entry => entry.Second))
         {
-            var item = new ListViewItem(schedule.DayOfWeek.ToString())
+            var stationName = stations.TryGetValue(schedule.StationId, out var name) ? name : "(missing station)";
+            var item = new ListViewItem(stationName)
             {
                 Tag = schedule.Id,
             };
+            item.SubItems.Add(schedule.DayOfWeek.ToString());
             item.SubItems.Add($"{schedule.Hour:00}:{schedule.Minute:00}:{schedule.Second:00}");
             item.SubItems.Add(schedule.Action == ScheduleAction.StartRecording ? "Start recording" : "Stop recording");
             item.SubItems.Add(schedule.Enabled ? "Yes" : "No");
@@ -137,15 +147,22 @@ public sealed class ScheduleListForm : Form
             return null;
         }
 
-        return app.GetSchedulesForStation(station.Id).FirstOrDefault(value => value.Id == scheduleId);
+        return app.GetSchedules().FirstOrDefault(value => value.Id == scheduleId);
     }
 
     private void AddSchedule()
     {
-        using var dialog = new ScheduleEntryDialog(station.Name);
+        var stations = app.GetStations();
+        if (stations.Count == 0)
+        {
+            MessageBox.Show(this, "Add at least one station before creating a schedule entry.", "Schedules", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var dialog = new ScheduleEntryDialog(stations, preferredStationId);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            var schedule = dialog.BuildSchedule(station.Id);
+            var schedule = dialog.BuildSchedule();
             app.UpsertSchedule(schedule);
             RefreshSchedules();
             SelectSchedule(schedule.Id);
@@ -162,10 +179,10 @@ public sealed class ScheduleListForm : Form
             return;
         }
 
-        using var dialog = new ScheduleEntryDialog(station.Name, schedule);
+        using var dialog = new ScheduleEntryDialog(app.GetStations(), preferredStationId, schedule);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            app.UpsertSchedule(dialog.BuildSchedule(station.Id, schedule.Id));
+            app.UpsertSchedule(dialog.BuildSchedule(schedule.Id));
             RefreshSchedules();
             SelectSchedule(schedule.Id);
         }
@@ -195,7 +212,7 @@ public sealed class ScheduleListForm : Form
     private void UpdateScheduleMenuState()
     {
         var hasSelection = GetSelectedSchedule() is not null;
-        scheduleMenu.Items[0].Enabled = true;
+        scheduleMenu.Items[0].Enabled = app.GetStations().Count > 0;
         scheduleMenu.Items[1].Enabled = hasSelection;
         scheduleMenu.Items[2].Enabled = hasSelection;
     }
@@ -224,6 +241,13 @@ public sealed class ScheduleListForm : Form
 
         BeginInvoke((Action)(() =>
         {
+            if (scheduleList.Items.Count == 0)
+            {
+                addButton.Focus();
+                addButton.Select();
+                return;
+            }
+
             scheduleList.Focus();
             if (scheduleList.SelectedItems.Count > 0)
             {

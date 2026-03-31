@@ -9,12 +9,12 @@ public sealed class MainForm : Form
 {
     private readonly StreamRecorderApp app;
     private readonly MenuStrip menuStrip = new();
-    private readonly ToolStripMenuItem addStationMenuItem = new("Add station");
-    private readonly ToolStripMenuItem startRecordingMenuItem = new("Start recording");
-    private readonly ToolStripMenuItem stopRecordingMenuItem = new("Stop recording");
-    private readonly ToolStripMenuItem editStationMenuItem = new("Edit station");
-    private readonly ToolStripMenuItem schedulesMenuItem = new("Schedules...");
-    private readonly ToolStripMenuItem deleteStationMenuItem = new("Delete station");
+    private readonly ToolStripMenuItem addStationMenuItem = new("&Add station");
+    private readonly ToolStripMenuItem startRecordingMenuItem = new("&Start recording");
+    private readonly ToolStripMenuItem stopRecordingMenuItem = new("S&top recording");
+    private readonly ToolStripMenuItem editStationMenuItem = new("&Edit station");
+    private readonly ToolStripMenuItem schedulesMenuItem = new("Sche&dules...");
+    private readonly ToolStripMenuItem deleteStationMenuItem = new("&Delete station");
     private readonly Button addStationButton = new();
     private readonly Button showLogButton = new();
     private readonly ListView stationList = new();
@@ -81,7 +81,7 @@ public sealed class MainForm : Form
             }
             else
             {
-                stationList.Focus();
+                FocusPrimaryControl();
             }
         };
     }
@@ -89,15 +89,15 @@ public sealed class MainForm : Form
     private void BuildMenu()
     {
         var fileMenu = new ToolStripMenuItem("&File");
-        fileMenu.DropDownItems.Add("Open recordings folder", null, (_, _) => OpenPath(app.GetSettings().RecordingsFolder, useRoot: true));
-        fileMenu.DropDownItems.Add("Open settings folder", null, (_, _) => OpenPath(app.Paths.ConfigDirectory, useRoot: false));
-        fileMenu.DropDownItems.Add("Settings", null, (_, _) => OpenSettings());
+        fileMenu.DropDownItems.Add("&Open recordings folder", null, (_, _) => OpenPath(app.GetSettings().RecordingsFolder, useRoot: true));
+        fileMenu.DropDownItems.Add("Open se&ttings folder", null, (_, _) => OpenPath(app.Paths.ConfigDirectory, useRoot: false));
+        fileMenu.DropDownItems.Add("&Settings", null, (_, _) => OpenSettings());
         fileMenu.DropDownItems.Add(new ToolStripSeparator());
-        fileMenu.DropDownItems.Add("Exit", null, (_, _) => ExitApplication());
+        fileMenu.DropDownItems.Add("E&xit", null, (_, _) => ExitApplication());
 
         var helpMenu = new ToolStripMenuItem("&Help");
-        helpMenu.DropDownItems.Add("Check for updates", null, async (_, _) => await CheckForUpdatesAsync());
-        helpMenu.DropDownItems.Add("About", null, (_, _) => ShowAbout());
+        helpMenu.DropDownItems.Add("&Check for updates", null, async (_, _) => await CheckForUpdatesAsync());
+        helpMenu.DropDownItems.Add("&About", null, (_, _) => ShowAbout());
 
         menuStrip.Items.Add(fileMenu);
         menuStrip.Items.Add(helpMenu);
@@ -107,13 +107,13 @@ public sealed class MainForm : Form
 
     private void BuildMainLayout()
     {
-        addStationButton.Text = "Add station";
+        addStationButton.Text = "&Add station";
         addStationButton.Location = new Point(14, 40);
         addStationButton.Size = new Size(140, 30);
         addStationButton.Click += (_, _) => AddStation();
         Controls.Add(addStationButton);
 
-        showLogButton.Text = "Show log";
+        showLogButton.Text = "Show &log";
         showLogButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         showLogButton.Location = new Point(ClientSize.Width - 160, 40);
         showLogButton.Size = new Size(140, 30);
@@ -180,14 +180,14 @@ public sealed class MainForm : Form
 
     private void BuildTray()
     {
-        trayMenu.Items.Add("Show", null, (_, _) => RestoreFromTray());
-        trayMenu.Items.Add("Settings", null, (_, _) =>
+        trayMenu.Items.Add("&Show", null, (_, _) => RestoreFromTray());
+        trayMenu.Items.Add("&Settings", null, (_, _) =>
         {
             RestoreFromTray();
             OpenSettings();
         });
         trayMenu.Items.Add(new ToolStripSeparator());
-        trayMenu.Items.Add("Exit", null, (_, _) => ExitApplication());
+        trayMenu.Items.Add("E&xit", null, (_, _) => ExitApplication());
 
         trayIcon.Text = "StreamRecorder";
         trayIcon.Icon = SystemIcons.Application;
@@ -324,7 +324,7 @@ public sealed class MainForm : Form
             return;
         }
 
-        using var dialog = new ScheduleListForm(app, station);
+        using var dialog = new ScheduleListForm(app, station.Id);
         dialog.ShowDialog(this);
         RefreshUi();
         SelectStation(station.Id);
@@ -349,7 +349,7 @@ public sealed class MainForm : Form
 
     private void UpdateLogButtonText()
     {
-        showLogButton.Text = logForm.Visible ? "Hide log" : "Show log";
+        showLogButton.Text = logForm.Visible ? "Hide &log" : "Show &log";
     }
 
     private void OpenSettings()
@@ -428,15 +428,7 @@ public sealed class MainForm : Form
         Activate();
         BeginInvoke((Action)(() =>
         {
-            stationList.Focus();
-            if (stationList.SelectedItems.Count > 0)
-            {
-                stationList.SelectedItems[0].Focused = true;
-            }
-            else if (stationList.Items.Count > 0)
-            {
-                stationList.Items[0].Focused = true;
-            }
+            FocusPrimaryControl();
         }));
     }
 
@@ -555,7 +547,11 @@ public sealed class MainForm : Form
 
         if (!logForm.Visible && Visible && WindowState != FormWindowState.Minimized)
         {
-            BeginInvoke((Action)(() => showLogButton.Focus()));
+            BeginInvoke((Action)(() =>
+            {
+                showLogButton.Focus();
+                showLogButton.Select();
+            }));
         }
     }
 
@@ -752,11 +748,34 @@ public sealed class MainForm : Form
 
         BeginInvoke((Action)(() =>
         {
+            if (stationList.Items.Count == 0)
+            {
+                addStationButton.Focus();
+                addStationButton.Select();
+                return;
+            }
+
             stationList.Focus();
             if (stationList.SelectedItems.Count > 0)
             {
                 stationList.SelectedItems[0].Focused = true;
             }
+            else if (stationList.Items.Count > 0)
+            {
+                stationList.Items[0].Focused = true;
+            }
         }));
+    }
+
+    private void FocusPrimaryControl()
+    {
+        if (stationList.Items.Count == 0)
+        {
+            addStationButton.Focus();
+            addStationButton.Select();
+            return;
+        }
+
+        FocusStationList();
     }
 }
