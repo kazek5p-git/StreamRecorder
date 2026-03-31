@@ -5,7 +5,7 @@ use crate::logging::LogBus;
 use crate::models::{AppConfig, AppSettings, Station};
 use crate::recording::{RecorderManager, RecordingSnapshot};
 use crate::scheduler::SchedulerService;
-use crate::updater::{UpdateInfo, check_for_updates};
+use crate::updater::{DEFAULT_UPDATE_REPO, UpdateInfo, check_for_updates};
 use anyhow::Result;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
@@ -122,8 +122,7 @@ impl AppContext {
     }
 
     pub fn check_for_updates(&self) -> Result<Option<UpdateInfo>> {
-        let repo = self.settings_snapshot().update_repo;
-        check_for_updates(APP_VERSION, &repo)
+        check_for_updates(APP_VERSION, DEFAULT_UPDATE_REPO)
     }
 
     pub fn shutdown(&self) {

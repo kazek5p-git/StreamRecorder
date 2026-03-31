@@ -16,7 +16,7 @@ use streamrecorder::config::{AppPaths, load_or_create};
 use streamrecorder::localization::{current_language, tr};
 use streamrecorder::models::{AppSettings, Credentials, ScheduleRule, Station};
 use streamrecorder::recording::RecordingSnapshot;
-use streamrecorder::updater::{download_update, install_downloaded_update};
+use streamrecorder::updater::{DEFAULT_UPDATE_REPO, download_update, install_downloaded_update};
 use uuid::Uuid;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::System::Power::{
@@ -126,8 +126,6 @@ struct MainWindow {
     settings_remux_raw_aac: nwg::CheckBox,
     settings_language_label: nwg::Label,
     settings_language_combo: nwg::ComboBox<String>,
-    settings_update_repo_label: nwg::Label,
-    settings_update_repo_input: nwg::TextInput,
     settings_save: nwg::Button,
     settings_cancel: nwg::Button,
     settings_folder_dialog: nwg::FileDialog,
@@ -222,8 +220,6 @@ impl Default for MainWindow {
             settings_remux_raw_aac: Default::default(),
             settings_language_label: Default::default(),
             settings_language_combo: Default::default(),
-            settings_update_repo_label: Default::default(),
-            settings_update_repo_input: Default::default(),
             settings_save: Default::default(),
             settings_cancel: Default::default(),
             settings_folder_dialog: Default::default(),
@@ -612,7 +608,7 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
 
         nwg::Window::builder()
             .flags(nwg::WindowFlags::WINDOW)
-            .size((720, 570))
+            .size((720, 536))
             .position((160, 110))
             .title(tr("Settings"))
             .icon(Some(&data.icon))
@@ -739,33 +735,18 @@ impl nwg::NativeUi<MainWindowUi> for MainWindow {
             .collection(language_options())
             .selected_index(Some(language_selection_index()))
             .build(&mut data.settings_language_combo)?;
-        build_label(
-            &data.settings_window,
-            &mut data.settings_update_repo_label,
-            tr("Update repository:"),
-            (28, 476),
-            (150, 22),
-        )?;
-        build_input(
-            &data.settings_window,
-            &mut data.settings_update_repo_input,
-            "",
-            (190, 473),
-            (500, 26),
-            false,
-        )?;
         build_button(
             &data.settings_window,
             &mut data.settings_save,
             tr("Save"),
-            (500, 520),
+            (500, 486),
             (90, 28),
         )?;
         build_button(
             &data.settings_window,
             &mut data.settings_cancel,
             tr("Cancel"),
-            (600, 520),
+            (600, 486),
             (90, 28),
         )?;
         nwg::FileDialog::builder()
@@ -1129,9 +1110,8 @@ fn bind_raw_handlers(ui: &MainWindowUi) {
     bind_settings_escape_handler(ui, &ui.inner.settings_template_input.handle, 0x1002D);
     bind_settings_escape_handler(ui, &ui.inner.settings_remux_raw_aac.handle, 0x1002E);
     bind_settings_escape_handler(ui, &ui.inner.settings_language_combo.handle, 0x1002F);
-    bind_settings_escape_handler(ui, &ui.inner.settings_update_repo_input.handle, 0x10030);
-    bind_settings_escape_handler(ui, &ui.inner.settings_save.handle, 0x10031);
-    bind_settings_escape_handler(ui, &ui.inner.settings_cancel.handle, 0x10032);
+    bind_settings_escape_handler(ui, &ui.inner.settings_save.handle, 0x10030);
+    bind_settings_escape_handler(ui, &ui.inner.settings_cancel.handle, 0x10031);
 
     let weak = Rc::downgrade(&ui.inner);
     if let Ok(handler) = nwg::bind_raw_event_handler(
@@ -1762,8 +1742,6 @@ impl MainWindow {
             .set_check_state(check(settings.remux_raw_aac_to_m4a));
         self.settings_language_combo
             .set_selection(Some(language_selection_index_for(&settings.language)));
-        self.settings_update_repo_input
-            .set_text(&settings.update_repo);
     }
 
     fn save_settings_dialog(&self) {
@@ -1836,7 +1814,7 @@ impl MainWindow {
             recordings_folder,
             file_name_template: self.settings_template_input.text().trim().to_string(),
             language: language_from_selection(self.settings_language_combo.selection()),
-            update_repo: normalize_update_repo(&self.settings_update_repo_input.text()),
+            update_repo: DEFAULT_UPDATE_REPO.to_string(),
             ..previous.clone()
         })
     }
@@ -1904,15 +1882,6 @@ impl MainWindow {
     }
 
     fn check_updates(&self) {
-        let repo = app_context().settings_snapshot().update_repo;
-        if repo.trim().is_empty() {
-            nwg::modal_info_message(
-                &self.window,
-                tr("Updates"),
-                tr("Configure the GitHub repository in Settings to check for updates."),
-            );
-            return;
-        }
         match app_context().check_for_updates() {
             Ok(Some(update)) => {
                 if let Some(asset) = update.asset.clone() {
@@ -2282,28 +2251,6 @@ fn open_target(path: &Path) {
 
 fn open_url(url: &str) {
     let _ = Command::new("explorer.exe").arg(url).spawn();
-}
-
-fn normalize_update_repo(value: &str) -> String {
-    let trimmed = value.trim().trim_matches('/');
-    if trimmed.is_empty() {
-        return String::new();
-    }
-
-    for prefix in ["https://github.com/", "http://github.com/", "github.com/"] {
-        if let Some(rest) = trimmed.strip_prefix(prefix) {
-            return take_repo_segments(rest).unwrap_or_else(|| trimmed.to_string());
-        }
-    }
-
-    take_repo_segments(trimmed).unwrap_or_else(|| trimmed.to_string())
-}
-
-fn take_repo_segments(value: &str) -> Option<String> {
-    let mut parts = value.split('/').filter(|part| !part.is_empty());
-    let owner = parts.next()?;
-    let repo = parts.next()?.trim_end_matches(".git");
-    Some(format!("{owner}/{repo}"))
 }
 
 fn set_topmost(window: &nwg::Window, topmost: bool) {

@@ -95,7 +95,7 @@ impl Default for AppSettings {
             recordings_folder: PathBuf::from("My recordings"),
             file_name_template: "%t_%r-%M-%d_%h-%m-%s".to_string(),
             language: Language::Polish,
-            update_repo: String::new(),
+            update_repo: "kazek5p-git/StreamRecorder".to_string(),
         }
     }
 }
