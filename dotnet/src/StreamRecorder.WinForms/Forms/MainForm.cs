@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using StreamRecorder.Core;
 using StreamRecorder.Core.Models;
+using StreamRecorder.WinForms.Services;
 
 namespace StreamRecorder.WinForms.Forms;
 
@@ -17,6 +18,8 @@ public sealed class MainForm : Form
     private readonly NotifyIcon trayIcon = new();
     private readonly ContextMenuStrip trayMenu = new();
     private readonly System.Windows.Forms.Timer refreshTimer = new();
+    private readonly WindowsStartupRegistration startupRegistration = new();
+    private readonly WindowsPowerAssertion powerAssertion = new();
     private readonly LogForm logForm;
 
     private bool allowClose;
@@ -47,10 +50,33 @@ public sealed class MainForm : Form
 
         Resize += OnMainResize;
         FormClosing += OnMainFormClosing;
+        FormClosed += (_, _) =>
+        {
+            trayIcon.Visible = false;
+            powerAssertion.Dispose();
+            trayIcon.Dispose();
+            logForm.Dispose();
+        };
         Shown += (_, _) =>
         {
+            var settings = app.GetSettings();
+            ApplyShellSettings(settings, persistExternalState: true);
             RefreshUi();
-            stationList.Focus();
+            if (settings.StartMinimized)
+            {
+                BeginInvoke((Action)(() =>
+                {
+                    WindowState = FormWindowState.Minimized;
+                    if (settings.MinimizeToTray)
+                    {
+                        MinimizeIntoTray();
+                    }
+                }));
+            }
+            else
+            {
+                stationList.Focus();
+            }
         };
     }
 
@@ -324,7 +350,6 @@ public sealed class MainForm : Form
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             app.SaveSettings(dialog.BuildSettings());
-            RefreshUi();
         }
     }
 
@@ -376,8 +401,7 @@ public sealed class MainForm : Form
     {
         if (WindowState == FormWindowState.Minimized && app.GetSettings().MinimizeToTray)
         {
-            Hide();
-            ShowInTaskbar = false;
+            MinimizeIntoTray();
         }
     }
 
@@ -387,7 +411,18 @@ public sealed class MainForm : Form
         Show();
         WindowState = FormWindowState.Normal;
         Activate();
-        stationList.Focus();
+        BeginInvoke((Action)(() =>
+        {
+            stationList.Focus();
+            if (stationList.SelectedItems.Count > 0)
+            {
+                stationList.SelectedItems[0].Focused = true;
+            }
+            else if (stationList.Items.Count > 0)
+            {
+                stationList.Items[0].Focused = true;
+            }
+        }));
     }
 
     private void OnMainFormClosing(object? sender, FormClosingEventArgs e)
@@ -421,7 +456,11 @@ public sealed class MainForm : Form
     {
         if (IsHandleCreated)
         {
-            BeginInvoke((Action)RefreshUi);
+            BeginInvoke((Action)(() =>
+            {
+                ApplyShellSettings(app.GetSettings(), persistExternalState: true);
+                RefreshUi();
+            }));
         }
     }
 
@@ -454,5 +493,39 @@ public sealed class MainForm : Form
             FileName = url,
             UseShellExecute = true,
         });
+    }
+
+    private void ApplyShellSettings(AppSettings settings, bool persistExternalState)
+    {
+        TopMost = settings.AlwaysOnTop;
+
+        if (!persistExternalState)
+        {
+            return;
+        }
+
+        try
+        {
+            startupRegistration.Apply(settings.LaunchOnStartup, Application.ExecutablePath);
+        }
+        catch (Exception ex)
+        {
+            app.Logs.Push($"Failed to sync startup setting: {ex.Message}");
+        }
+
+        try
+        {
+            powerAssertion.Apply(settings.PreventSleep);
+        }
+        catch (Exception ex)
+        {
+            app.Logs.Push($"Failed to sync sleep prevention: {ex.Message}");
+        }
+    }
+
+    private void MinimizeIntoTray()
+    {
+        Hide();
+        ShowInTaskbar = false;
     }
 }

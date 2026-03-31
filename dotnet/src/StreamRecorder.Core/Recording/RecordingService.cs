@@ -5,6 +5,7 @@ using StreamRecorder.Core.Logging;
 using StreamRecorder.Core.Models;
 using StreamRecorder.Core.Naming;
 using StreamRecorder.Core.Probing;
+using StreamRecorder.Core.Tools;
 
 namespace StreamRecorder.Core.Recording;
 
@@ -232,7 +233,7 @@ public sealed class RecordingService : IDisposable
             }
         }
 
-        await FinalizeOutputAsync(station, logs, output, cancellationToken);
+        await FinalizeOutputAsync(station, settings, paths, logs, output);
     }
 
     private async Task RecordHlsLoopAsync(
@@ -337,19 +338,32 @@ public sealed class RecordingService : IDisposable
             await Task.Delay(parsed.PollInterval, cancellationToken);
         }
 
-        await FinalizeOutputAsync(station, logs, output, cancellationToken);
+        await FinalizeOutputAsync(station, settings, paths, logs, output);
     }
 
-    private async Task FinalizeOutputAsync(Station station, LogBus logs, OutputSession? output, CancellationToken cancellationToken)
+    private async Task FinalizeOutputAsync(
+        Station station,
+        AppSettings settings,
+        AppPaths paths,
+        LogBus logs,
+        OutputSession? output)
     {
         if (output is not null)
         {
-            await output.File.FlushAsync(cancellationToken);
+            await output.File.FlushAsync(CancellationToken.None);
             await output.File.DisposeAsync();
+
+            var finalOutputPath = output.Path;
+            if (output.Format == StreamFormat.AacRaw && settings.RemuxRawAacToM4A)
+            {
+                finalOutputPath = await Mp4BoxRemuxer.RemuxRawAacAsync(paths, logs, output.Path);
+            }
+
             UpdateSnapshot(station.Id, value =>
             {
                 value.Active = false;
                 value.StateLabel = "Stopped";
+                value.OutputPath = finalOutputPath;
             });
             logs.Push($"Recording stopped: {station.Name}");
         }
