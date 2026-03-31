@@ -6,20 +6,20 @@ namespace StreamRecorder.WinForms.Forms;
 
 public sealed class SettingsForm : Form
 {
-    private readonly CheckBox launchOnStartupCheckBox = new() { Text = "Launch application at Windows startup", AutoSize = true };
-    private readonly CheckBox alwaysOnTopCheckBox = new() { Text = "Always on top", AutoSize = true };
-    private readonly CheckBox minimizeToTrayCheckBox = new() { Text = "Minimize to system tray", AutoSize = true };
-    private readonly CheckBox confirmOnExitCheckBox = new() { Text = "Ask for confirmation before exit", AutoSize = true };
-    private readonly CheckBox restartOnCrashCheckBox = new() { Text = "Restart program after a crash", AutoSize = true };
-    private readonly CheckBox preventSleepCheckBox = new() { Text = "Prevent the computer from sleeping", AutoSize = true };
-    private readonly CheckBox startMinimizedCheckBox = new() { Text = "Start minimized", AutoSize = true };
-    private readonly CheckBox remuxAacCheckBox = new() { Text = "Remux RAW AAC to M4A after recording", AutoSize = true };
+    private readonly CheckBox launchOnStartupCheckBox = new() { Text = "Launch application at Windows startup", AutoSize = true, TabIndex = 0 };
+    private readonly CheckBox alwaysOnTopCheckBox = new() { Text = "Always on top", AutoSize = true, TabIndex = 1 };
+    private readonly CheckBox minimizeToTrayCheckBox = new() { Text = "Minimize to system tray", AutoSize = true, TabIndex = 2 };
+    private readonly CheckBox confirmOnExitCheckBox = new() { Text = "Ask for confirmation before exit", AutoSize = true, TabIndex = 3 };
+    private readonly CheckBox restartOnCrashCheckBox = new() { Text = "Restart program after a crash", AutoSize = true, TabIndex = 4 };
+    private readonly CheckBox preventSleepCheckBox = new() { Text = "Prevent the computer from sleeping", AutoSize = true, TabIndex = 5 };
+    private readonly CheckBox startMinimizedCheckBox = new() { Text = "Start minimized", AutoSize = true, TabIndex = 6 };
+    private readonly CheckBox remuxAacCheckBox = new() { Text = "Remux RAW AAC to M4A after recording", AutoSize = true, TabIndex = 10 };
     private readonly TextBox recordingsFolderTextBox = new();
     private readonly TextBox fileNameTemplateTextBox = new();
     private readonly ComboBox languageComboBox = new();
-    private readonly Button browseButton = new() { Text = "Browse" };
-    private readonly Button saveButton = new() { Text = "Save" };
-    private readonly Button cancelButton = new() { Text = "Cancel" };
+    private readonly Button browseButton = new() { Text = "B&rowse", AutoSize = true, TabIndex = 8 };
+    private readonly Button saveButton = new() { Text = "OK", AutoSize = true };
+    private readonly Button cancelButton = new() { Text = "Cancel", AutoSize = true };
     private readonly FolderBrowserDialog folderDialog = new();
     private readonly AppPaths paths;
 
@@ -33,7 +33,8 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(720, 520);
+        MinimumSize = new Size(760, 560);
+        ClientSize = new Size(760, 560);
 
         BuildLayout();
         ApplySettings(settings);
@@ -57,22 +58,125 @@ public sealed class SettingsForm : Form
         };
     }
 
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        ActiveControl = launchOnStartupCheckBox;
+    }
+
     private void BuildLayout()
     {
-        var generalLabel = new Label { Text = "General", Location = new Point(16, 14), AutoSize = true };
-        launchOnStartupCheckBox.Location = new Point(28, 44);
-        alwaysOnTopCheckBox.Location = new Point(28, 72);
-        minimizeToTrayCheckBox.Location = new Point(28, 100);
-        confirmOnExitCheckBox.Location = new Point(28, 128);
-        restartOnCrashCheckBox.Location = new Point(28, 156);
-        preventSleepCheckBox.Location = new Point(28, 184);
-        startMinimizedCheckBox.Location = new Point(28, 212);
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12),
+            ColumnCount = 1,
+            RowCount = 5,
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var recordingsLabel = new Label { Text = "Recordings folder:", Location = new Point(28, 258), AutoSize = true };
-        recordingsFolderTextBox.Location = new Point(190, 254);
-        recordingsFolderTextBox.Size = new Size(400, 27);
-        browseButton.Location = new Point(600, 252);
-        browseButton.Size = new Size(90, 30);
+        var introLabel = new Label
+        {
+            AutoSize = true,
+            Text = "These settings control startup behavior, the recording folder, file naming, and optional AAC remuxing.",
+            Margin = new Padding(0, 0, 0, 8),
+        };
+
+        var generalGroup = new GroupBox
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Text = "General",
+            Padding = new Padding(12, 10, 12, 12),
+        };
+        generalGroup.Controls.Add(BuildCheckboxStack(
+            launchOnStartupCheckBox,
+            alwaysOnTopCheckBox,
+            minimizeToTrayCheckBox,
+            confirmOnExitCheckBox,
+            restartOnCrashCheckBox,
+            preventSleepCheckBox,
+            startMinimizedCheckBox));
+
+        var recordingGroup = new GroupBox
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Text = "Recording",
+            Padding = new Padding(12, 10, 12, 12),
+        };
+        recordingGroup.Controls.Add(BuildRecordingSettingsLayout());
+
+        var otherGroup = new GroupBox
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Text = "Other",
+            Padding = new Padding(12, 10, 12, 12),
+        };
+        otherGroup.Controls.Add(BuildOtherSettingsLayout());
+
+        var buttonsPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            AutoSize = true,
+            WrapContents = false,
+            Margin = new Padding(0, 10, 0, 0),
+        };
+
+        saveButton.MinimumSize = new Size(90, 32);
+        saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
+
+        cancelButton.MinimumSize = new Size(90, 32);
+        cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
+
+        AcceptButton = saveButton;
+        CancelButton = cancelButton;
+
+        buttonsPanel.Controls.Add(cancelButton);
+        buttonsPanel.Controls.Add(saveButton);
+
+        root.Controls.Add(introLabel, 0, 0);
+        root.Controls.Add(generalGroup, 0, 1);
+        root.Controls.Add(recordingGroup, 0, 2);
+        root.Controls.Add(otherGroup, 0, 3);
+        root.Controls.Add(buttonsPanel, 0, 4);
+
+        Controls.Add(root);
+    }
+
+    private Control BuildRecordingSettingsLayout()
+    {
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 3,
+            RowCount = 4,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        var recordingsLabel = new Label
+        {
+            Text = "Recording &folder:",
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 6, 8, 6),
+        };
+        recordingsFolderTextBox.Dock = DockStyle.Fill;
+        recordingsFolderTextBox.TabIndex = 7;
+        browseButton.MinimumSize = new Size(90, 32);
         browseButton.Click += (_, _) =>
         {
             folderDialog.InitialDirectory = Path.IsPathRooted(recordingsFolderTextBox.Text)
@@ -84,43 +188,87 @@ public sealed class SettingsForm : Form
             }
         };
 
-        var templateLabel = new Label { Text = "File name template:", Location = new Point(28, 298), AutoSize = true };
-        fileNameTemplateTextBox.Location = new Point(190, 294);
-        fileNameTemplateTextBox.Size = new Size(500, 27);
-        var helpLabel = new Label
+        var templateLabel = new Label
         {
-            Text = "Tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second",
-            Location = new Point(28, 328),
+            Text = "File name &template:",
             AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 6, 8, 6),
+        };
+        fileNameTemplateTextBox.Dock = DockStyle.Fill;
+        fileNameTemplateTextBox.TabIndex = 9;
+
+        var tokensLabel = new Label
+        {
+            AutoSize = true,
+            Text = "Available tokens: %t station, %r year, %M month, %d day, %h hour, %m minute, %s second",
+            Margin = new Padding(0, 0, 0, 4),
         };
 
-        var otherLabel = new Label { Text = "Other", Location = new Point(16, 372), AutoSize = true };
-        remuxAacCheckBox.Location = new Point(28, 402);
-        var languageLabel = new Label { Text = "Language:", Location = new Point(28, 440), AutoSize = true };
-        languageComboBox.Location = new Point(190, 436);
-        languageComboBox.Size = new Size(150, 28);
+        layout.Controls.Add(recordingsLabel, 0, 0);
+        layout.Controls.Add(recordingsFolderTextBox, 1, 0);
+        layout.Controls.Add(browseButton, 2, 0);
+        layout.Controls.Add(templateLabel, 0, 1);
+        layout.Controls.Add(fileNameTemplateTextBox, 1, 1);
+        layout.SetColumnSpan(fileNameTemplateTextBox, 2);
+        layout.Controls.Add(tokensLabel, 0, 2);
+        layout.SetColumnSpan(tokensLabel, 3);
+        layout.Controls.Add(remuxAacCheckBox, 0, 3);
+        layout.SetColumnSpan(remuxAacCheckBox, 3);
+
+        return layout;
+    }
+
+    private Control BuildOtherSettingsLayout()
+    {
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 1,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        var languageLabel = new Label
+        {
+            Text = "&Language:",
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 6, 8, 6),
+        };
+
         languageComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         languageComboBox.Items.AddRange(["Polish", "English"]);
+        languageComboBox.Width = 180;
+        languageComboBox.TabIndex = 11;
 
-        saveButton.Location = new Point(500, 474);
-        saveButton.Size = new Size(90, 30);
-        saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
+        layout.Controls.Add(languageLabel, 0, 0);
+        layout.Controls.Add(languageComboBox, 1, 0);
 
-        cancelButton.Location = new Point(600, 474);
-        cancelButton.Size = new Size(90, 30);
-        cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
+        return layout;
+    }
 
-        AcceptButton = saveButton;
-        CancelButton = cancelButton;
+    private static Control BuildCheckboxStack(params CheckBox[] checkBoxes)
+    {
+        var layout = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+        };
 
-        Controls.AddRange([
-            generalLabel, launchOnStartupCheckBox, alwaysOnTopCheckBox, minimizeToTrayCheckBox, confirmOnExitCheckBox,
-            restartOnCrashCheckBox, preventSleepCheckBox, startMinimizedCheckBox,
-            recordingsLabel, recordingsFolderTextBox, browseButton,
-            templateLabel, fileNameTemplateTextBox, helpLabel,
-            otherLabel, remuxAacCheckBox, languageLabel, languageComboBox,
-            saveButton, cancelButton
-        ]);
+        foreach (var checkBox in checkBoxes)
+        {
+            checkBox.Margin = new Padding(0, 0, 0, 6);
+            layout.Controls.Add(checkBox);
+        }
+
+        return layout;
     }
 
     private void ApplySettings(AppSettings settings)

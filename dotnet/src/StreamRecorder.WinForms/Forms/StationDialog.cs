@@ -8,8 +8,8 @@ public sealed class StationDialog : Form
     private readonly TextBox urlTextBox = new();
     private readonly TextBox usernameTextBox = new();
     private readonly TextBox passwordTextBox = new();
-    private readonly Button okButton = new();
-    private readonly Button cancelButton = new();
+    private readonly Button okButton = new() { Text = "OK", AutoSize = true };
+    private readonly Button cancelButton = new() { Text = "Cancel", AutoSize = true };
 
     public StationDialog(Station? station = null)
     {
@@ -19,7 +19,8 @@ public sealed class StationDialog : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(520, 240);
+        MinimumSize = new Size(620, 380);
+        ClientSize = new Size(620, 380);
 
         BuildLayout();
 
@@ -56,37 +57,61 @@ public sealed class StationDialog : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        nameTextBox.Focus();
+        ActiveControl = nameTextBox;
+        nameTextBox.SelectAll();
     }
 
     private void BuildLayout()
     {
-        var nameLabel = new Label { Text = "Name:", Location = new Point(16, 22), AutoSize = true };
-        var urlLabel = new Label { Text = "URL:", Location = new Point(16, 62), AutoSize = true };
-        var usernameLabel = new Label { Text = "Username:", Location = new Point(16, 102), AutoSize = true };
-        var passwordLabel = new Label { Text = "Password:", Location = new Point(16, 142), AutoSize = true };
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12),
+            ColumnCount = 1,
+            RowCount = 4,
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        nameTextBox.Location = new Point(120, 18);
-        nameTextBox.Size = new Size(380, 27);
-        nameTextBox.TabIndex = 0;
+        var infoLabel = new Label
+        {
+            AutoSize = true,
+            Text = "Enter the stream details below. Username and password are optional.",
+            Margin = new Padding(0, 0, 0, 8),
+        };
 
-        urlTextBox.Location = new Point(120, 58);
-        urlTextBox.Size = new Size(380, 27);
-        urlTextBox.TabIndex = 1;
+        var stationGroup = new GroupBox
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Text = "Station information",
+            Padding = new Padding(12, 10, 12, 12),
+        };
+        stationGroup.Controls.Add(BuildStationFields());
 
-        usernameTextBox.Location = new Point(120, 98);
-        usernameTextBox.Size = new Size(380, 27);
-        usernameTextBox.TabIndex = 2;
+        var credentialsGroup = new GroupBox
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Text = "Optional credentials",
+            Padding = new Padding(12, 10, 12, 12),
+        };
+        credentialsGroup.Controls.Add(BuildCredentialsFields());
 
-        passwordTextBox.Location = new Point(120, 138);
-        passwordTextBox.Size = new Size(380, 27);
-        passwordTextBox.UseSystemPasswordChar = true;
-        passwordTextBox.TabIndex = 3;
+        var buttonsPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            AutoSize = true,
+            WrapContents = false,
+            Margin = new Padding(0, 10, 0, 0),
+        };
 
-        okButton.Text = "OK";
-        okButton.Location = new Point(304, 190);
-        okButton.Size = new Size(90, 30);
-        okButton.TabIndex = 4;
+        okButton.MinimumSize = new Size(90, 32);
         okButton.Click += (_, _) =>
         {
             if (ValidateInputs())
@@ -95,20 +120,78 @@ public sealed class StationDialog : Form
             }
         };
 
-        cancelButton.Text = "Cancel";
-        cancelButton.Location = new Point(410, 190);
-        cancelButton.Size = new Size(90, 30);
-        cancelButton.TabIndex = 5;
+        cancelButton.MinimumSize = new Size(90, 32);
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
+
+        buttonsPanel.Controls.Add(cancelButton);
+        buttonsPanel.Controls.Add(okButton);
 
         AcceptButton = okButton;
         CancelButton = cancelButton;
 
-        Controls.AddRange([
-            nameLabel, urlLabel, usernameLabel, passwordLabel,
-            nameTextBox, urlTextBox, usernameTextBox, passwordTextBox,
-            okButton, cancelButton
-        ]);
+        root.Controls.Add(infoLabel, 0, 0);
+        root.Controls.Add(stationGroup, 0, 1);
+        root.Controls.Add(credentialsGroup, 0, 2);
+        root.Controls.Add(buttonsPanel, 0, 3);
+
+        Controls.Add(root);
+    }
+
+    private Control BuildStationFields()
+    {
+        var layout = CreateFormTable();
+
+        var nameLabel = new Label { Text = "&Name:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var urlLabel = new Label { Text = "&URL:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+
+        nameTextBox.Dock = DockStyle.Fill;
+        nameTextBox.TabIndex = 0;
+        urlTextBox.Dock = DockStyle.Fill;
+        urlTextBox.TabIndex = 1;
+
+        layout.Controls.Add(nameLabel, 0, 0);
+        layout.Controls.Add(nameTextBox, 1, 0);
+        layout.Controls.Add(urlLabel, 0, 1);
+        layout.Controls.Add(urlTextBox, 1, 1);
+
+        return layout;
+    }
+
+    private Control BuildCredentialsFields()
+    {
+        var layout = CreateFormTable();
+
+        var usernameLabel = new Label { Text = "&Username:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var passwordLabel = new Label { Text = "&Password:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+
+        usernameTextBox.Dock = DockStyle.Fill;
+        usernameTextBox.TabIndex = 2;
+        passwordTextBox.Dock = DockStyle.Fill;
+        passwordTextBox.UseSystemPasswordChar = true;
+        passwordTextBox.TabIndex = 3;
+
+        layout.Controls.Add(usernameLabel, 0, 0);
+        layout.Controls.Add(usernameTextBox, 1, 0);
+        layout.Controls.Add(passwordLabel, 0, 1);
+        layout.Controls.Add(passwordTextBox, 1, 1);
+
+        return layout;
+    }
+
+    private static TableLayoutPanel CreateFormTable()
+    {
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 2,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        return layout;
     }
 
     private bool ValidateInputs()

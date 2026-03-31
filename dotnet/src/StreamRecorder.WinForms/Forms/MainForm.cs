@@ -246,9 +246,13 @@ public sealed class MainForm : Form
         using var dialog = new StationDialog();
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            app.UpsertStation(dialog.BuildStation());
+            var station = dialog.BuildStation();
+            app.UpsertStation(station);
             RefreshUi();
+            SelectStation(station.Id);
         }
+
+        FocusStationList();
     }
 
     private void EditSelectedStation()
@@ -264,7 +268,10 @@ public sealed class MainForm : Form
         {
             app.UpsertStation(dialog.BuildStation(station.Id));
             RefreshUi();
+            SelectStation(station.Id);
         }
+
+        FocusStationList();
     }
 
     private async Task StartSelectedStationAsync()
@@ -320,6 +327,8 @@ public sealed class MainForm : Form
         using var dialog = new ScheduleListForm(app, station);
         dialog.ShowDialog(this);
         RefreshUi();
+        SelectStation(station.Id);
+        FocusStationList();
     }
 
     private void ToggleLogWindow()
@@ -345,11 +354,18 @@ public sealed class MainForm : Form
 
     private void OpenSettings()
     {
+        var selectedId = GetSelectedStationId();
         using var dialog = new SettingsForm(app.GetSettings(), app.Paths);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             app.SaveSettings(dialog.BuildSettings());
         }
+
+        if (selectedId is not null)
+        {
+            SelectStation(selectedId.Value);
+        }
+        FocusStationList();
     }
 
     private async Task CheckForUpdatesAsync()
@@ -710,5 +726,37 @@ public sealed class MainForm : Form
         stationList.Columns[2].Width = statusWidth;
         stationList.Columns[3].Width = formatWidth;
         stationList.Columns[4].Width = fileWidth;
+    }
+
+    private void SelectStation(Guid stationId)
+    {
+        foreach (ListViewItem item in stationList.Items)
+        {
+            var currentId = (Guid)item.Tag!;
+            item.Selected = currentId == stationId;
+            item.Focused = currentId == stationId;
+
+            if (currentId == stationId)
+            {
+                item.EnsureVisible();
+            }
+        }
+    }
+
+    private void FocusStationList()
+    {
+        if (!Visible || WindowState == FormWindowState.Minimized)
+        {
+            return;
+        }
+
+        BeginInvoke((Action)(() =>
+        {
+            stationList.Focus();
+            if (stationList.SelectedItems.Count > 0)
+            {
+                stationList.SelectedItems[0].Focused = true;
+            }
+        }));
     }
 }

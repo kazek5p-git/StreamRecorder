@@ -8,6 +8,7 @@ public sealed class ScheduleListForm : Form
     private readonly StreamRecorderApp app;
     private readonly Station station;
     private readonly ListView scheduleList = new();
+    private readonly ContextMenuStrip scheduleMenu = new();
     private readonly Button addButton = new() { Text = "Add" };
     private readonly Button editButton = new() { Text = "Edit" };
     private readonly Button deleteButton = new() { Text = "Delete" };
@@ -31,7 +32,7 @@ public sealed class ScheduleListForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        scheduleList.Focus();
+        FocusScheduleList();
     }
 
     private void BuildLayout()
@@ -43,6 +44,7 @@ public sealed class ScheduleListForm : Form
         scheduleList.FullRowSelect = true;
         scheduleList.MultiSelect = false;
         scheduleList.HideSelection = false;
+        scheduleList.ContextMenuStrip = scheduleMenu;
         scheduleList.Columns.Add("Day", 140);
         scheduleList.Columns.Add("Time", 140);
         scheduleList.Columns.Add("Action", 180);
@@ -63,6 +65,11 @@ public sealed class ScheduleListForm : Form
                 e.SuppressKeyPress = true;
             }
         };
+
+        scheduleMenu.Opening += (_, _) => UpdateScheduleMenuState();
+        scheduleMenu.Items.Add("Add", null, (_, _) => AddSchedule());
+        scheduleMenu.Items.Add("Edit", null, (_, _) => EditSchedule());
+        scheduleMenu.Items.Add("Delete", null, (_, _) => DeleteSchedule());
 
         addButton.Location = new Point(14, 330);
         addButton.Size = new Size(90, 30);
@@ -138,9 +145,13 @@ public sealed class ScheduleListForm : Form
         using var dialog = new ScheduleEntryDialog(station.Name);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            app.UpsertSchedule(dialog.BuildSchedule(station.Id));
+            var schedule = dialog.BuildSchedule(station.Id);
+            app.UpsertSchedule(schedule);
             RefreshSchedules();
+            SelectSchedule(schedule.Id);
         }
+
+        FocusScheduleList();
     }
 
     private void EditSchedule()
@@ -156,7 +167,10 @@ public sealed class ScheduleListForm : Form
         {
             app.UpsertSchedule(dialog.BuildSchedule(station.Id, schedule.Id));
             RefreshSchedules();
+            SelectSchedule(schedule.Id);
         }
+
+        FocusScheduleList();
     }
 
     private void DeleteSchedule()
@@ -175,5 +189,46 @@ public sealed class ScheduleListForm : Form
 
         app.DeleteSchedule(schedule.Id);
         RefreshSchedules();
+        FocusScheduleList();
+    }
+
+    private void UpdateScheduleMenuState()
+    {
+        var hasSelection = GetSelectedSchedule() is not null;
+        scheduleMenu.Items[0].Enabled = true;
+        scheduleMenu.Items[1].Enabled = hasSelection;
+        scheduleMenu.Items[2].Enabled = hasSelection;
+    }
+
+    private void SelectSchedule(Guid scheduleId)
+    {
+        foreach (ListViewItem item in scheduleList.Items)
+        {
+            var currentId = (Guid)item.Tag!;
+            item.Selected = currentId == scheduleId;
+            item.Focused = currentId == scheduleId;
+
+            if (currentId == scheduleId)
+            {
+                item.EnsureVisible();
+            }
+        }
+    }
+
+    private void FocusScheduleList()
+    {
+        if (!Visible)
+        {
+            return;
+        }
+
+        BeginInvoke((Action)(() =>
+        {
+            scheduleList.Focus();
+            if (scheduleList.SelectedItems.Count > 0)
+            {
+                scheduleList.SelectedItems[0].Focused = true;
+            }
+        }));
     }
 }

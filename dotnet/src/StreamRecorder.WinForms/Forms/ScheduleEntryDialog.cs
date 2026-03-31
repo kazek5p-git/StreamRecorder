@@ -7,9 +7,9 @@ public sealed class ScheduleEntryDialog : Form
     private readonly ComboBox dayComboBox = new();
     private readonly ComboBox actionComboBox = new();
     private readonly DateTimePicker timePicker = new();
-    private readonly CheckBox enabledCheckBox = new() { Text = "Enabled", AutoSize = true };
-    private readonly Button okButton = new() { Text = "OK" };
-    private readonly Button cancelButton = new() { Text = "Cancel" };
+    private readonly CheckBox enabledCheckBox = new() { Text = "&Enabled", AutoSize = true, TabIndex = 3 };
+    private readonly Button okButton = new() { Text = "OK", AutoSize = true };
+    private readonly Button cancelButton = new() { Text = "Cancel", AutoSize = true };
 
     public ScheduleEntryDialog(string stationName, ScheduleEntry? schedule = null)
     {
@@ -19,7 +19,8 @@ public sealed class ScheduleEntryDialog : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(420, 220);
+        MinimumSize = new Size(470, 300);
+        ClientSize = new Size(470, 300);
 
         BuildLayout();
 
@@ -57,41 +58,108 @@ public sealed class ScheduleEntryDialog : Form
         };
     }
 
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        ActiveControl = dayComboBox;
+    }
+
     private void BuildLayout()
     {
-        var dayLabel = new Label { Text = "Day:", Location = new Point(18, 22), AutoSize = true };
-        var actionLabel = new Label { Text = "Action:", Location = new Point(18, 62), AutoSize = true };
-        var timeLabel = new Label { Text = "Time:", Location = new Point(18, 102), AutoSize = true };
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12),
+            ColumnCount = 1,
+            RowCount = 3,
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        dayComboBox.Location = new Point(120, 18);
-        dayComboBox.Size = new Size(200, 28);
+        var introLabel = new Label
+        {
+            AutoSize = true,
+            Text = "Choose the day, action and exact time for this schedule entry.",
+            Margin = new Padding(0, 0, 0, 8),
+        };
+
+        var scheduleGroup = new GroupBox
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Text = "Schedule entry",
+            Padding = new Padding(12, 10, 12, 12),
+        };
+
+        var fields = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 4,
+        };
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        var dayLabel = new Label { Text = "&Day:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var actionLabel = new Label { Text = "&Action:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var timeLabel = new Label { Text = "&Time:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+
+        dayComboBox.Dock = DockStyle.Fill;
         dayComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         dayComboBox.Items.AddRange(Enum.GetValues<DayOfWeek>().Cast<object>().ToArray());
+        dayComboBox.TabIndex = 0;
 
-        actionComboBox.Location = new Point(120, 58);
-        actionComboBox.Size = new Size(200, 28);
+        actionComboBox.Dock = DockStyle.Fill;
         actionComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         actionComboBox.Items.AddRange(Enum.GetValues<ScheduleAction>().Cast<object>().ToArray());
+        actionComboBox.TabIndex = 1;
 
-        timePicker.Location = new Point(120, 98);
-        timePicker.Size = new Size(200, 28);
+        timePicker.Dock = DockStyle.Left;
+        timePicker.Width = 140;
         timePicker.Format = DateTimePickerFormat.Custom;
         timePicker.CustomFormat = "HH:mm:ss";
         timePicker.ShowUpDown = true;
+        timePicker.TabIndex = 2;
 
-        enabledCheckBox.Location = new Point(120, 138);
+        fields.Controls.Add(dayLabel, 0, 0);
+        fields.Controls.Add(dayComboBox, 1, 0);
+        fields.Controls.Add(actionLabel, 0, 1);
+        fields.Controls.Add(actionComboBox, 1, 1);
+        fields.Controls.Add(timeLabel, 0, 2);
+        fields.Controls.Add(timePicker, 1, 2);
+        fields.Controls.Add(enabledCheckBox, 1, 3);
 
-        okButton.Location = new Point(224, 176);
-        okButton.Size = new Size(90, 30);
+        scheduleGroup.Controls.Add(fields);
+
+        var buttonsPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            AutoSize = true,
+            WrapContents = false,
+            Margin = new Padding(0, 10, 0, 0),
+        };
+
+        okButton.MinimumSize = new Size(90, 32);
         okButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
-        cancelButton.Location = new Point(324, 176);
-        cancelButton.Size = new Size(90, 30);
+        cancelButton.MinimumSize = new Size(90, 32);
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = okButton;
         CancelButton = cancelButton;
 
-        Controls.AddRange([dayLabel, actionLabel, timeLabel, dayComboBox, actionComboBox, timePicker, enabledCheckBox, okButton, cancelButton]);
+        buttonsPanel.Controls.Add(cancelButton);
+        buttonsPanel.Controls.Add(okButton);
+
+        root.Controls.Add(introLabel, 0, 0);
+        root.Controls.Add(scheduleGroup, 0, 1);
+        root.Controls.Add(buttonsPanel, 0, 2);
+
+        Controls.Add(root);
     }
 }
