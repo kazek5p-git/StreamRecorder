@@ -58,6 +58,7 @@ public sealed class AppLocalizer
     public string FileColumn => IsPolish ? "Plik" : "File";
     public string StationsAccessibleName => IsPolish ? "Stacje" : "Stations";
     public string StationsAccessibleDescription => IsPolish ? "Lista skonfigurowanych stacji." : "List of configured stations.";
+    public string NoStationsConfigured => IsPolish ? "Brak dodanych stacji." : "No stations configured.";
     public string LogTitle => IsPolish ? "Log" : "Log";
     public string LogEntriesAccessibleName => IsPolish ? "Wpisy logu" : "Log entries";
     public string LogEntriesAccessibleDescription => IsPolish ? "Wpisy logu aplikacji." : "Application log entries.";

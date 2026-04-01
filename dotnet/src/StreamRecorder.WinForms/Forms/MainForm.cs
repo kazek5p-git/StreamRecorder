@@ -8,6 +8,7 @@ namespace StreamRecorder.WinForms.Forms;
 
 public sealed class MainForm : Form
 {
+    private static readonly object EmptyStationListTag = new();
     private readonly StreamRecorderApp app;
     private readonly MenuStrip menuStrip = new();
     private readonly ToolStripMenuItem fileMenu = new();
@@ -146,6 +147,7 @@ public sealed class MainForm : Form
         stationList.HideSelection = false;
         stationList.LabelEdit = false;
         stationList.Name = "Stations";
+        stationList.AccessibleRole = AccessibleRole.List;
         stationList.TabIndex = 2;
         stationList.ContextMenuStrip = stationMenu;
         stationList.Columns.Add(string.Empty, 260);
@@ -598,14 +600,21 @@ public sealed class MainForm : Form
         Guid? focusedId,
         Guid? topId)
     {
-        var existingItems = stationList.Items
-            .Cast<ListViewItem>()
-            .Where(static item => item.Tag is Guid)
-            .ToDictionary(item => (Guid)item.Tag!, item => item);
-
         stationList.BeginUpdate();
         try
         {
+            if (stations.Count == 0)
+            {
+                ShowEmptyStationPlaceholder();
+                UpdateStationColumns();
+                return;
+            }
+
+            var existingItems = stationList.Items
+                .Cast<ListViewItem>()
+                .Where(static item => item.Tag is Guid)
+                .ToDictionary(item => (Guid)item.Tag!, item => item);
+
             for (var index = 0; index < stations.Count; index++)
             {
                 var station = stations[index];
@@ -682,6 +691,27 @@ public sealed class MainForm : Form
         {
             stationList.EndUpdate();
         }
+    }
+
+    private void ShowEmptyStationPlaceholder()
+    {
+        stationList.Items.Clear();
+
+        var placeholder = new ListViewItem
+        {
+            Tag = EmptyStationListTag,
+            ForeColor = SystemColors.GrayText,
+            Text = app.GetLocalizer().NoStationsConfigured,
+        };
+
+        EnsureSubItemCount(placeholder, 5);
+        placeholder.SubItems[1].Text = "-";
+        placeholder.SubItems[2].Text = "-";
+        placeholder.SubItems[3].Text = "-";
+        placeholder.SubItems[4].Text = "-";
+        placeholder.Selected = true;
+        placeholder.Focused = true;
+        stationList.Items.Add(placeholder);
     }
 
     private void ApplyStationToItem(ListViewItem item, Station station, RecordingSnapshot? snapshot)
@@ -820,13 +850,6 @@ public sealed class MainForm : Form
 
         BeginInvoke((Action)(() =>
         {
-            if (stationList.Items.Count == 0)
-            {
-                addStationButton.Focus();
-                addStationButton.Select();
-                return;
-            }
-
             stationList.Focus();
             if (stationList.SelectedItems.Count > 0)
             {
@@ -841,13 +864,6 @@ public sealed class MainForm : Form
 
     private void FocusPrimaryControl()
     {
-        if (stationList.Items.Count == 0)
-        {
-            addStationButton.Focus();
-            addStationButton.Select();
-            return;
-        }
-
         FocusStationList();
     }
 }
