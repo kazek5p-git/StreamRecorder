@@ -5,6 +5,7 @@ namespace StreamRecorder.WinForms.Forms;
 
 public sealed class StationDialog : Form
 {
+    private static readonly string[] SupportedSchemes = ["http", "https", "mms", "mmsh"];
     private readonly AppLocalizer localizer;
     private readonly TextBox nameTextBox = new();
     private readonly TextBox urlTextBox = new();
@@ -39,11 +40,12 @@ public sealed class StationDialog : Form
 
     public Station BuildStation(Guid? stationId = null)
     {
+        var normalizedUrl = NormalizeUrl(urlTextBox.Text.Trim());
         var station = new Station
         {
             Id = stationId ?? Guid.NewGuid(),
             Name = nameTextBox.Text.Trim(),
-            Url = urlTextBox.Text.Trim(),
+            Url = normalizedUrl,
         };
 
         if (!string.IsNullOrWhiteSpace(usernameTextBox.Text) || !string.IsNullOrWhiteSpace(passwordTextBox.Text))
@@ -215,13 +217,56 @@ public sealed class StationDialog : Form
             return false;
         }
 
-        if (!Uri.TryCreate(urlTextBox.Text.Trim(), UriKind.Absolute, out _))
+        var urlText = urlTextBox.Text.Trim();
+        if (!TryNormalizeUrl(urlText, out var normalizedUrl))
         {
             MessageBox.Show(this, localizer.StreamUrlInvalid, localizer.ValidationTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             urlTextBox.Focus();
             return false;
         }
 
+        urlTextBox.Text = normalizedUrl;
+
+        return true;
+    }
+
+    private static string NormalizeUrl(string input)
+    {
+        return TryNormalizeUrl(input, out var normalized)
+            ? normalized
+            : input.Trim();
+    }
+
+    private static bool TryNormalizeUrl(string input, out string normalized)
+    {
+        normalized = string.Empty;
+        var candidate = input.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (!candidate.Contains("://", StringComparison.Ordinal))
+        {
+            candidate = "http://" + candidate;
+        }
+
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        if (!SupportedSchemes.Contains(uri.Scheme, StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return false;
+        }
+
+        normalized = uri.ToString();
         return true;
     }
 }
