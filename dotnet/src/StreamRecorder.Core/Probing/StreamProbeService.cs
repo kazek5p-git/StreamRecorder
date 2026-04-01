@@ -7,7 +7,7 @@ public static class StreamProbeService
     public static StreamProbe ProbeStream(string url, string? contentType, byte[] firstBytes)
     {
         var normalizedContentType = NormalizeContentType(contentType);
-        var protocol = IsHls(url, normalizedContentType, firstBytes) ? StreamProtocol.Hls : StreamProtocol.Http;
+        var protocol = DetectProtocol(url, normalizedContentType, firstBytes);
         var format = DetectFormat(url, normalizedContentType, firstBytes);
 
         return new StreamProbe
@@ -16,6 +16,16 @@ public static class StreamProbeService
             Format = format,
             Mime = normalizedContentType,
         };
+    }
+
+    private static StreamProtocol DetectProtocol(string url, string? contentType, byte[] firstBytes)
+    {
+        if (IsMmsh(url, contentType))
+        {
+            return StreamProtocol.Mmsh;
+        }
+
+        return IsHls(url, contentType, firstBytes) ? StreamProtocol.Hls : StreamProtocol.Http;
     }
 
     private static string? NormalizeContentType(string? value)
@@ -38,8 +48,25 @@ public static class StreamProbeService
             || firstBytes.AsSpan().StartsWith("#EXTM3U"u8);
     }
 
+    private static bool IsMmsh(string url, string? contentType)
+    {
+        if (url.StartsWith("mms://", StringComparison.OrdinalIgnoreCase)
+            || url.StartsWith("mmsh://", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return contentType is not null
+            && contentType.Contains("application/x-mms-framed", StringComparison.Ordinal);
+    }
+
     private static StreamFormat DetectFormat(string url, string? contentType, byte[] firstBytes)
     {
+        if (IsMmsh(url, contentType))
+        {
+            return StreamFormat.Wma;
+        }
+
         if (!string.IsNullOrWhiteSpace(contentType))
         {
             if (contentType.Contains("audio/mpeg", StringComparison.Ordinal) || contentType.Contains("audio/mp3", StringComparison.Ordinal))
@@ -62,7 +89,8 @@ public static class StreamProbeService
             }
             if (contentType.Contains("audio/x-ms-wma", StringComparison.Ordinal)
                 || contentType.Contains("audio/wma", StringComparison.Ordinal)
-                || contentType.Contains("application/vnd.ms-asf", StringComparison.Ordinal))
+                || contentType.Contains("application/vnd.ms-asf", StringComparison.Ordinal)
+                || contentType.Contains("video/x-ms-asf", StringComparison.Ordinal))
             {
                 return StreamFormat.Wma;
             }

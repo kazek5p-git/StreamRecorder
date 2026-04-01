@@ -38,4 +38,22 @@ public sealed class StreamProbeServiceTests
 
         Assert.Equal(StreamFormat.Mp3, probe.Format);
     }
+
+    [Fact]
+    public void ProbeStream_DetectsMmshAndWmaForMmsUrls()
+    {
+        var bytes = new byte[]
+        {
+            0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11,
+            0xA6, 0xD9, 0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C,
+        };
+
+        var probe = StreamProbeService.ProbeStream(
+            "mms://pompuj.mywire.org",
+            "application/x-mms-framed",
+            bytes);
+
+        Assert.Equal(StreamProtocol.Mmsh, probe.Protocol);
+        Assert.Equal(StreamFormat.Wma, probe.Format);
+    }
 }

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Preliminary `mms://` / `MMSH` recording support for Windows Media streams, including WMA detection and framed stream parsing.
+
+### Changed
+
+- The schedule entry dialog now uses tab-focusable weekday selection fields instead of a single weekday drop-down.
+
 ## [0.2.0-alpha1] - 2026-03-31
 
 This is the first public preview of the C# + WinForms rewrite. The stable Rust release line remains unchanged.

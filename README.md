@@ -25,6 +25,7 @@ The rewrite is prepared for preview builds and documented further in:
 - Portable configuration stored in `Config/app.toml`.
 - HTTP/HTTPS and HLS recording with automatic reconnect handling.
 - Basic format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS streams.
+- Basic `mms://` / `MMSH` support for Windows Media streams.
 - One schedule rule per station.
 - Optional RAW AAC to M4A remuxing through a locally available `MP4Box.exe`.
 - Separate settings window for startup, topmost, tray, sleep prevention, recording folder, file naming template, remux, language, and updates.

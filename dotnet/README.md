@@ -8,6 +8,7 @@ The rewrite is already usable as a preview build. It includes:
 
 - WinForms main window with station list, context menu, tray integration, log window, settings, and global schedules
 - HTTP, HTTPS, and HLS recording
+- preliminary `mms://` / `MMSH` recording for Windows Media streams
 - reconnect handling
 - stream format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS
 - detailed fallback logging for unknown stream formats

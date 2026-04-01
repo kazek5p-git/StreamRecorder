@@ -7,12 +7,12 @@ public sealed class ScheduleEntryDialog : Form
 {
     private readonly AppLocalizer localizer;
     private readonly ComboBox stationComboBox = new();
-    private readonly ComboBox dayComboBox = new();
     private readonly ComboBox actionComboBox = new();
     private readonly DateTimePicker timePicker = new();
-    private readonly CheckBox enabledCheckBox = new() { AutoSize = true, TabIndex = 4 };
+    private readonly CheckBox enabledCheckBox = new() { AutoSize = true, TabIndex = 11 };
     private readonly Button okButton = new() { AutoSize = true };
     private readonly Button cancelButton = new() { AutoSize = true };
+    private readonly IReadOnlyList<DaySelector> daySelectors;
 
     public ScheduleEntryDialog(AppLocalizer localizer, IReadOnlyList<Station> stations, Guid? preferredStationId = null, ScheduleEntry? schedule = null)
     {
@@ -32,9 +32,10 @@ public sealed class ScheduleEntryDialog : Form
         MinimumSize = new Size(500, 340);
         ClientSize = new Size(500, 340);
 
+        daySelectors = CreateDaySelectors();
+
         BuildLayout();
         PopulateStations(stations);
-        PopulateDays();
         PopulateActions();
 
         if (schedule is not null)
@@ -129,15 +130,10 @@ public sealed class ScheduleEntryDialog : Form
         stationComboBox.AccessibleName = localizer.StationColumn;
         stationComboBox.TabIndex = 0;
 
-        dayComboBox.Dock = DockStyle.Fill;
-        dayComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-        dayComboBox.AccessibleName = localizer.DayAccessibleName;
-        dayComboBox.TabIndex = 1;
-
         actionComboBox.Dock = DockStyle.Fill;
         actionComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         actionComboBox.AccessibleName = localizer.ActionAccessibleName;
-        actionComboBox.TabIndex = 2;
+        actionComboBox.TabIndex = 8;
 
         timePicker.Dock = DockStyle.Left;
         timePicker.Width = 140;
@@ -145,14 +141,16 @@ public sealed class ScheduleEntryDialog : Form
         timePicker.CustomFormat = "HH:mm:ss";
         timePicker.ShowUpDown = true;
         timePicker.AccessibleName = localizer.TimeAccessibleName;
-        timePicker.TabIndex = 3;
+        timePicker.TabIndex = 9;
 
         enabledCheckBox.Text = localizer.Enabled;
+
+        var dayPanel = BuildDayPanel();
 
         fields.Controls.Add(stationLabel, 0, 0);
         fields.Controls.Add(stationComboBox, 1, 0);
         fields.Controls.Add(dayLabel, 0, 1);
-        fields.Controls.Add(dayComboBox, 1, 1);
+        fields.Controls.Add(dayPanel, 1, 1);
         fields.Controls.Add(actionLabel, 0, 2);
         fields.Controls.Add(actionComboBox, 1, 2);
         fields.Controls.Add(timeLabel, 0, 3);
@@ -203,15 +201,6 @@ public sealed class ScheduleEntryDialog : Form
             .ToArray());
     }
 
-    private void PopulateDays()
-    {
-        dayComboBox.Items.Clear();
-        dayComboBox.Items.AddRange(Enum.GetValues<DayOfWeek>()
-            .Select(day => new DayChoice(day, localizer.DayName(day)))
-            .Cast<object>()
-            .ToArray());
-    }
-
     private void PopulateActions()
     {
         actionComboBox.Items.Clear();
@@ -240,18 +229,9 @@ public sealed class ScheduleEntryDialog : Form
 
     private void SelectDay(DayOfWeek day)
     {
-        for (var index = 0; index < dayComboBox.Items.Count; index++)
+        foreach (var selector in daySelectors)
         {
-            if (dayComboBox.Items[index] is DayChoice choice && choice.Value == day)
-            {
-                dayComboBox.SelectedIndex = index;
-                return;
-            }
-        }
-
-        if (dayComboBox.Items.Count > 0)
-        {
-            dayComboBox.SelectedIndex = 0;
+            selector.CheckBox.Checked = selector.Value == day;
         }
     }
 
@@ -281,9 +261,65 @@ public sealed class ScheduleEntryDialog : Form
 
     private DayOfWeek SelectedDay()
     {
-        return dayComboBox.SelectedItem is DayChoice choice
-            ? choice.Value
-            : throw new InvalidOperationException("No day is selected.");
+        return daySelectors.FirstOrDefault(selector => selector.CheckBox.Checked)?.Value
+            ?? throw new InvalidOperationException("No day is selected.");
+    }
+
+    private Control BuildDayPanel()
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 4,
+            Margin = new Padding(0),
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+
+        for (var index = 0; index < daySelectors.Count; index++)
+        {
+            var row = index / 2;
+            var column = index % 2;
+            panel.Controls.Add(daySelectors[index].CheckBox, column, row);
+        }
+
+        return panel;
+    }
+
+    private IReadOnlyList<DaySelector> CreateDaySelectors()
+    {
+        var orderedDays = new[]
+        {
+            DayOfWeek.Monday,
+            DayOfWeek.Tuesday,
+            DayOfWeek.Wednesday,
+            DayOfWeek.Thursday,
+            DayOfWeek.Friday,
+            DayOfWeek.Saturday,
+            DayOfWeek.Sunday,
+        };
+
+        var selectors = new List<DaySelector>(orderedDays.Length);
+        for (var index = 0; index < orderedDays.Length; index++)
+        {
+            var day = orderedDays[index];
+            var checkBox = new CheckBox
+            {
+                AutoSize = true,
+                AutoCheck = false,
+                Text = localizer.DayName(day),
+                AccessibleName = localizer.DayName(day),
+                Margin = new Padding(0, 2, 18, 2),
+                TabIndex = 1 + index,
+            };
+            checkBox.Click += (_, _) => SelectDay(day);
+            selectors.Add(new DaySelector(day, checkBox));
+        }
+
+        return selectors;
     }
 
     private ScheduleAction SelectedAction()
@@ -301,14 +337,6 @@ public sealed class ScheduleEntryDialog : Form
         }
     }
 
-    private sealed record DayChoice(DayOfWeek Value, string Name)
-    {
-        public override string ToString()
-        {
-            return Name;
-        }
-    }
-
     private sealed record ActionChoice(ScheduleAction Value, string Name)
     {
         public override string ToString()
@@ -316,4 +344,6 @@ public sealed class ScheduleEntryDialog : Form
             return Name;
         }
     }
+
+    private sealed record DaySelector(DayOfWeek Value, CheckBox CheckBox);
 }

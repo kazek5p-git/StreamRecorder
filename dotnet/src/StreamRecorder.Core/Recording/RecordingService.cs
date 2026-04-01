@@ -123,13 +123,128 @@ public sealed class RecordingService : IDisposable
         LogBus logs,
         CancellationToken cancellationToken)
     {
-        if (station.Url.Contains(".m3u8", StringComparison.OrdinalIgnoreCase))
+        if (station.Url.StartsWith("mms://", StringComparison.OrdinalIgnoreCase)
+            || station.Url.StartsWith("mmsh://", StringComparison.OrdinalIgnoreCase))
+        {
+            await RecordMmshLoopAsync(station, settings, paths, logs, cancellationToken);
+        }
+        else if (station.Url.Contains(".m3u8", StringComparison.OrdinalIgnoreCase))
         {
             await RecordHlsLoopAsync(station, settings, paths, logs, cancellationToken);
         }
         else
         {
             await RecordHttpLoopAsync(station, settings, paths, logs, cancellationToken);
+        }
+    }
+
+    private async Task RecordMmshLoopAsync(
+        Station station,
+        AppSettings settings,
+        AppPaths paths,
+        LogBus logs,
+        CancellationToken cancellationToken)
+    {
+        OutputSession? output = null;
+        var localizer = AppLocalizer.For(settings.Language);
+        var requestContext = 1;
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                UpdateSnapshot(station.Id, value =>
+                {
+                    value.StateLabel = value.OutputPath is not null ? "Reconnecting" : "Connecting";
+                });
+
+                HttpResponseMessage? response = null;
+                try
+                {
+                    using var request = BuildMmshRequest(station, requestContext++);
+                    response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logs.Push(localizer.ConnectionFailed(station.Name, ex.Message));
+                    NoteReconnect(station.Id, "Waiting for reconnect");
+                    await WaitBeforeRetryAsync(cancellationToken);
+                    continue;
+                }
+
+                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                var contentType = response.Content.Headers.ContentType?.MediaType;
+                var initialBytes = await ReadInitialMmshBytesAsync(responseStream, cancellationToken);
+                if (initialBytes.Length == 0)
+                {
+                    response.Dispose();
+                    logs.Push(localizer.StreamProducedNoDataRetrying(station.Name));
+                    NoteReconnect(station.Id, "Waiting for reconnect");
+                    await WaitBeforeRetryAsync(cancellationToken);
+                    continue;
+                }
+
+                if (output is null)
+                {
+                    var probe = StreamProbeService.ProbeStream(station.Url, contentType, initialBytes);
+                    LogUnknownFormatDetails(logs, localizer, station.Name, station.Url, probe, initialBytes);
+                    var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
+                    var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
+                    await file.WriteAsync(initialBytes, cancellationToken);
+                    output = new OutputSession(file, outputPath, probe.Format);
+                    MarkOutputStarted(station, probe.Format, outputPath);
+                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                    logs.Push(localizer.RecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                }
+                else
+                {
+                    await output.File.WriteAsync(initialBytes, cancellationToken);
+                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                }
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var chunk = await MmshStreamReader.ReadChunkAsync(responseStream, cancellationToken);
+                        if (chunk is null)
+                        {
+                            logs.Push(localizer.ConnectionEndedRetrying(station.Name));
+                            NoteReconnect(station.Id, "Waiting for reconnect");
+                            break;
+                        }
+
+                        if (chunk.Data.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        await output.File.WriteAsync(chunk.Data, cancellationToken);
+                        IncrementBytesWritten(station.Id, chunk.Data.LongLength);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        logs.Push(localizer.ConnectionInterrupted(station.Name, ex.Message));
+                        NoteReconnect(station.Id, "Waiting for reconnect");
+                        break;
+                    }
+                }
+
+                response.Dispose();
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    await WaitBeforeRetryAsync(cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            await FinalizeOutputAsync(station, settings, paths, logs, output);
         }
     }
 
@@ -409,6 +524,39 @@ public sealed class RecordingService : IDisposable
         return request;
     }
 
+    private HttpRequestMessage BuildMmshRequest(Station station, int requestContext)
+    {
+        var request = BuildRequest(station, NormalizeMmshRequestUrl(station.Url));
+        request.Headers.UserAgent.Clear();
+        request.Headers.TryAddWithoutValidation("User-Agent", "NSPlayer/12.00.19041.7058");
+        request.Headers.TryAddWithoutValidation("Pragma", $"xClientGUID={{{Guid.NewGuid():D}}}");
+        request.Headers.TryAddWithoutValidation("Pragma", $"no-cache,rate=1.000000,stream-time=0,stream-offset=0:0,request-context={requestContext},max-duration=0");
+        request.Headers.TryAddWithoutValidation("Pragma", "xPlayStrm=1");
+        request.Headers.TryAddWithoutValidation("Pragma", "stream-switch-count=1");
+        request.Headers.TryAddWithoutValidation("Pragma", "stream-switch-entry=ffff:1:0");
+        request.Headers.ConnectionClose = true;
+        return request;
+    }
+
+    private static string NormalizeMmshRequestUrl(string url)
+    {
+        var uri = new Uri(url, UriKind.Absolute);
+        if (!uri.Scheme.Equals("mms", StringComparison.OrdinalIgnoreCase)
+            && !uri.Scheme.Equals("mmsh", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Scheme = Uri.UriSchemeHttp,
+            Port = uri.IsDefaultPort ? 80 : uri.Port,
+            Path = string.IsNullOrWhiteSpace(uri.AbsolutePath) ? "/" : uri.AbsolutePath,
+        };
+
+        return builder.Uri.ToString();
+    }
+
     private static async Task<byte[]> ReadInitialBytesAsync(Stream stream, CancellationToken cancellationToken)
     {
         using var memory = new MemoryStream();
@@ -423,6 +571,33 @@ public sealed class RecordingService : IDisposable
             }
 
             await memory.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            if (memory.Length >= 4096)
+            {
+                break;
+            }
+        }
+
+        return memory.ToArray();
+    }
+
+    private static async Task<byte[]> ReadInitialMmshBytesAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        using var memory = new MemoryStream();
+
+        while (memory.Length < InitialProbeBytes)
+        {
+            var chunk = await MmshStreamReader.ReadChunkAsync(stream, cancellationToken);
+            if (chunk is null)
+            {
+                break;
+            }
+
+            if (chunk.Data.Length == 0)
+            {
+                continue;
+            }
+
+            await memory.WriteAsync(chunk.Data, cancellationToken);
             if (memory.Length >= 4096)
             {
                 break;
