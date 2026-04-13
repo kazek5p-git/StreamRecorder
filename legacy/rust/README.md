@@ -28,6 +28,12 @@ The project pins the local `x86_64-pc-windows-msvc` toolchain and MSVC linker th
 - `My recordings/`
 - `locale/`
 
+## MP4Box / GPAC
+
+If you want a lightweight Windows build of `MP4Box.exe` instead of the full GPAC package, use this x64 archive:
+
+- https://www.rarewares.org/files/mp4/MP4Box-GPAC-v.26.03-DEV-rev102-gfc485902-ab-suite-x64.zip
+
 ## Packaging
 
 ```powershell
