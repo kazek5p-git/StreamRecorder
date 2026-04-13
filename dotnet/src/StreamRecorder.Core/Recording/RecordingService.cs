@@ -63,7 +63,7 @@ public sealed class RecordingService : IDisposable
             return Task.CompletedTask;
         }
 
-        var localizer = AppLocalizer.For(settings.Language);
+        var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
         var snapshot = RecordingSnapshot.CreateInitial(station);
         snapshot.Active = true;
         snapshot.StateLabel = "Connecting";
@@ -150,7 +150,7 @@ public sealed class RecordingService : IDisposable
         CancellationToken cancellationToken)
     {
         OutputSession? output = null;
-        var localizer = AppLocalizer.For(settings.Language);
+        var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
         var requestContext = 1;
 
         try
@@ -260,7 +260,7 @@ public sealed class RecordingService : IDisposable
         CancellationToken cancellationToken)
     {
         OutputSession? output = null;
-        var localizer = AppLocalizer.For(settings.Language);
+        var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -372,7 +372,7 @@ public sealed class RecordingService : IDisposable
         var playlistUrl = new Uri(station.Url, UriKind.Absolute);
         var seenSegments = new HashSet<string>(StringComparer.Ordinal);
         var segmentOrder = new Queue<string>();
-        var localizer = AppLocalizer.For(settings.Language);
+        var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -497,7 +497,7 @@ public sealed class RecordingService : IDisposable
                 value.StateLabel = "Stopped";
                 value.OutputPath = finalOutputPath;
             });
-            logs.Push(AppLocalizer.For(settings.Language).RecordingStopped(station.Name));
+            logs.Push(AppLocalizer.For(settings.Language, paths.RootDirectory).RecordingStopped(station.Name));
         }
         else
         {

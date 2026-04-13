@@ -50,6 +50,8 @@ No executable changes are required.
 
 - Keep all keys exactly as they are.
 - Do not remove `LanguageName`.
+- Save the file as `UTF-8`.
+- Do not use `ANSI`, legacy Windows code pages, or other non-Unicode encodings.
 - Keep placeholder markers such as `{0}`, `{1}`, `{2}` unchanged.
 - Keep access-key markers such as `&File` if the string uses them.
 - Keep escape sequences such as `\n` unchanged when present.
@@ -67,8 +69,9 @@ For contributors:
 
 1. Copy `en.json`.
 2. Translate values one by one.
-3. Run the app and switch to the new language in Settings.
-4. Check menus, dialogs, tray text, and log messages for truncated or missing text.
+3. Save the file as `UTF-8`.
+4. Run the app and switch to the new language in Settings.
+5. Check menus, dialogs, tray text, and log messages for truncated or missing text.
 
 For end users:
 

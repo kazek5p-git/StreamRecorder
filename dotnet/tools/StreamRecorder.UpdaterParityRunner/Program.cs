@@ -26,10 +26,10 @@ static async Task<int> ProgramMainAsync(string[] args)
 
     try
     {
-        var updater = new UpdaterService("0.2.0-alpha2-updater");
+        var updater = new UpdaterService("0.2.0-alpha3-updater");
 
         result.UpdateFromOldVersion = await updater.CheckForUpdatesAsync("0.1.6.2");
-        result.NoDowngradeForPreviewBuild = await updater.CheckForUpdatesAsync("0.2.0-alpha2") is null;
+        result.NoDowngradeForPreviewBuild = await updater.CheckForUpdatesAsync("0.2.0-alpha3") is null;
         result.NoUpdateForCurrentStable = await updater.CheckForUpdatesAsync("0.1.6.3") is null;
 
         if (result.UpdateFromOldVersion?.Asset is null)

@@ -34,7 +34,7 @@ static async Task<int> ProgramMainAsync(string[] args)
     };
 
     var logs = new LogBus(paths.LogFilePath);
-    using var recorder = new RecordingService("0.2.0-alpha2-parity");
+    using var recorder = new RecordingService("0.2.0-alpha3-parity");
     var station = new Station
     {
         Id = Guid.NewGuid(),

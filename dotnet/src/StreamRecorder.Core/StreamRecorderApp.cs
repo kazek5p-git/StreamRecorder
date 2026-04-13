@@ -43,7 +43,7 @@ public sealed class StreamRecorderApp : IDisposable
     {
         lock (gate)
         {
-            return AppLocalizer.For(config.Settings.Language);
+            return AppLocalizer.For(config.Settings.Language, Paths.RootDirectory);
         }
     }
 
@@ -201,6 +201,7 @@ public sealed class StreamRecorderApp : IDisposable
             schedulesProvider: GetSchedules,
             stationProvider: GetStation,
             languageProvider: () => GetSettings().Language,
+            rootDirectoryProvider: () => Paths.RootDirectory,
             isRecording: Recorder.IsRecording,
             startRecordingAsync: StartRecordingAsync,
             stopRecording: StopRecording,

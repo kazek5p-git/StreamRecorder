@@ -15,6 +15,7 @@ public sealed class SchedulerService : IDisposable
         Func<IReadOnlyList<ScheduleEntry>> schedulesProvider,
         Func<Guid, Station?> stationProvider,
         Func<string> languageProvider,
+        Func<string> rootDirectoryProvider,
         Func<Guid, bool> isRecording,
         Func<Guid, Task> startRecordingAsync,
         Action<Guid> stopRecording,
@@ -52,7 +53,7 @@ public sealed class SchedulerService : IDisposable
                         continue;
                     }
 
-                    var localizer = AppLocalizer.For(languageProvider());
+                    var localizer = AppLocalizer.For(languageProvider(), rootDirectoryProvider());
 
                     if (schedule.Action == ScheduleAction.StartRecording)
                     {

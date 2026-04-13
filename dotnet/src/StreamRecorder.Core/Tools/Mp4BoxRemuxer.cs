@@ -23,7 +23,7 @@ public static class Mp4BoxRemuxer
         {
             throw new ArgumentNullException(nameof(logs));
         }
-        var localizer = AppLocalizer.For(languageCode);
+        var localizer = AppLocalizer.For(languageCode, paths.RootDirectory);
 
         if (string.IsNullOrWhiteSpace(inputPath) || !File.Exists(inputPath))
         {

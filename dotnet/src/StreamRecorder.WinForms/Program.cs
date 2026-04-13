@@ -48,7 +48,7 @@ internal static class Program
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion
             ?? Application.ProductVersion
-            ?? "0.2.0-alpha2";
+            ?? "0.2.0-alpha3";
 
         using var app = new StreamRecorderApp(version, paths);
         Application.Run(new MainForm(app));

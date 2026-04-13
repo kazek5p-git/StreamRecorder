@@ -65,7 +65,7 @@ static async Task<int> ProgramMainAsync(string[] args)
 
     try
     {
-        using (var seedApp = new StreamRecorderApp("0.2.0-alpha2-scheduler", paths))
+        using (var seedApp = new StreamRecorderApp("0.2.0-alpha3-scheduler", paths))
         {
             seedApp.SaveSettings(new AppSettings
             {
@@ -88,7 +88,7 @@ static async Task<int> ProgramMainAsync(string[] args)
             seedApp.DeleteSchedule(deletedSchedule.Id);
         }
 
-        using var app = new StreamRecorderApp("0.2.0-alpha2-scheduler", paths);
+        using var app = new StreamRecorderApp("0.2.0-alpha3-scheduler", paths);
 
         var reloadedSchedules = app.GetSchedules();
         result.ReloadedSchedules = reloadedSchedules

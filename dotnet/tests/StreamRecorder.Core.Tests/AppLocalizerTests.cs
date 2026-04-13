@@ -24,6 +24,16 @@ public sealed class AppLocalizerTests : IDisposable
     }
 
     [Fact]
+    public void LoadsBuiltInPolishFallbacksWhenExternalFileIsMissing()
+    {
+        var localizer = AppLocalizer.For(LanguageCodes.Polish, tempRoot);
+
+        Assert.Equal("Ustawienia", localizer.SettingsTitle);
+        Assert.Equal("Łączenie", localizer.StateConnecting);
+        Assert.Equal("Środa", localizer.DayName(DayOfWeek.Wednesday));
+    }
+
+    [Fact]
     public void DetectsAvailableLanguagesFromLocaleFiles()
     {
         var localesDirectory = Path.Combine(tempRoot, "locales");

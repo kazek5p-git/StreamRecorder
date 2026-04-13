@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha3] - 2026-04-13
+
+### Fixed
+
+- Polish localization in the WinForms rewrite now falls back to embedded UTF-8 JSON resources instead of garbled hardcoded strings.
+
+### Changed
+
+- The translation guide now explicitly requires `UTF-8` for community language files.
+
 ## [0.2.0-alpha2] - 2026-04-13
 
 ### Added

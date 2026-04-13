@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Text.Json;
 using StreamRecorder.Core.Models;
 
@@ -388,31 +389,67 @@ public sealed class AppLocalizer
                 return cached.Values;
             }
 
-            var loaded = LoadValues(localePath);
+            var loaded = LoadValues(languageCode, localePath);
             Cache[cacheKey] = new CacheEntry(lastWriteUtc, loaded);
             return loaded;
         }
     }
 
-    private static IReadOnlyDictionary<string, string> LoadValues(string localePath)
+    private static IReadOnlyDictionary<string, string> LoadValues(string languageCode, string localePath)
     {
+        var normalizedLanguageCode = LanguageCodes.Normalize(languageCode);
+        var merged = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var pair in LoadEmbeddedValues(LanguageCodes.English))
+        {
+            merged[pair.Key] = pair.Value;
+        }
+
+        foreach (var pair in LoadEmbeddedValues(normalizedLanguageCode))
+        {
+            merged[pair.Key] = pair.Value;
+        }
+
         if (!File.Exists(localePath))
         {
-            return new Dictionary<string, string>(StringComparer.Ordinal);
+            return merged;
         }
 
         try
         {
-            var json = File.ReadAllText(localePath);
-            var loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-            return loaded is null
-                ? new Dictionary<string, string>(StringComparer.Ordinal)
-                : new Dictionary<string, string>(loaded, StringComparer.Ordinal);
+            foreach (var pair in DeserializeJson(File.ReadAllText(localePath)))
+            {
+                merged[pair.Key] = pair.Value;
+            }
         }
         catch
         {
+        }
+
+        return merged;
+    }
+
+    private static IReadOnlyDictionary<string, string> LoadEmbeddedValues(string languageCode)
+    {
+        var assembly = typeof(AppLocalizer).Assembly;
+        var resourceName = "StreamRecorder.Core.Locales." + LanguageCodes.Normalize(languageCode) + ".json";
+
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
+
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        return DeserializeJson(reader.ReadToEnd());
+    }
+
+    private static IReadOnlyDictionary<string, string> DeserializeJson(string json)
+    {
+        var loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+        return loaded is null
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : new Dictionary<string, string>(loaded, StringComparer.Ordinal);
     }
 
     private sealed class CacheEntry

@@ -48,12 +48,12 @@ static async Task<int> ProgramMainAsync(string[] args)
     {
         await using var server = new LoopbackMp3Server();
 
-        using (var app = new StreamRecorderApp("0.2.0-alpha2-settings", paths))
+        using (var app = new StreamRecorderApp("0.2.0-alpha3-settings", paths))
         {
             app.SaveSettings(CloneSettings(expectedSettings));
         }
 
-        using var reloaded = new StreamRecorderApp("0.2.0-alpha2-settings", paths);
+        using var reloaded = new StreamRecorderApp("0.2.0-alpha3-settings", paths);
         var loadedSettings = reloaded.GetSettings();
         result.SettingsPersisted = SettingsEqual(expectedSettings, loadedSettings);
         result.LoadedSettings = SettingsReport.FromSettings(loadedSettings);
