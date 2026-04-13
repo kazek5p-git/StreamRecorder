@@ -2,11 +2,11 @@ namespace StreamRecorder.Core.Updates;
 
 public sealed class UpdateAsset
 {
-    public required string Name { get; init; }
+    public string Name { get; set; } = string.Empty;
 
-    public required string DownloadUrl { get; init; }
+    public string DownloadUrl { get; set; } = string.Empty;
 
-    public required long Size { get; init; }
+    public long Size { get; set; }
 
-    public required UpdateAssetKind Kind { get; init; }
+    public UpdateAssetKind Kind { get; set; }
 }

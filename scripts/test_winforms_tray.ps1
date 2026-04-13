@@ -1,10 +1,15 @@
 param(
-    [string]$ExePath = "C:\Users\Kazek\Documents\StreamRecorder\dotnet\src\StreamRecorder.WinForms\bin\Release\net8.0-windows\StreamRecorder.exe"
+    [string]$ExePath = ""
 )
 
 $ErrorActionPreference = "Stop"
 $script:LogPath = Join-Path $env:TEMP "streamrecorder_winforms_tray.log"
 Set-Content -LiteralPath $script:LogPath -Value "" -Encoding UTF8
+
+if ([string]::IsNullOrWhiteSpace($ExePath)) {
+    $repoRoot = Split-Path -Path $PSScriptRoot -Parent
+    $ExePath = Join-Path $repoRoot "dotnet\src\StreamRecorder.WinForms\bin\Release\net48\StreamRecorder.exe"
+}
 
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes

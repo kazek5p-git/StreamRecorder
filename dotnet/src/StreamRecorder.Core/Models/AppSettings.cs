@@ -22,5 +22,5 @@ public sealed class AppSettings
 
     public string FileNameTemplate { get; set; } = AppDefaults.DefaultFileNameTemplate;
 
-    public Language Language { get; set; } = Language.Polish;
+    public string Language { get; set; } = LanguageCodes.Default;
 }

@@ -34,7 +34,7 @@ static async Task<int> ProgramMainAsync(string[] args)
         RemuxRawAacToM4A = false,
         RecordingsFolder = "Custom recordings",
         FileNameTemplate = "%t_custom_%h-%m-%s",
-        Language = Language.English,
+        Language = LanguageCodes.English,
     };
 
     var result = new SettingsParityResult
@@ -48,12 +48,12 @@ static async Task<int> ProgramMainAsync(string[] args)
     {
         await using var server = new LoopbackMp3Server();
 
-        using (var app = new StreamRecorderApp("0.2.0-alpha1-settings", paths))
+        using (var app = new StreamRecorderApp("0.2.0-alpha2-settings", paths))
         {
             app.SaveSettings(CloneSettings(expectedSettings));
         }
 
-        using var reloaded = new StreamRecorderApp("0.2.0-alpha1-settings", paths);
+        using var reloaded = new StreamRecorderApp("0.2.0-alpha2-settings", paths);
         var loadedSettings = reloaded.GetSettings();
         result.SettingsPersisted = SettingsEqual(expectedSettings, loadedSettings);
         result.LoadedSettings = SettingsReport.FromSettings(loadedSettings);
@@ -238,11 +238,11 @@ static bool TestStartupRegistration(string rootDirectory, out StartupDetails det
 
 internal sealed class SettingsParityOptions
 {
-    public int DurationSeconds { get; init; } = 8;
+    public int DurationSeconds { get; set; } = 8;
 
-    public int StartupTimeoutSeconds { get; init; } = 20;
+    public int StartupTimeoutSeconds { get; set; } = 20;
 
-    public string? OutputRoot { get; init; }
+    public string? OutputRoot { get; set; }
 
     public static SettingsParityOptions Parse(IReadOnlyList<string> args)
     {
@@ -363,7 +363,7 @@ internal sealed class SettingsReport
             RemuxRawAacToM4A = settings.RemuxRawAacToM4A,
             RecordingsFolder = settings.RecordingsFolder,
             FileNameTemplate = settings.FileNameTemplate,
-            Language = settings.Language.ToString(),
+            Language = settings.Language,
         };
     }
 }

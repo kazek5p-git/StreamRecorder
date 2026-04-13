@@ -4,11 +4,11 @@ namespace StreamRecorder.Core.Probing;
 
 public sealed class StreamProbe
 {
-    public required StreamProtocol Protocol { get; init; }
+    public StreamProtocol Protocol { get; set; }
 
-    public required StreamFormat Format { get; init; }
+    public StreamFormat Format { get; set; }
 
-    public string? Mime { get; init; }
+    public string? Mime { get; set; }
 
     public string Extension => Format.GetExtension();
 }

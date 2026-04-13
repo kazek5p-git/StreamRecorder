@@ -204,7 +204,8 @@ public sealed class ScheduleEntryDialog : Form
     private void PopulateActions()
     {
         actionComboBox.Items.Clear();
-        actionComboBox.Items.AddRange(Enum.GetValues<ScheduleAction>()
+        actionComboBox.Items.AddRange(Enum.GetValues(typeof(ScheduleAction))
+            .Cast<ScheduleAction>()
             .Select(action => new ActionChoice(action, localizer.ScheduleActionName(action)))
             .Cast<object>()
             .ToArray());

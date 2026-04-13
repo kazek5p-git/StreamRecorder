@@ -40,6 +40,7 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
 - startup registration
 - sleep prevention
 - runtime PL/EN localization
+- external JSON-based translations with dynamic language discovery from `locales/*.json`
 - crash recovery with `RestartOnCrash`
 - redesigned global scheduler with:
   - add/edit/delete
@@ -71,7 +72,7 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
   - [README.md](/C:/Users/Kazek/Documents/StreamRecorder/dotnet/README.md)
 - packaging script exists:
   - [package_winforms_release.ps1](/C:/Users/Kazek/Documents/StreamRecorder/scripts/package_winforms_release.ps1)
-- packaging produces a framework-dependent portable ZIP with:
+- packaging produces a portable `net48` ZIP with:
   - `StreamRecorder.exe`
   - required assemblies
   - empty `Config`
@@ -80,6 +81,6 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
 
 ### Recommended next milestone after pre-release
 
-- manual install/run verification on a clean profile with only `.NET Desktop Runtime 8`
+- manual install/run verification on a clean profile with only `.NET Framework 4.8`
 - broader user testing of the WinForms preview
 - final decision about when the rewrite becomes the default stable release line

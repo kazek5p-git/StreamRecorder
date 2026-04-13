@@ -7,7 +7,10 @@ public static class ConfigStore
 {
     public static AppConfig LoadOrCreate(AppPaths paths)
     {
-        ArgumentNullException.ThrowIfNull(paths);
+        if (paths is null)
+        {
+            throw new ArgumentNullException(nameof(paths));
+        }
 
         paths.EnsureDirectories();
 
@@ -41,8 +44,14 @@ public static class ConfigStore
 
     public static void Save(AppPaths paths, AppConfig config)
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        ArgumentNullException.ThrowIfNull(config);
+        if (paths is null)
+        {
+            throw new ArgumentNullException(nameof(paths));
+        }
+        if (config is null)
+        {
+            throw new ArgumentNullException(nameof(config));
+        }
 
         paths.EnsureDirectories();
         config.Settings ??= new AppSettings();
@@ -61,7 +70,7 @@ public static class ConfigStore
             {
                 RecordingsFolder = AppDefaults.DefaultRecordingsFolder,
                 FileNameTemplate = AppDefaults.DefaultFileNameTemplate,
-                Language = Language.Polish,
+                Language = LanguageCodes.Default,
             },
             Stations = [],
             Schedules = [],
@@ -84,7 +93,7 @@ public static class ConfigStore
                 RemuxRawAacToM4A = persisted.Settings.RemuxRawAacToM4A,
                 RecordingsFolder = persisted.Settings.RecordingsFolder,
                 FileNameTemplate = persisted.Settings.FileNameTemplate,
-                Language = persisted.Settings.Language,
+                Language = LanguageCodes.Normalize(persisted.Settings.Language),
             };
 
         return new AppConfig
@@ -137,7 +146,7 @@ public static class ConfigStore
                 RemuxRawAacToM4A = config.Settings.RemuxRawAacToM4A,
                 RecordingsFolder = config.Settings.RecordingsFolder,
                 FileNameTemplate = config.Settings.FileNameTemplate,
-                Language = config.Settings.Language,
+                Language = LanguageCodes.Normalize(config.Settings.Language),
             },
             Stations = config.Stations
                 .Select(static station => new PersistedStation
@@ -206,7 +215,7 @@ public static class ConfigStore
 
         public string FileNameTemplate { get; set; } = AppDefaults.DefaultFileNameTemplate;
 
-        public Language Language { get; set; } = Language.Polish;
+        public string Language { get; set; } = LanguageCodes.Default;
     }
 
     private sealed class PersistedStation

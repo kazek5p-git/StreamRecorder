@@ -25,7 +25,7 @@ internal static class MmshStreamReader
 
         var data = kind switch
         {
-            'H' => payload.Length > 8 ? payload.AsMemory(8).ToArray() : [],
+            'H' => payload.Length > 8 ? payload.Skip(8).ToArray() : [],
             'D' => payload,
             _ => [],
         };
@@ -38,7 +38,7 @@ internal static class MmshStreamReader
         var offset = 0;
         while (offset < buffer.Length)
         {
-            var read = await stream.ReadAsync(buffer.AsMemory(offset, buffer.Length - offset), cancellationToken);
+            var read = await stream.ReadAsync(buffer, offset, buffer.Length - offset, cancellationToken);
             if (read == 0)
             {
                 return false;

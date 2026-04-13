@@ -18,16 +18,16 @@ public sealed class ScheduleEntry
 
     public int Second { get; set; }
 
-    public TimeOnly GetTime()
+    public TimeSpan GetTime()
     {
-        return new TimeOnly(Hour, Minute, Second);
+        return new TimeSpan(Hour, Minute, Second);
     }
 
-    public void SetTime(TimeOnly time)
+    public void SetTime(TimeSpan time)
     {
-        Hour = time.Hour;
-        Minute = time.Minute;
-        Second = time.Second;
+        Hour = time.Hours;
+        Minute = time.Minutes;
+        Second = time.Seconds;
     }
 
     public string ToDisplayString(string stationName)

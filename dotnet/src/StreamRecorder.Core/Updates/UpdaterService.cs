@@ -1,7 +1,9 @@
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using StreamRecorder.Core.Compatibility;
 using StreamRecorder.Core.Configuration;
 
 namespace StreamRecorder.Core.Updates;
@@ -34,7 +36,7 @@ public sealed class UpdaterService
         using var response = await httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         var release = await JsonSerializer.DeserializeAsync<GitHubRelease>(stream, cancellationToken: cancellationToken);
         if (release is null || release.Draft || release.Prerelease)
         {
@@ -96,8 +98,8 @@ public sealed class UpdaterService
         using var response = await httpClient.GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var output = File.Create(destination);
+        using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var output = File.Create(destination);
         await input.CopyToAsync(output, cancellationToken);
         return destination;
     }
@@ -366,9 +368,9 @@ public sealed class UpdaterService
 
     private sealed class ParsedVersion
     {
-        public List<int> NumericParts { get; init; } = [];
+        public List<int> NumericParts { get; set; } = [];
 
-        public string? Suffix { get; init; }
+        public string? Suffix { get; set; }
 
         public bool HasSuffix => !string.IsNullOrWhiteSpace(Suffix);
 
@@ -381,8 +383,8 @@ public sealed class UpdaterService
             }
 
             var hyphenIndex = trimmed.IndexOf('-');
-            var numericPart = hyphenIndex >= 0 ? trimmed[..hyphenIndex] : trimmed;
-            var suffix = hyphenIndex >= 0 ? trimmed[(hyphenIndex + 1)..] : null;
+            var numericPart = hyphenIndex >= 0 ? trimmed.Substring(0, hyphenIndex) : trimmed;
+            var suffix = hyphenIndex >= 0 ? trimmed.Substring(hyphenIndex + 1) : null;
 
             var parts = numericPart
                 .Split('.', StringSplitOptions.RemoveEmptyEntries)

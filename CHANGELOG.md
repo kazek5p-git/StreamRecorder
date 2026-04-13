@@ -4,13 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha2] - 2026-04-13
+
 ### Added
 
 - Preliminary `mms://` / `MMSH` recording support for Windows Media streams, including WMA detection and framed stream parsing.
+- Translation guide for community-contributed JSON language files and deployment in packaged builds.
+- ICY fallback handling for servers that respond with `ICY 200 OK` instead of a standard HTTP status line.
 
 ### Changed
 
 - The schedule entry dialog now uses tab-focusable weekday selection fields instead of a single weekday drop-down.
+- The WinForms rewrite now uses external `locales/*.json` files for user-editable translations and dynamic language discovery.
+- The WinForms rewrite now targets `.NET Framework 4.8` instead of `.NET 8`.
+- Empty-list and context-menu accessibility in the WinForms GUI were improved for screen reader users.
+- Station URL validation now accepts stream paths without an explicit port, such as `radio.example/stream`.
+- The legacy Rust/NWG application was moved into `legacy/rust/` to keep the main repository layout focused on the active rewrite.
+
+### Verified
+
+- WinForms build and tests on `.NET Framework 4.8`
+- NVDA smoke testing of the WinForms GUI and tray behavior
+- ICY/HTTP MP3 recording against `http://109.169.23.84:22510/`
+- `mms://pompuj.mywire.org` recording with WMA detection
 
 ## [0.2.0-alpha1] - 2026-03-31
 

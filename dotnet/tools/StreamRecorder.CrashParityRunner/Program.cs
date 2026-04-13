@@ -9,7 +9,7 @@ static async Task<int> ProgramMainAsync(string[] args)
 {
     var options = CrashParityOptions.Parse(args);
     var repoRoot = options.RepoRoot ?? Directory.GetCurrentDirectory();
-    var sourceBuildDir = Path.Combine(repoRoot, "dotnet", "src", "StreamRecorder.WinForms", "bin", "Release", "net8.0-windows");
+    var sourceBuildDir = Path.Combine(repoRoot, "dotnet", "src", "StreamRecorder.WinForms", "bin", "Release", "net48");
     var sessionRoot = options.OutputRoot ?? Path.Combine(repoRoot, "dotnet", "target", "parity-crash", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
     Directory.CreateDirectory(sessionRoot);
 
@@ -62,7 +62,7 @@ static async Task<CrashCaseResult> RunCaseAsync(string sourceBuildDir, string in
             StartMinimized = false,
             RecordingsFolder = AppDefaults.DefaultRecordingsFolder,
             FileNameTemplate = AppDefaults.DefaultFileNameTemplate,
-            Language = Language.English,
+            Language = LanguageCodes.English,
         },
     };
     ConfigStore.Save(paths, config);
@@ -74,12 +74,10 @@ static async Task<CrashCaseResult> RunCaseAsync(string sourceBuildDir, string in
         UseShellExecute = false,
         CreateNoWindow = true,
         WorkingDirectory = installRoot,
-        ArgumentList =
-        {
+        Arguments = BuildArguments(
             "--test-crash-count-file", countFile,
             "--test-crash-until", "1",
-            "--test-exit-delay-ms", "600",
-        },
+            "--test-exit-delay-ms", "600"),
     }) ?? throw new InvalidOperationException("Failed to start the crash parity test process.");
 
     var result = new CrashCaseResult
@@ -94,7 +92,7 @@ static async Task<CrashCaseResult> RunCaseAsync(string sourceBuildDir, string in
     {
         try
         {
-            process.Kill(entireProcessTree: true);
+            process.Kill();
         }
         catch
         {
@@ -120,8 +118,8 @@ static async Task<CrashCaseResult> RunCaseAsync(string sourceBuildDir, string in
         result.Pass =
             result.InitialExitCode == 0 &&
             result.RunCount == 2 &&
-            result.GuardLogTail.Any(static line => line.Contains("restart attempt 1", StringComparison.OrdinalIgnoreCase)) &&
-            result.GuardLogTail.Any(static line => line.Contains("Child exited cleanly, guard stopping.", StringComparison.Ordinal));
+            result.GuardLogTail.Any(static line => Contains(line, "restart attempt 1", StringComparison.OrdinalIgnoreCase)) &&
+            result.GuardLogTail.Any(static line => Contains(line, "Child exited cleanly, guard stopping.", StringComparison.Ordinal));
     }
     else
     {
@@ -178,8 +176,8 @@ static async Task<bool> WaitForLogLineAsync(string logPath, string fragment, Tim
     {
         if (File.Exists(logPath))
         {
-            var lines = await File.ReadAllLinesAsync(logPath);
-            if (lines.Any(line => line.Contains(fragment, StringComparison.Ordinal)))
+            var lines = await Task.Run(() => File.ReadAllLines(logPath));
+            if (lines.Any(line => Contains(line, fragment, StringComparison.Ordinal)))
             {
                 return true;
             }
@@ -198,14 +196,38 @@ static List<string> ReadTail(string? path)
         return [];
     }
 
-    return File.ReadAllLines(path).TakeLast(20).ToList();
+    var lines = File.ReadAllLines(path);
+    var skip = Math.Max(0, lines.Length - 20);
+    return lines.Skip(skip).ToList();
+}
+
+static bool Contains(string value, string comparisonValue, StringComparison comparison)
+{
+    return value?.IndexOf(comparisonValue, comparison) >= 0;
+}
+
+static string BuildArguments(params string[] values)
+{
+    return string.Join(" ", values.Select(QuoteArgument));
+}
+
+static string QuoteArgument(string value)
+{
+    if (string.IsNullOrEmpty(value))
+    {
+        return "\"\"";
+    }
+
+    return value.IndexOfAny(new[] { ' ', '\t', '"' }) >= 0
+        ? "\"" + value.Replace("\"", "\\\"") + "\""
+        : value;
 }
 
 internal sealed class CrashParityOptions
 {
-    public string? RepoRoot { get; init; }
+    public string? RepoRoot { get; set; }
 
-    public string? OutputRoot { get; init; }
+    public string? OutputRoot { get; set; }
 
     public static CrashParityOptions Parse(IReadOnlyList<string> args)
     {

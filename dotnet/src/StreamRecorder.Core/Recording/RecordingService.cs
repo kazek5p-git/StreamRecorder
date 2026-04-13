@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Net.Http;
 using System.Net.Http.Headers;
+using StreamRecorder.Core.Compatibility;
 using StreamRecorder.Core.Configuration;
 using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Logging;
@@ -15,12 +17,14 @@ public sealed class RecordingService : IDisposable
     private const int InitialProbeBytes = 16 * 1024;
     private const int SegmentHistoryLimit = 2048;
 
+    private readonly string currentVersion;
     private readonly HttpClient httpClient;
     private readonly ConcurrentDictionary<Guid, RecordingSession> sessions = new();
     private readonly ConcurrentDictionary<Guid, RecordingSnapshot> snapshots = new();
 
     public RecordingService(string currentVersion)
     {
+        this.currentVersion = currentVersion;
         httpClient = new HttpClient
         {
             Timeout = Timeout.InfiniteTimeSpan,
@@ -173,7 +177,7 @@ public sealed class RecordingService : IDisposable
                     continue;
                 }
 
-                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 var contentType = response.Content.Headers.ContentType?.MediaType;
                 var initialBytes = await ReadInitialMmshBytesAsync(responseStream, cancellationToken);
                 if (initialBytes.Length == 0)
@@ -266,12 +270,10 @@ public sealed class RecordingService : IDisposable
                     value.StateLabel = value.OutputPath is not null ? "Reconnecting" : "Connecting";
                 });
 
-                HttpResponseMessage? response = null;
+                OpenStreamSession? source = null;
                 try
                 {
-                    using var request = BuildRequest(station, null);
-                    response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    response.EnsureSuccessStatusCode();
+                    source = await OpenHttpStreamAsync(station, cancellationToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -281,72 +283,72 @@ public sealed class RecordingService : IDisposable
                     continue;
                 }
 
-                await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                var contentType = response.Content.Headers.ContentType?.MediaType;
-                var initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
-                if (initialBytes.Length == 0)
+                using (source)
                 {
-                    response.Dispose();
-                    logs.Push(localizer.StreamProducedNoDataRetrying(station.Name));
-                    NoteReconnect(station.Id, "Waiting for reconnect");
-                    await WaitBeforeRetryAsync(cancellationToken);
-                    continue;
-                }
-
-                if (output is null)
-                {
-                    var probe = StreamProbeService.ProbeStream(station.Url, contentType, initialBytes);
-                    if (probe.Protocol == StreamProtocol.Hls)
+                    var responseStream = source.Stream;
+                    var contentType = source.ContentType;
+                    var initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
+                    if (initialBytes.Length == 0)
                     {
-                        response.Dispose();
-                        await RecordHlsLoopAsync(station, settings, paths, logs, cancellationToken);
-                        return;
+                        logs.Push(localizer.StreamProducedNoDataRetrying(station.Name));
+                        NoteReconnect(station.Id, "Waiting for reconnect");
+                        await WaitBeforeRetryAsync(cancellationToken);
+                        continue;
                     }
 
-                    LogUnknownFormatDetails(logs, localizer, station.Name, station.Url, probe, initialBytes);
-                    var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
-                    var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
-                    await file.WriteAsync(initialBytes, cancellationToken);
-                    output = new OutputSession(file, outputPath, probe.Format);
-                    MarkOutputStarted(station, probe.Format, outputPath);
-                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
-                    logs.Push(localizer.RecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
-                }
-                else
-                {
-                    await output.File.WriteAsync(initialBytes, cancellationToken);
-                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
-                }
-
-                var chunkBuffer = new byte[8192];
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    try
+                    if (output is null)
                     {
-                        var read = await responseStream.ReadAsync(chunkBuffer.AsMemory(0, chunkBuffer.Length), cancellationToken);
-                        if (read == 0)
+                        var probe = StreamProbeService.ProbeStream(station.Url, contentType, initialBytes);
+                        if (probe.Protocol == StreamProtocol.Hls)
                         {
-                            logs.Push(localizer.ConnectionEndedRetrying(station.Name));
+                            await RecordHlsLoopAsync(station, settings, paths, logs, cancellationToken);
+                            return;
+                        }
+
+                        LogUnknownFormatDetails(logs, localizer, station.Name, station.Url, probe, initialBytes);
+                        var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
+                        var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
+                        await file.WriteAsync(initialBytes, cancellationToken);
+                        output = new OutputSession(file, outputPath, probe.Format);
+                        MarkOutputStarted(station, probe.Format, outputPath);
+                        IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                        logs.Push(localizer.RecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                    }
+                    else
+                    {
+                        await output.File.WriteAsync(initialBytes, cancellationToken);
+                        IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                    }
+
+                    var chunkBuffer = new byte[8192];
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            var read = await responseStream.ReadAsync(chunkBuffer.AsMemory(0, chunkBuffer.Length), cancellationToken);
+                            if (read == 0)
+                            {
+                                logs.Push(localizer.ConnectionEndedRetrying(station.Name));
+                                NoteReconnect(station.Id, "Waiting for reconnect");
+                                break;
+                            }
+
+                            await output.File.WriteAsync(chunkBuffer.AsMemory(0, read), cancellationToken);
+                            IncrementBytesWritten(station.Id, read);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            logs.Push(localizer.ConnectionInterrupted(station.Name, ex.Message));
                             NoteReconnect(station.Id, "Waiting for reconnect");
                             break;
                         }
-
-                        await output.File.WriteAsync(chunkBuffer.AsMemory(0, read), cancellationToken);
-                        IncrementBytesWritten(station.Id, read);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        logs.Push(localizer.ConnectionInterrupted(station.Name, ex.Message));
-                        NoteReconnect(station.Id, "Waiting for reconnect");
-                        break;
                     }
                 }
 
-                response.Dispose();
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     await WaitBeforeRetryAsync(cancellationToken);
@@ -536,6 +538,33 @@ public sealed class RecordingService : IDisposable
         request.Headers.TryAddWithoutValidation("Pragma", "stream-switch-entry=ffff:1:0");
         request.Headers.ConnectionClose = true;
         return request;
+    }
+
+    private async Task<OpenStreamSession> OpenHttpStreamAsync(Station station, CancellationToken cancellationToken)
+    {
+        HttpResponseMessage? response = null;
+        try
+        {
+            using var request = BuildRequest(station, null);
+            response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            return OpenStreamSession.FromHttp(response, responseStream, response.Content.Headers.ContentType?.MediaType);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            response?.Dispose();
+
+            try
+            {
+                var icyResponse = await IcyStreamClient.OpenAsync($"StreamRecorder/{currentVersion}", station, cancellationToken);
+                return OpenStreamSession.FromIcy(icyResponse);
+            }
+            catch (Exception icyEx) when (icyEx is not OperationCanceledException)
+            {
+                throw new InvalidOperationException($"{ex.Message} | ICY fallback failed: {icyEx.Message}", ex);
+            }
+        }
     }
 
     private static string NormalizeMmshRequestUrl(string url)
@@ -737,7 +766,8 @@ public sealed class RecordingService : IDisposable
             var line = rawLine.Trim();
             if (line.StartsWith("#EXT-X-TARGETDURATION:", StringComparison.Ordinal))
             {
-                if (int.TryParse(line["#EXT-X-TARGETDURATION:".Length..].Trim(), out var seconds))
+                var secondsText = line.Substring("#EXT-X-TARGETDURATION:".Length).Trim();
+                if (int.TryParse(secondsText, out var seconds))
                 {
                     targetDuration = Math.Max(1, seconds);
                 }
@@ -759,7 +789,7 @@ public sealed class RecordingService : IDisposable
     {
         foreach (var part in line.Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
-            var pieces = part.Split('=', 2);
+            var pieces = part.Split(new[] { '=' }, 2, StringSplitOptions.None);
             if (pieces.Length == 2 && string.Equals(pieces[0].Trim(), "BANDWIDTH", StringComparison.Ordinal))
             {
                 if (long.TryParse(pieces[1].Trim(), out var value))
@@ -813,4 +843,43 @@ public sealed class RecordingService : IDisposable
     private sealed record OutputSession(FileStream File, string Path, StreamFormat Format);
 
     private sealed record PlaylistParseResult(Uri? MasterPlaylist, IReadOnlyList<Uri> Segments, TimeSpan PollInterval);
+
+    private sealed class OpenStreamSession : IDisposable
+    {
+        private readonly HttpResponseMessage? response;
+        private readonly IcyStreamResponse? icyResponse;
+
+        private OpenStreamSession(Stream stream, string? contentType, HttpResponseMessage? response, IcyStreamResponse? icyResponse)
+        {
+            Stream = stream;
+            ContentType = contentType;
+            this.response = response;
+            this.icyResponse = icyResponse;
+        }
+
+        public Stream Stream { get; }
+
+        public string? ContentType { get; }
+
+        public static OpenStreamSession FromHttp(HttpResponseMessage response, Stream stream, string? contentType)
+        {
+            return new OpenStreamSession(stream, contentType, response, null);
+        }
+
+        public static OpenStreamSession FromIcy(IcyStreamResponse response)
+        {
+            return new OpenStreamSession(response.Stream, response.ContentType, null, response);
+        }
+
+        public void Dispose()
+        {
+            if (response is not null)
+            {
+                response.Dispose();
+                return;
+            }
+
+            icyResponse?.Dispose();
+        }
+    }
 }

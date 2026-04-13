@@ -11,13 +11,19 @@ public static class Mp4BoxRemuxer
     public static async Task<string> RemuxRawAacAsync(
         AppPaths paths,
         LogBus logs,
-        Language language,
+        string languageCode,
         string inputPath,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        ArgumentNullException.ThrowIfNull(logs);
-        var localizer = AppLocalizer.For(language);
+        if (paths is null)
+        {
+            throw new ArgumentNullException(nameof(paths));
+        }
+        if (logs is null)
+        {
+            throw new ArgumentNullException(nameof(logs));
+        }
+        var localizer = AppLocalizer.For(languageCode);
 
         if (string.IsNullOrWhiteSpace(inputPath) || !File.Exists(inputPath))
         {
@@ -44,10 +50,11 @@ public static class Mp4BoxRemuxer
                 WorkingDirectory = Path.GetDirectoryName(inputPath) ?? paths.RootDirectory,
             },
         };
-        process.StartInfo.ArgumentList.Add("-add");
-        process.StartInfo.ArgumentList.Add($"{inputPath}#audio");
-        process.StartInfo.ArgumentList.Add("-new");
-        process.StartInfo.ArgumentList.Add(outputPath);
+        process.StartInfo.Arguments = string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            "-add \"{0}#audio\" -new \"{1}\"",
+            inputPath.Replace("\"", "\\\""),
+            outputPath.Replace("\"", "\\\""));
 
         if (!process.Start())
         {
@@ -119,7 +126,7 @@ public static class Mp4BoxRemuxer
         {
             if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
+                process.Kill();
             }
         }
         catch

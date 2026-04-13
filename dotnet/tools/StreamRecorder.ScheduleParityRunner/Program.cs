@@ -65,13 +65,13 @@ static async Task<int> ProgramMainAsync(string[] args)
 
     try
     {
-        using (var seedApp = new StreamRecorderApp("0.2.0-alpha1-scheduler", paths))
+        using (var seedApp = new StreamRecorderApp("0.2.0-alpha2-scheduler", paths))
         {
             seedApp.SaveSettings(new AppSettings
             {
                 RecordingsFolder = AppDefaults.DefaultRecordingsFolder,
                 FileNameTemplate = AppDefaults.DefaultFileNameTemplate,
-                Language = Language.English,
+                Language = LanguageCodes.English,
             });
 
             seedApp.UpsertStation(stationA);
@@ -88,7 +88,7 @@ static async Task<int> ProgramMainAsync(string[] args)
             seedApp.DeleteSchedule(deletedSchedule.Id);
         }
 
-        using var app = new StreamRecorderApp("0.2.0-alpha1-scheduler", paths);
+        using var app = new StreamRecorderApp("0.2.0-alpha2-scheduler", paths);
 
         var reloadedSchedules = app.GetSchedules();
         result.ReloadedSchedules = reloadedSchedules
@@ -178,9 +178,9 @@ static bool SnapshotStopped(RecordingSnapshot? snapshot)
 
 internal sealed class ScheduleParityOptions
 {
-    public int LeadSeconds { get; init; } = 4;
+    public int LeadSeconds { get; set; } = 4;
 
-    public string? OutputRoot { get; init; }
+    public string? OutputRoot { get; set; }
 
     public static ScheduleParityOptions Parse(IReadOnlyList<string> args)
     {

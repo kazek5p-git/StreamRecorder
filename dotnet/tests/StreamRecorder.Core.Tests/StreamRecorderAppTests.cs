@@ -24,7 +24,7 @@ public sealed class StreamRecorderAppTests : IDisposable
             RemuxRawAacToM4A = false,
             RecordingsFolder = "Settings parity output",
             FileNameTemplate = "%t_session_%h-%m-%s",
-            Language = Language.English,
+            Language = LanguageCodes.English,
         };
 
         using (var app = new StreamRecorderApp("tests", paths))
@@ -45,7 +45,7 @@ public sealed class StreamRecorderAppTests : IDisposable
         Assert.False(loaded.RemuxRawAacToM4A);
         Assert.Equal("Settings parity output", loaded.RecordingsFolder);
         Assert.Equal("%t_session_%h-%m-%s", loaded.FileNameTemplate);
-        Assert.Equal(Language.English, loaded.Language);
+        Assert.Equal(LanguageCodes.English, loaded.Language);
     }
 
     public void Dispose()

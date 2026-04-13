@@ -7,8 +7,14 @@ public static class FileNameTemplate
 {
     public static string ResolveRecordingsDirectory(AppPaths paths, AppSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        ArgumentNullException.ThrowIfNull(settings);
+        if (paths is null)
+        {
+            throw new ArgumentNullException(nameof(paths));
+        }
+        if (settings is null)
+        {
+            throw new ArgumentNullException(nameof(settings));
+        }
 
         var folder = Path.IsPathRooted(settings.RecordingsFolder)
             ? settings.RecordingsFolder
@@ -25,9 +31,18 @@ public static class FileNameTemplate
         string extension,
         DateTimeOffset now)
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        ArgumentNullException.ThrowIfNull(settings);
-        ArgumentNullException.ThrowIfNull(station);
+        if (paths is null)
+        {
+            throw new ArgumentNullException(nameof(paths));
+        }
+        if (settings is null)
+        {
+            throw new ArgumentNullException(nameof(settings));
+        }
+        if (station is null)
+        {
+            throw new ArgumentNullException(nameof(station));
+        }
 
         var recordingsDirectory = ResolveRecordingsDirectory(paths, settings);
         var fileName = ApplyTemplate(settings.FileNameTemplate, station, now);
@@ -61,13 +76,13 @@ public static class FileNameTemplate
         for (var index = 0; index < input.Length; index++)
         {
             var ch = input[index];
-            sanitized[index] = char.IsControl(ch) || invalidChars.Contains(ch) ? '_' : ch;
+            sanitized[index] = char.IsControl(ch) || invalidChars.ToArray().Contains(ch) ? '_' : ch;
         }
 
         var value = new string(sanitized).Trim('.', ' ');
         if (value.Length > 160)
         {
-            value = value[..160];
+            value = value.Substring(0, 160);
         }
 
         value = value.Trim();

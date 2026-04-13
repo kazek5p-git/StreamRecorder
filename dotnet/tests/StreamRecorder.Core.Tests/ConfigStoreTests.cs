@@ -44,7 +44,7 @@ public sealed class ConfigStoreTests : IDisposable
                 RemuxRawAacToM4A = false,
                 RecordingsFolder = "Parity recordings",
                 FileNameTemplate = "%t_custom_%h-%m-%s",
-                Language = Language.English,
+                Language = LanguageCodes.English,
             },
             Stations =
             [
@@ -90,7 +90,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.False(reloaded.Settings.RemuxRawAacToM4A);
         Assert.Equal("Parity recordings", reloaded.Settings.RecordingsFolder);
         Assert.Equal("%t_custom_%h-%m-%s", reloaded.Settings.FileNameTemplate);
-        Assert.Equal(Language.English, reloaded.Settings.Language);
+        Assert.Equal(LanguageCodes.English, reloaded.Settings.Language);
 
         var station = Assert.Single(reloaded.Stations);
         Assert.Equal(stationId, station.Id);

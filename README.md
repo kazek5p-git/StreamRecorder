@@ -1,78 +1,47 @@
 # StreamRecorder
 
-Portable Windows application written in Rust for recording audio streams without transcoding.
+This repository currently contains two code lines:
 
-## Experimental WinForms Rewrite
+- the active C# + WinForms rewrite in `dotnet/`
+- the archived legacy Rust application in `legacy/rust/`
 
-An in-progress C# + WinForms rewrite is available in `dotnet/`.
+## Current Focus
 
-The rewrite is prepared for preview builds and documented further in:
+The active release line is the WinForms rewrite. It is already usable and packaged for preview builds.
+
+Main documentation:
 
 - `dotnet/README.md`
 - `docs/winforms-rewrite-status.md`
+- `docs/translations.md`
 - `CHANGELOG.md`
 
-### Requirements
+## WinForms Rewrite Requirements
 
-- The framework-dependent WinForms build requires `Microsoft .NET Desktop Runtime 8` for `Windows x64`.
-- Official Microsoft download page: https://dotnet.microsoft.com/en-us/download/dotnet/8.0
-- On the Microsoft page, choose `Windows x64` under `.NET Desktop Runtime 8`.
-- The current stable Rust release does not require `.NET`.
+- `Microsoft .NET Framework 4.8`
+- Official Microsoft download page: https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48
 
-## Current Scope
+## Community Translations
 
-- Native Windows GUI with a station list, station editor, schedule management, and a toggleable log view.
-- Portable configuration stored in `Config/app.toml`.
-- HTTP/HTTPS and HLS recording with automatic reconnect handling.
-- Basic format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS streams.
-- Basic `mms://` / `MMSH` support for Windows Media streams.
-- One schedule rule per station.
-- Optional RAW AAC to M4A remuxing through a locally available `MP4Box.exe`.
-- Separate settings window for startup, topmost, tray, sleep prevention, recording folder, file naming template, remux, language, and updates.
-- Runtime localization based on `locale/streamrecorder.pot`, `locale/en.po`, and `locale/pl.po`.
-- Tray integration and `streamrecorder_guard.exe` crash monitoring with guarded relaunch support.
+The rewrite supports user-editable JSON language files.
 
-## Build
+- source translations live in `dotnet/locales/`
+- packaged builds load translations from `locales/` next to `StreamRecorder.exe`
+- translation workflow is documented in `docs/translations.md`
 
-```powershell
-cargo build
-```
+## Repository Layout
 
-The project pins the local `x86_64-pc-windows-msvc` toolchain and MSVC linker through `.cargo/config.toml`.
+- `dotnet/` - active C# core, WinForms frontend, tests, and tools
+- `docs/` - shared project documentation
+- `scripts/` - active helper scripts for the rewrite and accessibility/parity testing
+- `legacy/rust/` - earlier Rust/NWG implementation, packaging script, and PO-based localization files
 
-## Portable Layout
+## Legacy Rust Line
 
-- `Config/app.toml`: application settings and station list
-- `Config/streamrecorder.log`: application log
-- `My recordings/`: default recording output folder
+The older portable Rust version is still kept in the repository for reference and archival maintenance, but it is no longer the main development focus.
 
-## Updates
+Its documentation and build files now live under:
 
-Update checks use GitHub Releases after `owner/repo` is configured in the app settings. Supported release assets are downloaded and installed through a temporary PowerShell script.
-
-## GPAC / MP4Box
-
-StreamRecorder looks for `MP4Box.exe` in the portable app folder first and can also detect standard GPAC installations in Windows program directories.
-
-If you want a lightweight Windows build of MP4Box/GPAC instead of the full official package, use:
-
-- https://www.free-codecs.com/mp4box-gpac_download.htm
-
-## Release Packaging
-
-Use the packaging script to create the portable ZIP artifact:
-
-```powershell
-pwsh -File .\scripts\package_release.ps1
-```
-
-The script rebuilds the release binaries, copies the required portable files, and generates a user-facing `README.html` from this document for the ZIP package.
-
-## Manual Test Streams
-
-These URLs are useful for manual regression testing. Their availability depends on the broadcaster.
-
-- MP3: `http://s1.slotex.pl:7424/stream/1/`
-- MP3: `http://sluchaj.radiopark.com.pl:8055/fest`
-- AAC: `http://s1.slotex.pl:7298/;`
-- HLS AAC: `http://ls.tkchopin.pl/norda/nordafm_aac_128/playlist.m3u8`
+- `legacy/rust/README.md`
+- `legacy/rust/Cargo.toml`
+- `legacy/rust/scripts/package_release.ps1`

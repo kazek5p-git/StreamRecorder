@@ -26,10 +26,10 @@ static async Task<int> ProgramMainAsync(string[] args)
 
     try
     {
-        var updater = new UpdaterService("0.2.0-alpha1-updater");
+        var updater = new UpdaterService("0.2.0-alpha2-updater");
 
         result.UpdateFromOldVersion = await updater.CheckForUpdatesAsync("0.1.6.2");
-        result.NoDowngradeForPreviewBuild = await updater.CheckForUpdatesAsync("0.2.0-alpha1") is null;
+        result.NoDowngradeForPreviewBuild = await updater.CheckForUpdatesAsync("0.2.0-alpha2") is null;
         result.NoUpdateForCurrentStable = await updater.CheckForUpdatesAsync("0.1.6.3") is null;
 
         if (result.UpdateFromOldVersion?.Asset is null)
@@ -58,7 +58,7 @@ static async Task<int> ProgramMainAsync(string[] args)
         result.ReadmeExists = await WaitForFileAsync(Path.Combine(rootDirectory, "README.html"), TimeSpan.FromSeconds(45));
         await WaitForLogEntryAsync(logPath, "Restarted application", TimeSpan.FromSeconds(10));
         result.InstallLogTail = result.InstallLogCreated
-            ? File.ReadAllLines(logPath).TakeLast(10).ToList()
+            ? ReadTail(logPath, 10)
             : [];
 
         result.InstallSucceeded =
@@ -66,8 +66,8 @@ static async Task<int> ProgramMainAsync(string[] args)
             result.InstallLogCreated &&
             result.AppliedExecutableExists &&
             result.ReadmeExists &&
-            result.InstallLogTail.Any(static line => line.Contains("Update files copied successfully", StringComparison.Ordinal))
-            && result.InstallLogTail.Any(static line => line.Contains("Restarted application", StringComparison.Ordinal));
+            result.InstallLogTail.Any(static line => Contains(line, "Update files copied successfully", StringComparison.Ordinal))
+            && result.InstallLogTail.Any(static line => Contains(line, "Restarted application", StringComparison.Ordinal));
 
         result.Pass =
             result.UpdateFromOldVersion is not null &&
@@ -111,8 +111,8 @@ static async Task<bool> WaitForLogEntryAsync(string path, string fragment, TimeS
     {
         if (File.Exists(path))
         {
-            var lines = await File.ReadAllLinesAsync(path);
-            if (lines.Any(line => line.Contains(fragment, StringComparison.Ordinal)))
+            var lines = await Task.Run(() => File.ReadAllLines(path));
+            if (lines.Any(line => Contains(line, fragment, StringComparison.Ordinal)))
             {
                 return true;
             }
@@ -124,9 +124,26 @@ static async Task<bool> WaitForLogEntryAsync(string path, string fragment, TimeS
     return false;
 }
 
+static List<string> ReadTail(string path, int count)
+{
+    if (!File.Exists(path))
+    {
+        return [];
+    }
+
+    var lines = File.ReadAllLines(path);
+    var skip = Math.Max(0, lines.Length - count);
+    return lines.Skip(skip).ToList();
+}
+
+static bool Contains(string value, string comparisonValue, StringComparison comparison)
+{
+    return value?.IndexOf(comparisonValue, comparison) >= 0;
+}
+
 internal sealed class UpdaterParityOptions
 {
-    public string? OutputRoot { get; init; }
+    public string? OutputRoot { get; set; }
 
     public static UpdaterParityOptions Parse(IReadOnlyList<string> args)
     {

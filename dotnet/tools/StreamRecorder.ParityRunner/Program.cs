@@ -30,11 +30,11 @@ static async Task<int> ProgramMainAsync(string[] args)
             ? AppDefaults.DefaultFileNameTemplate
             : options.FileNameTemplate!,
         RemuxRawAacToM4A = options.RemuxRawAacToM4A,
-        Language = Language.English,
+        Language = LanguageCodes.English,
     };
 
     var logs = new LogBus(paths.LogFilePath);
-    using var recorder = new RecordingService("0.2.0-alpha1-parity");
+    using var recorder = new RecordingService("0.2.0-alpha2-parity");
     var station = new Station
     {
         Id = Guid.NewGuid(),
@@ -197,27 +197,27 @@ static string Sanitize(string value)
 
 internal sealed class RunnerOptions
 {
-    public required string Name { get; init; }
+    public string Name { get; set; } = string.Empty;
 
-    public required string Url { get; init; }
+    public string Url { get; set; } = string.Empty;
 
-    public StreamFormat? ExpectedFormat { get; init; }
+    public StreamFormat? ExpectedFormat { get; set; }
 
-    public int DurationSeconds { get; init; } = 8;
+    public int DurationSeconds { get; set; } = 8;
 
-    public int StartupTimeoutSeconds { get; init; } = 20;
+    public int StartupTimeoutSeconds { get; set; } = 20;
 
-    public string? OutputRoot { get; init; }
+    public string? OutputRoot { get; set; }
 
-    public bool RemuxRawAacToM4A { get; init; }
+    public bool RemuxRawAacToM4A { get; set; }
 
-    public string? Username { get; init; }
+    public string? Username { get; set; }
 
-    public string? Password { get; init; }
+    public string? Password { get; set; }
 
-    public string? RecordingsFolder { get; init; }
+    public string? RecordingsFolder { get; set; }
 
-    public string? FileNameTemplate { get; init; }
+    public string? FileNameTemplate { get; set; }
 
     public static RunnerOptions Parse(IReadOnlyList<string> args)
     {
@@ -244,7 +244,7 @@ internal sealed class RunnerOptions
                     url = RequireValue(args, ref index);
                     break;
                 case "--expected-format":
-                    expectedFormat = Enum.Parse<StreamFormat>(RequireValue(args, ref index), ignoreCase: true);
+                    expectedFormat = (StreamFormat)Enum.Parse(typeof(StreamFormat), RequireValue(args, ref index), ignoreCase: true);
                     break;
                 case "--duration-seconds":
                     durationSeconds = int.Parse(RequireValue(args, ref index));

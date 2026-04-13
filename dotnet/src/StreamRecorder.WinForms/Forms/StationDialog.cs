@@ -1,5 +1,6 @@
 using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
+using StreamRecorder.Core.Compatibility;
 
 namespace StreamRecorder.WinForms.Forms;
 
@@ -246,7 +247,7 @@ public sealed class StationDialog : Form
             return false;
         }
 
-        if (!candidate.Contains("://", StringComparison.Ordinal))
+        if (candidate.IndexOf("://", StringComparison.Ordinal) < 0)
         {
             candidate = "http://" + candidate;
         }

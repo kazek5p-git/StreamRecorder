@@ -15,7 +15,10 @@ public static class Mp4BoxLocator
         Func<string, IEnumerable<string>> enumerateDirectories,
         Func<string, bool> fileExists)
     {
-        ArgumentNullException.ThrowIfNull(fileExists);
+        if (fileExists is null)
+        {
+            throw new ArgumentNullException(nameof(fileExists));
+        }
 
         return EnumerateCandidates(paths, programFilesRoots, enumerateDirectories)
             .FirstOrDefault(fileExists);
@@ -31,9 +34,18 @@ public static class Mp4BoxLocator
         IEnumerable<string> programFilesRoots,
         Func<string, IEnumerable<string>> enumerateDirectories)
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        ArgumentNullException.ThrowIfNull(programFilesRoots);
-        ArgumentNullException.ThrowIfNull(enumerateDirectories);
+        if (paths is null)
+        {
+            throw new ArgumentNullException(nameof(paths));
+        }
+        if (programFilesRoots is null)
+        {
+            throw new ArgumentNullException(nameof(programFilesRoots));
+        }
+        if (enumerateDirectories is null)
+        {
+            throw new ArgumentNullException(nameof(enumerateDirectories));
+        }
 
         var candidates = new List<string>
         {

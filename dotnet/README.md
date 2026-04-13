@@ -13,7 +13,7 @@ The rewrite is already usable as a preview build. It includes:
 - stream format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS
 - detailed fallback logging for unknown stream formats
 - optional RAW AAC to M4A remuxing through a locally available `MP4Box.exe`
-- runtime language switching between Polish and English
+- runtime language switching from editable `locales/*.json` files
 - portable `Config/app.toml`
 - GitHub release update checks
 - crash recovery through an internal guard mode when `Restart on crash` is enabled
@@ -22,12 +22,10 @@ This build is still intended as a preview and not yet as a replacement for the s
 
 ## Requirements
 
-- `Microsoft .NET Desktop Runtime 8`
-- `Windows x64`
-- Official Microsoft download page: https://dotnet.microsoft.com/en-us/download/dotnet/8.0
-- On the Microsoft page, choose `Windows x64` under `.NET Desktop Runtime 8`
+- `Microsoft .NET Framework 4.8`
+- Official Microsoft download page: https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48
 
-The framework-dependent rewrite build is intentionally small and expects the desktop runtime to be installed on the system.
+The rewrite depends on the standard .NET Framework installation that is already present on many Windows systems.
 
 ## Build
 
@@ -53,13 +51,26 @@ dotnet run --project .\dotnet\src\StreamRecorder.WinForms\StreamRecorder.WinForm
 powershell -ExecutionPolicy Bypass -File .\scripts\package_winforms_release.ps1
 ```
 
-The packaging script creates a framework-dependent portable ZIP with:
+The packaging script creates a portable ZIP for the `net48` build with:
 
 - `StreamRecorder.exe`
 - required `.NET` assemblies
 - empty `Config`
 - empty `My recordings`
 - `README.html`
+
+## Translations
+
+The rewrite no longer keeps translations hardcoded inside the executable.
+
+- Source translations live in `dotnet/locales/`
+- Built applications load translations from `locales/` next to `StreamRecorder.exe`
+- New languages can be added by dropping in a new JSON file such as `de.json`
+- The language list in Settings is built dynamically from the JSON files found in `locales`
+
+Detailed instructions are documented in:
+
+- `docs/translations.md`
 
 ## Notes
 

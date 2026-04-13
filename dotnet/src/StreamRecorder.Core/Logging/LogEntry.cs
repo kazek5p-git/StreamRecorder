@@ -2,9 +2,9 @@ namespace StreamRecorder.Core.Logging;
 
 public sealed class LogEntry
 {
-    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.Now;
+    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.Now;
 
-    public string Message { get; init; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
 
     public string FormatLine()
     {
@@ -14,7 +14,7 @@ public sealed class LogEntry
     public static bool TryParse(string line, out LogEntry? entry)
     {
         entry = null;
-        if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('['))
+        if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("[", StringComparison.Ordinal))
         {
             return false;
         }
@@ -25,7 +25,7 @@ public sealed class LogEntry
             return false;
         }
 
-        var timestampText = line[1..separatorIndex];
+        var timestampText = line.Substring(1, separatorIndex - 1);
         if (!DateTime.TryParseExact(
                 timestampText,
                 "yyyy-MM-dd HH:mm:ss",
@@ -39,7 +39,7 @@ public sealed class LogEntry
         entry = new LogEntry
         {
             Timestamp = new DateTimeOffset(timestamp),
-            Message = line[(separatorIndex + 2)..],
+            Message = line.Substring(separatorIndex + 2),
         };
         return true;
     }

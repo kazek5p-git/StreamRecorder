@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using StreamRecorder.Core;
+using StreamRecorder.Core.Compatibility;
 using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
 using StreamRecorder.WinForms.Services;
@@ -434,7 +435,7 @@ public sealed class MainForm : Form
     {
         var localizer = app.GetLocalizer();
         showLogButton.Text = logForm.Visible ? localizer.HideLog : localizer.ShowLog;
-        showLogButton.AccessibleName = logForm.Visible ? localizer.HideLog.Replace("&", string.Empty, StringComparison.Ordinal) : localizer.ShowLog.Replace("&", string.Empty, StringComparison.Ordinal);
+        showLogButton.AccessibleName = logForm.Visible ? localizer.HideLog.Replace("&", string.Empty) : localizer.ShowLog.Replace("&", string.Empty);
     }
 
     private void OpenSettings()
@@ -831,7 +832,7 @@ public sealed class MainForm : Form
         aboutMenuItem.Text = localizer.About;
 
         addStationButton.Text = localizer.AddStation;
-        addStationButton.AccessibleName = localizer.AddStation.Replace("&", string.Empty, StringComparison.Ordinal);
+        addStationButton.AccessibleName = localizer.AddStation.Replace("&", string.Empty);
         stationList.AccessibleName = localizer.StationsAccessibleName;
         stationList.AccessibleDescription = localizer.StationsAccessibleDescription;
         stationList.Columns[0].Text = localizer.StationColumn;

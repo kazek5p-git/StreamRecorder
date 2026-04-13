@@ -8,14 +8,13 @@ namespace StreamRecorder.Core.Scheduling;
 public sealed class SchedulerService : IDisposable
 {
     private readonly ConcurrentDictionary<Guid, DateTime> lastRuns = new();
-    private PeriodicTimer? timer;
     private CancellationTokenSource? cancellation;
     private Task? loopTask;
 
     public void Start(
         Func<IReadOnlyList<ScheduleEntry>> schedulesProvider,
         Func<Guid, Station?> stationProvider,
-        Func<Language> languageProvider,
+        Func<string> languageProvider,
         Func<Guid, bool> isRecording,
         Func<Guid, Task> startRecordingAsync,
         Action<Guid> stopRecording,
@@ -24,10 +23,9 @@ public sealed class SchedulerService : IDisposable
         Stop();
 
         cancellation = new CancellationTokenSource();
-        timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         loopTask = Task.Run(async () =>
         {
-            while (await timer.WaitForNextTickAsync(cancellation.Token))
+            while (!cancellation.Token.IsCancellationRequested)
             {
                 var now = DateTime.Now;
                 foreach (var schedule in schedulesProvider())
@@ -70,6 +68,8 @@ public sealed class SchedulerService : IDisposable
                         logs.Push(localizer.ScheduleStoppedRecording(station.Name));
                     }
                 }
+
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
             }
         }, cancellation.Token);
     }
@@ -77,8 +77,6 @@ public sealed class SchedulerService : IDisposable
     public void Stop()
     {
         cancellation?.Cancel();
-        timer?.Dispose();
-        timer = null;
         cancellation = null;
         loopTask = null;
     }

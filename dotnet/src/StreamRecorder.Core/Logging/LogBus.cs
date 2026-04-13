@@ -40,7 +40,10 @@ public sealed class LogBus
 
     public void Push(string message)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new ArgumentException("Value cannot be null or whitespace.", nameof(message));
+        }
 
         var entry = new LogEntry
         {

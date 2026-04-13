@@ -35,7 +35,7 @@ public static class StreamProbeService
             return null;
         }
 
-        return value.Split(';', 2, StringSplitOptions.TrimEntries)[0].Trim().ToLowerInvariant();
+        return value.Split(new[] { ';' }, 2, StringSplitOptions.None)[0].Trim().ToLowerInvariant();
     }
 
     private static bool IsHls(string url, string? contentType, byte[] firstBytes)

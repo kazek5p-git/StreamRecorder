@@ -60,17 +60,28 @@ internal static class CrashGuard
         var startInfo = new ProcessStartInfo
         {
             FileName = executablePath,
+            Arguments = string.Join(" ", args.Select(EscapeArgument)),
             UseShellExecute = false,
             CreateNoWindow = true,
             WorkingDirectory = Path.GetDirectoryName(executablePath) ?? AppContext.BaseDirectory,
         };
 
-        foreach (var arg in args)
+        return startInfo;
+    }
+
+    private static string EscapeArgument(string value)
+    {
+        if (string.IsNullOrEmpty(value))
         {
-            startInfo.ArgumentList.Add(arg);
+            return "\"\"";
         }
 
-        return startInfo;
+        if (!value.Any(char.IsWhiteSpace) && !value.Contains('"'))
+        {
+            return value;
+        }
+
+        return "\"" + value.Replace("\"", "\\\"") + "\"";
     }
 
     private static void AppendLog(string logPath, string message)

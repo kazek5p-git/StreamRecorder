@@ -1,18 +1,23 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
 
   <ItemGroup>
     <ProjectReference Include="..\StreamRecorder.Core\StreamRecorder.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\locales\*.json" Link="locales\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net48</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
     <AssemblyName>StreamRecorder</AssemblyName>
     <Product>StreamRecorder</Product>
-    <Version>0.2.0-alpha1</Version>
+    <Version>0.2.0-alpha2</Version>
   </PropertyGroup>
 
 </Project>

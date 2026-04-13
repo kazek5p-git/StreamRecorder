@@ -1,5 +1,6 @@
 using StreamRecorder.Core.Logging;
 using StreamRecorder.Core.Localization;
+using StreamRecorder.Core.Compatibility;
 
 namespace StreamRecorder.WinForms.Forms;
 
@@ -100,6 +101,6 @@ public sealed class LogForm : Form
         logList.AccessibleName = localizer.LogEntriesAccessibleName;
         logList.AccessibleDescription = localizer.LogEntriesAccessibleDescription;
         closeButton.Text = localizer.Close;
-        closeButton.AccessibleName = localizer.Close.Replace("&", string.Empty, StringComparison.Ordinal);
+        closeButton.AccessibleName = localizer.Close.Replace("&", string.Empty);
     }
 }

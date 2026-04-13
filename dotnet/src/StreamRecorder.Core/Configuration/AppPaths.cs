@@ -2,19 +2,19 @@ namespace StreamRecorder.Core.Configuration;
 
 public sealed class AppPaths
 {
-    public required string RootDirectory { get; init; }
+    public string RootDirectory { get; set; } = string.Empty;
 
-    public required string ConfigDirectory { get; init; }
+    public string ConfigDirectory { get; set; } = string.Empty;
 
-    public required string RecordingsDirectory { get; init; }
+    public string RecordingsDirectory { get; set; } = string.Empty;
 
-    public required string ConfigFilePath { get; init; }
+    public string ConfigFilePath { get; set; } = string.Empty;
 
-    public required string LogFilePath { get; init; }
+    public string LogFilePath { get; set; } = string.Empty;
 
     public static AppPaths Discover(string? executablePath = null)
     {
-        executablePath ??= Environment.ProcessPath;
+        executablePath ??= System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
         if (string.IsNullOrWhiteSpace(executablePath))
         {
             throw new InvalidOperationException("Unable to resolve the current executable path.");

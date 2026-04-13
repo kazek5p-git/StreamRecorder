@@ -2,9 +2,9 @@ namespace StreamRecorder.Core.Updates;
 
 public sealed class UpdateInfo
 {
-    public required string Version { get; init; }
+    public string Version { get; set; } = string.Empty;
 
-    public required string HtmlUrl { get; init; }
+    public string HtmlUrl { get; set; } = string.Empty;
 
-    public UpdateAsset? Asset { get; init; }
+    public UpdateAsset? Asset { get; set; }
 }

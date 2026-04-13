@@ -19,11 +19,12 @@ public static class StreamFormatExtensions
 
     public static string GetDisplayName(this StreamFormat format)
     {
-        return GetDisplayName(format, Language.English);
+        return GetDisplayName(format, LanguageCodes.English);
     }
 
-    public static string GetDisplayName(this StreamFormat format, Language language)
+    public static string GetDisplayName(this StreamFormat format, string languageCode)
     {
+        var normalizedLanguage = LanguageCodes.Normalize(languageCode);
         return format switch
         {
             StreamFormat.Mp3 => "MP3",
@@ -33,7 +34,7 @@ public static class StreamFormatExtensions
             StreamFormat.Wma => "WMA",
             StreamFormat.Wav => "WAV",
             StreamFormat.MpegTs => "MPEG-TS",
-            _ => language == Language.Polish ? "Nieznany" : "Unknown",
+            _ => normalizedLanguage == LanguageCodes.Polish ? "Nieznany" : "Unknown",
         };
     }
 }

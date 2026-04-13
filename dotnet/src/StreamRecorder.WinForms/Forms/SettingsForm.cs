@@ -32,6 +32,7 @@ public sealed class SettingsForm : Form
     private readonly Label templateLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
     private readonly Label tokensLabel = new() { AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
     private readonly Label languageLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+    private IReadOnlyList<AppLocalizer.AvailableLanguage> availableLanguages = Array.Empty<AppLocalizer.AvailableLanguage>();
 
     public SettingsForm(AppLocalizer localizer, AppSettings settings, AppPaths paths)
     {
@@ -65,7 +66,7 @@ public sealed class SettingsForm : Form
             RemuxRawAacToM4A = remuxAacCheckBox.Checked,
             RecordingsFolder = string.IsNullOrWhiteSpace(recordingsFolderTextBox.Text) ? AppDefaults.DefaultRecordingsFolder : recordingsFolderTextBox.Text.Trim(),
             FileNameTemplate = string.IsNullOrWhiteSpace(fileNameTemplateTextBox.Text) ? AppDefaults.DefaultFileNameTemplate : fileNameTemplateTextBox.Text.Trim(),
-            Language = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Value : Language.Polish,
+            Language = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Code : LanguageCodes.Default,
         };
     }
 
@@ -155,7 +156,7 @@ public sealed class SettingsForm : Form
         browseButton.MinimumSize = new Size(90, 32);
         browseButton.Click += (_, _) =>
         {
-            folderDialog.InitialDirectory = Path.IsPathRooted(recordingsFolderTextBox.Text)
+            folderDialog.SelectedPath = Path.IsPathRooted(recordingsFolderTextBox.Text)
                 ? recordingsFolderTextBox.Text
                 : Path.Combine(paths.RootDirectory, recordingsFolderTextBox.Text);
             if (folderDialog.ShowDialog(this) == DialogResult.OK)
@@ -236,17 +237,20 @@ public sealed class SettingsForm : Form
 
     private void PopulateLanguages()
     {
-        var selected = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Value : (Language?)null;
+        var selected = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Code : null;
         languageComboBox.BeginUpdate();
         try
         {
             languageComboBox.Items.Clear();
-            languageComboBox.Items.Add(new LanguageChoice(Language.Polish, localizer.PolishLanguageName));
-            languageComboBox.Items.Add(new LanguageChoice(Language.English, localizer.EnglishLanguageName));
-
-            if (selected is not null)
+            availableLanguages = AppLocalizer.GetAvailableLanguages(paths.RootDirectory);
+            foreach (var language in availableLanguages)
             {
-                SelectLanguage(selected.Value);
+                languageComboBox.Items.Add(new LanguageChoice(language.Code, language.DisplayName));
+            }
+
+            if (!string.IsNullOrWhiteSpace(selected))
+            {
+                SelectLanguage(selected);
             }
         }
         finally
@@ -290,11 +294,12 @@ public sealed class SettingsForm : Form
         SelectLanguage(settings.Language);
     }
 
-    private void SelectLanguage(Language language)
+    private void SelectLanguage(string languageCode)
     {
+        var normalizedLanguageCode = LanguageCodes.Normalize(languageCode);
         for (var index = 0; index < languageComboBox.Items.Count; index++)
         {
-            if (languageComboBox.Items[index] is LanguageChoice choice && choice.Value == language)
+            if (languageComboBox.Items[index] is LanguageChoice choice && string.Equals(choice.Code, normalizedLanguageCode, StringComparison.OrdinalIgnoreCase))
             {
                 languageComboBox.SelectedIndex = index;
                 return;
@@ -307,7 +312,7 @@ public sealed class SettingsForm : Form
         }
     }
 
-    private sealed record LanguageChoice(Language Value, string Name)
+    private sealed record LanguageChoice(string Code, string Name)
     {
         public override string ToString()
         {

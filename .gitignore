@@ -1,6 +1,9 @@
 /target
+/legacy/rust/target
 /Config
 /My recordings
+/legacy/rust/Config
+/legacy/rust/My recordings
 *.log
 *.user
 *.pdb

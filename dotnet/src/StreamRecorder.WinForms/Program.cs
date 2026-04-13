@@ -17,14 +17,12 @@ internal static class Program
 
         if (options.GuardMode)
         {
-            var executablePath = Environment.ProcessPath
-                ?? throw new InvalidOperationException("Unable to resolve the current executable path.");
+            var executablePath = ResolveExecutablePath();
             var logPath = Path.Combine(AppPaths.Discover(executablePath).ConfigDirectory, "crash_guard.log");
             return CrashGuard.Run(executablePath, options.ForwardedArgs, logPath);
         }
 
-        var executable = Environment.ProcessPath
-            ?? throw new InvalidOperationException("Unable to resolve the current executable path.");
+        var executable = ResolveExecutablePath();
         var paths = AppPaths.Discover(executable);
         var config = ConfigStore.LoadOrCreate(paths);
         AppLocalizer.ApplyThreadCulture(config.Settings.Language);
@@ -41,7 +39,8 @@ internal static class Program
             return RunCrashTest(options.CrashTest, paths);
         }
 
-        ApplicationConfiguration.Initialize();
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         RegisterUnhandledExceptionLogging(paths);
 
@@ -49,7 +48,7 @@ internal static class Program
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion
             ?? Application.ProductVersion
-            ?? "0.2.0-alpha1";
+            ?? "0.2.0-alpha2";
 
         using var app = new StreamRecorderApp(version, paths);
         Application.Run(new MainForm(app));
@@ -113,15 +112,21 @@ internal static class Program
         }
     }
 
+    private static string ResolveExecutablePath()
+    {
+        return System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
+            ?? throw new InvalidOperationException("Unable to resolve the current executable path.");
+    }
+
     private sealed class ProgramOptions
     {
-        public bool GuardMode { get; init; }
+        public bool GuardMode { get; set; }
 
-        public bool GuardedChild { get; init; }
+        public bool GuardedChild { get; set; }
 
-        public IReadOnlyList<string> ForwardedArgs { get; init; } = [];
+        public IReadOnlyList<string> ForwardedArgs { get; set; } = [];
 
-        public CrashTestOptions CrashTest { get; init; } = new();
+        public CrashTestOptions CrashTest { get; set; } = new();
 
         public static ProgramOptions Parse(IReadOnlyList<string> args)
         {
@@ -198,13 +203,13 @@ internal static class Program
 
     private sealed class CrashTestOptions
     {
-        public string? CountFilePath { get; init; }
+        public string? CountFilePath { get; set; }
 
-        public int CrashUntil { get; init; }
+        public int CrashUntil { get; set; }
 
-        public int ExitDelayMs { get; init; } = 1000;
+        public int ExitDelayMs { get; set; } = 1000;
 
-        public int CrashExitCode { get; init; } = 101;
+        public int CrashExitCode { get; set; } = 101;
 
         public bool Enabled => !string.IsNullOrWhiteSpace(CountFilePath);
     }

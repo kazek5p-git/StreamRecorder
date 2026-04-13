@@ -1,7 +1,6 @@
 param(
     [string]$Version,
-    [string]$Runtime = "win-x64",
-    [switch]$SkipPublish
+    [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,15 +43,15 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $projectFile = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\StreamRecorder.WinForms.csproj'
 $readmePath = Join-Path $repoRoot 'dotnet\README.md'
 $versionToUse = if ($Version) { $Version } else { Get-ProjectVersion -ProjectFilePath $projectFile }
-$publishDir = Join-Path $repoRoot ("dotnet\publish\framework-dependent\{0}" -f $Runtime)
+$buildDir = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\bin\Release\net48'
 $packageRoot = Join-Path $repoRoot 'dotnet\target\release-package'
-$stageDir = Join-Path $packageRoot ("StreamRecorder-v{0}-winforms-framework-dependent-{1}" -f $versionToUse, $Runtime)
+$stageDir = Join-Path $packageRoot ("StreamRecorder-v{0}-winforms-net48" -f $versionToUse)
 $zipPath = "$stageDir.zip"
 
-if (-not $SkipPublish) {
+if (-not $SkipBuild) {
     Push-Location $repoRoot
     try {
-        dotnet publish $projectFile -c Release -r $Runtime --self-contained false -p:Version=$versionToUse -o $publishDir
+        dotnet build $projectFile -c Release -p:Version=$versionToUse
     }
     finally {
         Pop-Location
@@ -60,12 +59,11 @@ if (-not $SkipPublish) {
 }
 
 foreach ($required in @(
-    (Join-Path $publishDir 'StreamRecorder.exe'),
-    (Join-Path $publishDir 'StreamRecorder.dll'),
-    (Join-Path $publishDir 'StreamRecorder.deps.json'),
-    (Join-Path $publishDir 'StreamRecorder.runtimeconfig.json'),
-    (Join-Path $publishDir 'StreamRecorder.Core.dll'),
-    (Join-Path $publishDir 'Tomlyn.dll'),
+    (Join-Path $buildDir 'StreamRecorder.exe'),
+    (Join-Path $buildDir 'StreamRecorder.exe.config'),
+    (Join-Path $buildDir 'StreamRecorder.Core.dll'),
+    (Join-Path $buildDir 'Tomlyn.dll'),
+    (Join-Path $buildDir 'locales'),
     $readmePath
 )) {
     if (-not (Test-Path -LiteralPath $required)) {
@@ -79,10 +77,13 @@ Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'Config') | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'My recordings') | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $stageDir 'locales') | Out-Null
 
-Get-ChildItem -LiteralPath $publishDir -File | ForEach-Object {
+Get-ChildItem -LiteralPath $buildDir -File | Where-Object { $_.Extension -ne '.pdb' } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $stageDir $_.Name) -Force
 }
+
+Copy-Item -LiteralPath (Join-Path $buildDir 'locales\*') -Destination (Join-Path $stageDir 'locales') -Recurse -Force
 
 $markdown = Get-Content -LiteralPath $readmePath -Raw
 $htmlBody = Convert-MarkdownToHtml -Markdown $markdown
