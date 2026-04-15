@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha4] - 2026-04-15
+
+### Changed
+
+- The main WinForms window now exposes `Schedules` as a dedicated button instead of a station context-menu action.
+- The station list no longer relies on the previous empty-list placeholder workaround after the `.NET Framework 4.8` rewrite fixes improved default screen reader behavior.
+
+### Fixed
+
+- Adding the first station and deleting the last station no longer crash or stall the WinForms main window after the empty-list accessibility cleanup.
+- Station context-menu refresh noise was reduced for screen readers, improving NVDA readability while moving through menu items.
+
 ## [0.2.0-alpha3] - 2026-04-13
 
 ### Fixed

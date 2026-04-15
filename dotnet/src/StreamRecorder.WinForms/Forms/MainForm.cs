@@ -9,7 +9,6 @@ namespace StreamRecorder.WinForms.Forms;
 
 public sealed class MainForm : Form
 {
-    private static readonly object EmptyStationListTag = new();
     private readonly StreamRecorderApp app;
     private readonly MenuStrip menuStrip = new();
     private readonly ToolStripMenuItem fileMenu = new();
@@ -27,6 +26,7 @@ public sealed class MainForm : Form
     private readonly ToolStripMenuItem schedulesMenuItem = new();
     private readonly ToolStripMenuItem deleteStationMenuItem = new();
     private readonly Button addStationButton = new();
+    private readonly Button schedulesButton = new();
     private readonly Button showLogButton = new();
     private readonly ListView stationList = new();
     private readonly StatusStrip statusStrip = new();
@@ -133,10 +133,16 @@ public sealed class MainForm : Form
         addStationButton.Click += (_, _) => AddStation();
         Controls.Add(addStationButton);
 
+        schedulesButton.Location = new Point(160, 40);
+        schedulesButton.Size = new Size(140, 30);
+        schedulesButton.TabIndex = 1;
+        schedulesButton.Click += (_, _) => OpenSchedules();
+        Controls.Add(schedulesButton);
+
         showLogButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         showLogButton.Location = new Point(ClientSize.Width - 160, 40);
         showLogButton.Size = new Size(140, 30);
-        showLogButton.TabIndex = 1;
+        showLogButton.TabIndex = 2;
         showLogButton.Click += (_, _) => ToggleLogWindow();
         Controls.Add(showLogButton);
 
@@ -150,7 +156,7 @@ public sealed class MainForm : Form
         stationList.LabelEdit = false;
         stationList.Name = "Stations";
         stationList.AccessibleRole = AccessibleRole.List;
-        stationList.TabIndex = 2;
+        stationList.TabIndex = 3;
         stationList.ContextMenuStrip = stationMenu;
         stationList.Columns.Add(string.Empty, 260);
         stationList.Columns.Add(string.Empty, 320);
@@ -204,7 +210,6 @@ public sealed class MainForm : Form
         startRecordingMenuItem.Click += async (_, _) => await StartSelectedStationAsync();
         stopRecordingMenuItem.Click += (_, _) => StopSelectedStation();
         editStationMenuItem.Click += (_, _) => EditSelectedStation();
-        schedulesMenuItem.Click += (_, _) => OpenSchedules();
         deleteStationMenuItem.Click += (_, _) => DeleteSelectedStation();
     }
 
@@ -298,7 +303,6 @@ public sealed class MainForm : Form
         startRecordingMenuItem.Enabled = !isRecording;
         stopRecordingMenuItem.Enabled = isRecording;
         editStationMenuItem.Enabled = true;
-        schedulesMenuItem.Enabled = true;
         deleteStationMenuItem.Enabled = true;
 
         stationMenu.Items.Add(new ToolStripSeparator());
@@ -306,7 +310,6 @@ public sealed class MainForm : Form
         stationMenu.Items.Add(stopRecordingMenuItem);
         stationMenu.Items.Add(new ToolStripSeparator());
         stationMenu.Items.Add(editStationMenuItem);
-        stationMenu.Items.Add(schedulesMenuItem);
         stationMenu.Items.Add(deleteStationMenuItem);
     }
 
@@ -402,15 +405,13 @@ public sealed class MainForm : Form
     private void OpenSchedules()
     {
         var station = GetSelectedStation();
-        if (station is null)
-        {
-            return;
-        }
-
-        using var dialog = new ScheduleListForm(app, app.GetLocalizer(), station.Id);
+        using var dialog = new ScheduleListForm(app, app.GetLocalizer(), station?.Id);
         dialog.ShowDialog(this);
         RefreshUi();
-        SelectStation(station.Id);
+        if (station is not null)
+        {
+            SelectStation(station.Id);
+        }
         Activate();
         FocusStationList();
     }
@@ -657,15 +658,6 @@ public sealed class MainForm : Form
         stationList.BeginUpdate();
         try
         {
-            if (stations.Count == 0)
-            {
-                EnsureEmptyStationPlaceholder();
-                UpdateStationColumns();
-                return;
-            }
-
-            RemoveEmptyStationPlaceholder();
-
             var existingItems = stationList.Items
                 .Cast<ListViewItem>()
                 .Select(static item => (Item: item, StationId: TryGetStationId(item)))
@@ -755,44 +747,6 @@ public sealed class MainForm : Form
         }
     }
 
-    private void EnsureEmptyStationPlaceholder()
-    {
-        if (stationList.Items.Count == 1 && ReferenceEquals(stationList.Items[0].Tag, EmptyStationListTag))
-        {
-            var existingPlaceholder = stationList.Items[0];
-            existingPlaceholder.Text = app.GetLocalizer().NoStationsConfigured;
-            existingPlaceholder.Selected = true;
-            existingPlaceholder.Focused = true;
-            return;
-        }
-
-        stationList.Items.Clear();
-
-        var placeholder = new ListViewItem
-        {
-            Tag = EmptyStationListTag,
-            ForeColor = SystemColors.GrayText,
-            Text = app.GetLocalizer().NoStationsConfigured,
-        };
-
-        EnsureSubItemCount(placeholder, 5);
-        placeholder.SubItems[1].Text = "-";
-        placeholder.SubItems[2].Text = "-";
-        placeholder.SubItems[3].Text = "-";
-        placeholder.SubItems[4].Text = "-";
-        placeholder.Selected = true;
-        placeholder.Focused = true;
-        stationList.Items.Add(placeholder);
-    }
-
-    private void RemoveEmptyStationPlaceholder()
-    {
-        foreach (var placeholder in stationList.Items.Cast<ListViewItem>().Where(static item => ReferenceEquals(item.Tag, EmptyStationListTag)).ToArray())
-        {
-            stationList.Items.Remove(placeholder);
-        }
-    }
-
     private void ApplyStationToItem(ListViewItem item, Station station, RecordingSnapshot? snapshot)
     {
         var localizer = app.GetLocalizer();
@@ -833,6 +787,8 @@ public sealed class MainForm : Form
 
         addStationButton.Text = localizer.AddStation;
         addStationButton.AccessibleName = localizer.AddStation.Replace("&", string.Empty);
+        schedulesButton.Text = localizer.Schedules;
+        schedulesButton.AccessibleName = localizer.Schedules.Replace("&", string.Empty).Replace("...", string.Empty);
         stationList.AccessibleName = localizer.StationsAccessibleName;
         stationList.AccessibleDescription = localizer.StationsAccessibleDescription;
         stationList.Columns[0].Text = localizer.StationColumn;
@@ -845,7 +801,6 @@ public sealed class MainForm : Form
         startRecordingMenuItem.Text = localizer.StartRecording;
         stopRecordingMenuItem.Text = localizer.StopRecording;
         editStationMenuItem.Text = localizer.EditStation;
-        schedulesMenuItem.Text = localizer.Schedules;
         deleteStationMenuItem.Text = localizer.DeleteStation;
 
         trayShowMenuItem.Text = localizer.Show;
