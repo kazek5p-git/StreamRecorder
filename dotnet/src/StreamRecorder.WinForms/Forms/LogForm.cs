@@ -44,6 +44,11 @@ public sealed class LogForm : Form
         logBus.EntryAdded += OnEntryAdded;
         FormClosing += (_, e) =>
         {
+            if (e.CloseReason != CloseReason.UserClosing)
+            {
+                return;
+            }
+
             e.Cancel = true;
             Hide();
         };

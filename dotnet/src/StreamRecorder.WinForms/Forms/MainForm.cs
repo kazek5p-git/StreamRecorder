@@ -9,6 +9,12 @@ namespace StreamRecorder.WinForms.Forms;
 
 public sealed class MainForm : Form
 {
+    private const byte VkEscape = 0x1B;
+    private const uint KeyeventfKeyup = 0x0002;
+    private const int ScKeyMenu = 0xF100;
+    private const int WsExAppWindow = 0x00040000;
+    private const int WsExToolWindow = 0x00000080;
+
     private readonly StreamRecorderApp app;
     private readonly MenuStrip menuStrip = new();
     private readonly ToolStripMenuItem fileMenu = new();
@@ -25,6 +31,8 @@ public sealed class MainForm : Form
     private readonly ToolStripMenuItem editStationMenuItem = new();
     private readonly ToolStripMenuItem schedulesMenuItem = new();
     private readonly ToolStripMenuItem deleteStationMenuItem = new();
+    private readonly ToolStripSeparator stationMenuActionsSeparator = new();
+    private readonly ToolStripSeparator stationMenuEditSeparator = new();
     private readonly Button addStationButton = new();
     private readonly Button schedulesButton = new();
     private readonly Button showLogButton = new();
@@ -43,6 +51,8 @@ public sealed class MainForm : Form
     private readonly LogForm logForm;
 
     private bool allowClose;
+    private bool hideFromAltTab;
+    private bool menuPrimed;
     private bool suspendStationListRefresh;
 
     public MainForm(StreamRecorderApp app)
@@ -83,6 +93,8 @@ public sealed class MainForm : Form
         {
             var settings = app.GetSettings();
             ApplyShellSettings(settings, persistExternalState: true);
+            PrimeMenuAccessibilityObjects();
+            PrimeStationMenuAccessibilityObjects();
             RefreshUi();
             if (settings.StartMinimized)
             {
@@ -98,6 +110,7 @@ public sealed class MainForm : Form
             else
             {
                 FocusPrimaryControl();
+                BeginInvoke((Action)PrimeMainMenuForFirstAlt);
             }
         };
     }
@@ -189,6 +202,14 @@ public sealed class MainForm : Form
 
     private void BuildStationMenu()
     {
+        stationMenu.Items.Add(addStationMenuItem);
+        stationMenu.Items.Add(stationMenuActionsSeparator);
+        stationMenu.Items.Add(startRecordingMenuItem);
+        stationMenu.Items.Add(stopRecordingMenuItem);
+        stationMenu.Items.Add(stationMenuEditSeparator);
+        stationMenu.Items.Add(editStationMenuItem);
+        stationMenu.Items.Add(deleteStationMenuItem);
+
         stationMenu.Opening += (_, _) =>
         {
             suspendStationListRefresh = true;
@@ -211,6 +232,7 @@ public sealed class MainForm : Form
         stopRecordingMenuItem.Click += (_, _) => StopSelectedStation();
         editStationMenuItem.Click += (_, _) => EditSelectedStation();
         deleteStationMenuItem.Click += (_, _) => DeleteSelectedStation();
+        UpdateStationMenuState();
     }
 
     private void BuildTray()
@@ -292,25 +314,20 @@ public sealed class MainForm : Form
         var hasSelection = GetSelectedStation() is not null;
         var isRecording = hasSelection && app.Recorder.IsRecording(GetSelectedStation()!.Id);
 
-        stationMenu.Items.Clear();
-        stationMenu.Items.Add(addStationMenuItem);
-
-        if (!hasSelection)
-        {
-            return;
-        }
+        addStationMenuItem.Visible = true;
+        addStationMenuItem.Enabled = true;
 
         startRecordingMenuItem.Enabled = !isRecording;
         stopRecordingMenuItem.Enabled = isRecording;
         editStationMenuItem.Enabled = true;
         deleteStationMenuItem.Enabled = true;
 
-        stationMenu.Items.Add(new ToolStripSeparator());
-        stationMenu.Items.Add(startRecordingMenuItem);
-        stationMenu.Items.Add(stopRecordingMenuItem);
-        stationMenu.Items.Add(new ToolStripSeparator());
-        stationMenu.Items.Add(editStationMenuItem);
-        stationMenu.Items.Add(deleteStationMenuItem);
+        stationMenuActionsSeparator.Visible = hasSelection;
+        startRecordingMenuItem.Visible = hasSelection;
+        stopRecordingMenuItem.Visible = hasSelection;
+        stationMenuEditSeparator.Visible = hasSelection;
+        editStationMenuItem.Visible = hasSelection;
+        deleteStationMenuItem.Visible = hasSelection;
     }
 
     private Guid? GetSelectedStationId()
@@ -512,6 +529,7 @@ public sealed class MainForm : Form
 
     private void RestoreFromTray()
     {
+        SetTrayHiddenState(false);
         ShowInTaskbar = true;
         Show();
         WindowState = FormWindowState.Normal;
@@ -519,6 +537,7 @@ public sealed class MainForm : Form
         BeginInvoke((Action)(() =>
         {
             FocusPrimaryControl();
+            PrimeMainMenuForFirstAlt();
         }));
     }
 
@@ -630,8 +649,9 @@ public sealed class MainForm : Form
             logForm.Hide();
         }
 
-        Hide();
         ShowInTaskbar = false;
+        SetTrayHiddenState(true);
+        Hide();
     }
 
     private void OnLogFormVisibleChanged(object? sender, EventArgs e)
@@ -929,9 +949,84 @@ public sealed class MainForm : Form
         }));
     }
 
+    private bool IsMainMenuActive()
+    {
+        if (menuStrip.ContainsFocus)
+        {
+            return true;
+        }
+
+        return menuStrip.Items
+            .OfType<ToolStripMenuItem>()
+            .Any(static item => item.Selected || item.Pressed || item.DropDown.Visible);
+    }
+
+    private void ActivateMainMenuForAccessibility()
+    {
+        if (!IsHandleCreated)
+        {
+            return;
+        }
+
+        SendMessage(Handle, WmSysCommand, (IntPtr)ScKeyMenu, IntPtr.Zero);
+    }
+
+    private void PrimeMenuAccessibilityObjects()
+    {
+        _ = menuStrip.AccessibilityObject;
+        _ = fileMenu.AccessibilityObject;
+        _ = helpMenu.AccessibilityObject;
+        _ = fileMenu.AccessibilityObject.Name;
+        _ = helpMenu.AccessibilityObject.Name;
+    }
+
+    private void PrimeStationMenuAccessibilityObjects()
+    {
+        UpdateStationMenuState();
+        _ = stationMenu.AccessibilityObject;
+        _ = addStationMenuItem.AccessibilityObject;
+        _ = startRecordingMenuItem.AccessibilityObject;
+        _ = stopRecordingMenuItem.AccessibilityObject;
+        _ = editStationMenuItem.AccessibilityObject;
+        _ = deleteStationMenuItem.AccessibilityObject;
+    }
+
+    private void PrimeMainMenuForFirstAlt()
+    {
+        if (menuPrimed || !Visible || WindowState == FormWindowState.Minimized || !IsHandleCreated)
+        {
+            return;
+        }
+
+        menuPrimed = true;
+        ActivateMainMenuForAccessibility();
+        BeginInvoke((Action)(() =>
+        {
+            keybd_event(VkEscape, 0, 0, UIntPtr.Zero);
+            keybd_event(VkEscape, 0, KeyeventfKeyup, UIntPtr.Zero);
+            BeginInvoke((Action)FocusPrimaryControl);
+        }));
+    }
+
     private static Guid? TryGetStationId(ListViewItem item)
     {
         return item.Tag is Guid stationId ? stationId : null;
+    }
+
+    private void SetTrayHiddenState(bool hidden)
+    {
+        if (hideFromAltTab == hidden)
+        {
+            return;
+        }
+
+        hideFromAltTab = hidden;
+        if (!IsHandleCreated)
+        {
+            return;
+        }
+
+        RecreateHandle();
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -944,4 +1039,27 @@ public sealed class MainForm : Form
 
         return base.ProcessCmdKey(ref msg, keyData);
     }
+
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            var createParams = base.CreateParams;
+            if (hideFromAltTab)
+            {
+                createParams.ExStyle |= WsExToolWindow;
+                createParams.ExStyle &= ~WsExAppWindow;
+            }
+
+            return createParams;
+        }
+    }
+
+    private const int WmSysCommand = 0x0112;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 }

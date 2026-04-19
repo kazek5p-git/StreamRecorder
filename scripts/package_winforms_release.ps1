@@ -83,7 +83,7 @@ Get-ChildItem -LiteralPath $buildDir -File | Where-Object { $_.Extension -ne '.p
     Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $stageDir $_.Name) -Force
 }
 
-Copy-Item -LiteralPath (Join-Path $buildDir 'locales\*') -Destination (Join-Path $stageDir 'locales') -Recurse -Force
+Copy-Item -Path (Join-Path $buildDir 'locales\*') -Destination (Join-Path $stageDir 'locales') -Recurse -Force
 
 $markdown = Get-Content -LiteralPath $readmePath -Raw
 $htmlBody = Convert-MarkdownToHtml -Markdown $markdown

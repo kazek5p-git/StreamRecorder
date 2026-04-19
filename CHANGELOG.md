@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha5] - 2026-04-19
+
+### Fixed
+
+- Closing the log window no longer blocks `Exit` or `Alt+F4` from shutting down the main application.
+- Minimizing to tray now removes the main window from `Alt+Tab`.
+- First-entry accessibility for the station context menu was improved for NVDA on the first keyboard open.
+- WinForms release packaging now includes the `locales` folder with `en.json` and `pl.json` instead of shipping an empty directory.
+
+### Changed
+
+- The main menu startup priming was refined so the first `Alt` activation remains readable without breaking normal open/close menu toggling.
+
 ## [0.2.0-alpha4] - 2026-04-15
 
 ### Changed
