@@ -120,7 +120,7 @@ public static class ConfigStore
                     Id = ParseGuidOrNew(schedule.Id),
                     StationId = ParseGuidOrNew(schedule.StationId),
                     Enabled = schedule.Enabled,
-                    DayOfWeek = schedule.DayOfWeek,
+                    Days = NormalizeScheduleDays(schedule.Days, schedule.DayOfWeek),
                     Action = schedule.Action,
                     Hour = schedule.Hour,
                     Minute = schedule.Minute,
@@ -169,6 +169,7 @@ public static class ConfigStore
                     Id = schedule.Id.ToString("D"),
                     StationId = schedule.StationId.ToString("D"),
                     Enabled = schedule.Enabled,
+                    Days = schedule.GetDays().ToList(),
                     DayOfWeek = schedule.DayOfWeek,
                     Action = schedule.Action,
                     Hour = schedule.Hour,
@@ -182,6 +183,20 @@ public static class ConfigStore
     private static Guid ParseGuidOrNew(string? value)
     {
         return Guid.TryParse(value, out var parsed) ? parsed : Guid.NewGuid();
+    }
+
+    private static List<DayOfWeek> NormalizeScheduleDays(List<DayOfWeek>? days, DayOfWeek? legacyDay)
+    {
+        var source = days is { Count: > 0 }
+            ? days
+            : legacyDay is { } day
+                ? [day]
+                : [DayOfWeek.Monday];
+
+        return source
+            .Distinct()
+            .OrderBy(static day => day == DayOfWeek.Sunday ? 6 : (int)day - 1)
+            .ToList();
     }
 
     private sealed class PersistedAppConfig
@@ -244,7 +259,9 @@ public static class ConfigStore
 
         public bool Enabled { get; set; } = true;
 
-        public DayOfWeek DayOfWeek { get; set; }
+        public List<DayOfWeek>? Days { get; set; }
+
+        public DayOfWeek? DayOfWeek { get; set; }
 
         public ScheduleAction Action { get; set; } = ScheduleAction.StartRecording;
 

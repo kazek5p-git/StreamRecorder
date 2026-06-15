@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha6] - 2026-06-15
+
+### Changed
+
+- Schedule entries can now target multiple weekdays in one task, such as Monday through Friday at the same time.
+- The schedule entry action selector now uses radio buttons instead of a drop-down list for better screen reader feedback.
+- The schedule list now displays all selected weekdays for each entry.
+
+### Fixed
+
+- Existing single-day schedule entries continue to load correctly after the multi-day schedule model change.
+
 ## [0.2.0-alpha5] - 2026-04-19
 
 ### Fixed

@@ -31,7 +31,7 @@ public sealed class SchedulerService : IDisposable
                 var now = DateTime.Now;
                 foreach (var schedule in schedulesProvider())
                 {
-                    if (!schedule.Enabled || schedule.DayOfWeek != now.DayOfWeek)
+                    if (!schedule.Enabled || !schedule.GetDays().Contains(now.DayOfWeek))
                     {
                         continue;
                     }

@@ -67,7 +67,7 @@ public sealed class ConfigStoreTests : IDisposable
                     Id = scheduleId,
                     StationId = stationId,
                     Enabled = true,
-                    DayOfWeek = DayOfWeek.Friday,
+                    Days = [DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday],
                     Action = ScheduleAction.StopRecording,
                     Hour = 8,
                     Minute = 15,
@@ -104,7 +104,8 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(scheduleId, schedule.Id);
         Assert.Equal(stationId, schedule.StationId);
         Assert.True(schedule.Enabled);
-        Assert.Equal(DayOfWeek.Friday, schedule.DayOfWeek);
+        Assert.Equal(new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday }, schedule.GetDays());
+        Assert.Equal(DayOfWeek.Monday, schedule.DayOfWeek);
         Assert.Equal(ScheduleAction.StopRecording, schedule.Action);
         Assert.Equal(8, schedule.Hour);
         Assert.Equal(15, schedule.Minute);

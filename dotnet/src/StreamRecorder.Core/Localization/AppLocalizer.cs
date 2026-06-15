@@ -176,6 +176,7 @@ public sealed class AppLocalizer
     public string Edit => Text("Edit", IsPolish ? "&Edytuj" : "&Edit");
     public string Delete => Text("Delete", IsPolish ? "&UsuĹ„" : "&Delete");
     public string DayColumn => Text("DayColumn", IsPolish ? "DzieĹ„" : "Day");
+    public string DaysColumn => Text("DaysColumn", IsPolish ? "Dni" : "Days");
     public string TimeColumn => Text("TimeColumn", IsPolish ? "Czas" : "Time");
     public string ActionColumn => Text("ActionColumn", IsPolish ? "Akcja" : "Action");
     public string EnabledColumn => Text("EnabledColumn", IsPolish ? "WĹ‚Ä…czony" : "Enabled");
@@ -198,12 +199,15 @@ public sealed class AppLocalizer
     public string ScheduleEntryGroup => Text("ScheduleEntryGroup", IsPolish ? "Wpis harmonogramu" : "Schedule entry");
     public string StationLabel => Text("StationLabel", IsPolish ? "&Stacja:" : "&Station:");
     public string DayLabel => Text("DayLabel", IsPolish ? "&DzieĹ„:" : "&Day:");
+    public string DaysLabel => Text("DaysLabel", IsPolish ? "&Dni:" : "&Days:");
     public string ActionLabel => Text("ActionLabel", IsPolish ? "&Akcja:" : "&Action:");
     public string TimeLabel => Text("TimeLabel", IsPolish ? "&Czas:" : "&Time:");
     public string Enabled => Text("Enabled", IsPolish ? "&WĹ‚Ä…czony" : "&Enabled");
     public string DayAccessibleName => Text("DayAccessibleName", IsPolish ? "DzieĹ„" : "Day");
+    public string DaysAccessibleName => Text("DaysAccessibleName", IsPolish ? "Dni" : "Days");
     public string ActionAccessibleName => Text("ActionAccessibleName", IsPolish ? "Akcja" : "Action");
     public string TimeAccessibleName => Text("TimeAccessibleName", IsPolish ? "Czas" : "Time");
+    public string ScheduleEntryRequiresDay => Text("ScheduleEntryRequiresDay", IsPolish ? "Wybierz co najmniej jeden dzieĹ„." : "Select at least one day.");
     public string DeleteStationTitle => Text("DeleteStationTitle", IsPolish ? "UsuĹ„ stacjÄ™" : "Delete station");
     public string NoNewerVersion => Text("NoNewerVersion", IsPolish ? "Nie ma nowszej wersji." : "No newer version is available.");
     public string UpdatesTitle => Text("UpdatesTitle", IsPolish ? "Aktualizacje" : "Updates");

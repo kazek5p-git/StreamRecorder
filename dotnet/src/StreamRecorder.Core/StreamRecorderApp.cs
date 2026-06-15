@@ -260,7 +260,7 @@ public sealed class StreamRecorderApp : IDisposable
             Id = schedule.Id,
             StationId = schedule.StationId,
             Enabled = schedule.Enabled,
-            DayOfWeek = schedule.DayOfWeek,
+            Days = schedule.GetDays().ToList(),
             Action = schedule.Action,
             Hour = schedule.Hour,
             Minute = schedule.Minute,

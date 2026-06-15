@@ -114,7 +114,7 @@ public sealed class ScheduleListForm : Form
         scheduleList.AccessibleName = localizer.ScheduleEntriesAccessibleName;
         scheduleList.AccessibleDescription = localizer.ScheduleEntriesAccessibleDescription;
         scheduleList.Columns[0].Text = localizer.StationColumn;
-        scheduleList.Columns[1].Text = localizer.DayColumn;
+        scheduleList.Columns[1].Text = localizer.DaysColumn;
         scheduleList.Columns[2].Text = localizer.TimeColumn;
         scheduleList.Columns[3].Text = localizer.ActionColumn;
         scheduleList.Columns[4].Text = localizer.EnabledColumn;
@@ -141,7 +141,7 @@ public sealed class ScheduleListForm : Form
 
             foreach (var schedule in app.GetSchedules()
                          .OrderBy(entry => stations.TryGetValue(entry.StationId, out var name) ? name : string.Empty, StringComparer.CurrentCultureIgnoreCase)
-                         .ThenBy(entry => entry.DayOfWeek)
+                         .ThenBy(entry => DaySortKey(entry.GetDays().First()))
                          .ThenBy(entry => entry.Hour)
                          .ThenBy(entry => entry.Minute)
                          .ThenBy(entry => entry.Second))
@@ -151,7 +151,7 @@ public sealed class ScheduleListForm : Form
                 {
                     Tag = schedule.Id,
                 };
-                item.SubItems.Add(localizer.DayName(schedule.DayOfWeek));
+                item.SubItems.Add(FormatDays(schedule));
                 item.SubItems.Add($"{schedule.Hour:00}:{schedule.Minute:00}:{schedule.Second:00}");
                 item.SubItems.Add(localizer.ScheduleActionName(schedule.Action));
                 item.SubItems.Add(schedule.Enabled ? localizer.Yes : localizer.No);
@@ -295,5 +295,15 @@ public sealed class ScheduleListForm : Form
                 scheduleList.SelectedItems[0].Focused = true;
             }
         }));
+    }
+
+    private string FormatDays(ScheduleEntry schedule)
+    {
+        return string.Join(", ", schedule.GetDays().Select(localizer.DayName));
+    }
+
+    private static int DaySortKey(DayOfWeek day)
+    {
+        return day == DayOfWeek.Sunday ? 6 : (int)day - 1;
     }
 }

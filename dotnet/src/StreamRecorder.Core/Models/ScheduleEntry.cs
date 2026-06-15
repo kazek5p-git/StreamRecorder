@@ -8,7 +8,13 @@ public sealed class ScheduleEntry
 
     public bool Enabled { get; set; } = true;
 
-    public DayOfWeek DayOfWeek { get; set; }
+    public List<DayOfWeek> Days { get; set; } = [System.DayOfWeek.Monday];
+
+    public DayOfWeek DayOfWeek
+    {
+        get => GetDays().First();
+        set => Days = [value];
+    }
 
     public ScheduleAction Action { get; set; } = ScheduleAction.StartRecording;
 
@@ -30,9 +36,26 @@ public sealed class ScheduleEntry
         Second = time.Seconds;
     }
 
+    public IReadOnlyList<DayOfWeek> GetDays()
+    {
+        var days = Days is { Count: > 0 }
+            ? Days
+            : [System.DayOfWeek.Monday];
+
+        return days
+            .Distinct()
+            .OrderBy(DaySortKey)
+            .ToList();
+    }
+
     public string ToDisplayString(string stationName)
     {
         var action = Action == ScheduleAction.StartRecording ? "Start recording" : "Stop recording";
-        return $"{DayOfWeek} {Hour:00}:{Minute:00}:{Second:00} - {action} - {stationName}";
+        return $"{string.Join(", ", GetDays())} {Hour:00}:{Minute:00}:{Second:00} - {action} - {stationName}";
+    }
+
+    private static int DaySortKey(DayOfWeek day)
+    {
+        return day == System.DayOfWeek.Sunday ? 6 : (int)day - 1;
     }
 }
