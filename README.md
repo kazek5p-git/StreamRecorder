@@ -29,6 +29,14 @@ The rewrite supports user-editable JSON language files.
 - packaged builds load translations from `locales/` next to `StreamRecorder.exe`
 - translation workflow is documented in `docs/translations.md`
 
+## MP4Box / GPAC
+
+RAW AAC to M4A remuxing can use a locally available `MP4Box.exe`.
+Lightweight Windows builds can be found from community sources such as:
+
+- https://www.rarewares.org/files/mp4/MP4Box-GPAC-v.26.03-DEV-rev102-gfc485902-ab-suite-x64.zip
+- https://forum.doom9.org/showthread.php?t=184719&page=25
+
 ## Repository Layout
 
 - `dotnet/` - active C# core, WinForms frontend, tests, and tools

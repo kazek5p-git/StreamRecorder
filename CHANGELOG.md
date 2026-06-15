@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha7] - 2026-06-15
+
+### Fixed
+
+- MMSH request headers now build the `xClientGUID` value without throwing before the connection attempt.
+
+### Changed
+
+- The README now lists the Doom9 MP4Box thread as an additional lightweight MP4Box source alongside the existing RareWares archive.
+
 ## [0.2.0-alpha6] - 2026-06-15
 
 ### Changed

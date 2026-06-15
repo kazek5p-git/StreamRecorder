@@ -74,9 +74,10 @@ Detailed instructions are documented in:
 
 ## MP4Box / GPAC
 
-If you want a lightweight Windows build of `MP4Box.exe` instead of the full GPAC package, use this x64 archive:
+If you want a lightweight Windows build of `MP4Box.exe` instead of the full GPAC package, use one of these community sources:
 
 - https://www.rarewares.org/files/mp4/MP4Box-GPAC-v.26.03-DEV-rev102-gfc485902-ab-suite-x64.zip
+- https://forum.doom9.org/showthread.php?t=184719&page=25
 
 ## Notes
 

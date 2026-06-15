@@ -531,7 +531,8 @@ public sealed class RecordingService : IDisposable
         var request = BuildRequest(station, NormalizeMmshRequestUrl(station.Url));
         request.Headers.UserAgent.Clear();
         request.Headers.TryAddWithoutValidation("User-Agent", "NSPlayer/12.00.19041.7058");
-        request.Headers.TryAddWithoutValidation("Pragma", $"xClientGUID={{{Guid.NewGuid():D}}}");
+        var clientGuid = "{" + Guid.NewGuid().ToString("D") + "}";
+        request.Headers.TryAddWithoutValidation("Pragma", $"xClientGUID={clientGuid}");
         request.Headers.TryAddWithoutValidation("Pragma", $"no-cache,rate=1.000000,stream-time=0,stream-offset=0:0,request-context={requestContext},max-duration=0");
         request.Headers.TryAddWithoutValidation("Pragma", "xPlayStrm=1");
         request.Headers.TryAddWithoutValidation("Pragma", "stream-switch-count=1");
