@@ -18,6 +18,14 @@ public sealed class AppSettings
 
     public bool RemuxRawAacToM4A { get; set; } = true;
 
+    public bool SplitRecordingsEnabled { get; set; }
+
+    public int SplitHours { get; set; }
+
+    public int SplitMinutes { get; set; }
+
+    public int SplitSeconds { get; set; }
+
     public string RecordingsFolder { get; set; } = AppDefaults.DefaultRecordingsFolder;
 
     public string FileNameTemplate { get; set; } = AppDefaults.DefaultFileNameTemplate;

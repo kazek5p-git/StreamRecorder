@@ -127,8 +127,8 @@ public sealed class AppLocalizer
     public string Close => Text("Close", IsPolish ? "&Zamknij" : "&Close");
     public string SettingsTitle => Text("SettingsTitle", IsPolish ? "Ustawienia" : "Settings");
     public string SettingsIntro => Text("SettingsIntro", IsPolish
-        ? "Te ustawienia kontrolujÄ… zachowanie przy starcie, folder nagraĹ„, nazewnictwo plikĂłw i opcjonalny remuks AAC."
-        : "These settings control startup behavior, the recording folder, file naming, and optional AAC remuxing.");
+        ? "Te ustawienia kontrolujÄ… zachowanie przy starcie, folder nagraĹ„, nazewnictwo plikĂłw, dzielenie nagraĹ„ i opcjonalny remuks AAC."
+        : "These settings control startup behavior, the recording folder, file naming, recording splitting, and optional AAC remuxing.");
     public string GeneralGroup => Text("GeneralGroup", IsPolish ? "OgĂłlne" : "General");
     public string RecordingGroup => Text("RecordingGroup", IsPolish ? "Nagrywanie" : "Recording");
     public string OtherGroup => Text("OtherGroup", IsPolish ? "Inne" : "Other");
@@ -140,6 +140,10 @@ public sealed class AppLocalizer
     public string PreventSleep => Text("PreventSleep", IsPolish ? "Zapobiegaj usypianiu komputera" : "Prevent the computer from sleeping");
     public string StartMinimized => Text("StartMinimized", IsPolish ? "Uruchamiaj zminimalizowany" : "Start minimized");
     public string RemuxRawAacToM4A => Text("RemuxRawAacToM4A", IsPolish ? "Remuksuj surowy AAC do M4A po nagraniu" : "Remux RAW AAC to M4A after recording");
+    public string SplitRecordingsEvery => Text("SplitRecordingsEvery", IsPolish ? "Dziel nagrania co" : "Split recordings every");
+    public string HoursShortLabel => Text("HoursShortLabel", IsPolish ? "Godziny:" : "Hours:");
+    public string MinutesShortLabel => Text("MinutesShortLabel", IsPolish ? "Minuty:" : "Minutes:");
+    public string SecondsShortLabel => Text("SecondsShortLabel", IsPolish ? "Sekundy:" : "Seconds:");
     public string Browse => Text("Browse", IsPolish ? "&PrzeglÄ…daj" : "B&rowse");
     public string RecordingFolderLabel => Text("RecordingFolderLabel", IsPolish ? "Folder &nagraĹ„:" : "Recording &folder:");
     public string FileNameTemplateLabel => Text("FileNameTemplateLabel", IsPolish ? "Sza&blon nazwy pliku:" : "File name &template:");
@@ -152,6 +156,9 @@ public sealed class AppLocalizer
     public string RecordingFolderAccessibleName => Text("RecordingFolderAccessibleName", IsPolish ? "Folder nagraĹ„" : "Recording folder");
     public string FileNameTemplateAccessibleName => Text("FileNameTemplateAccessibleName", IsPolish ? "Szablon nazwy pliku" : "File name template");
     public string LanguageAccessibleName => Text("LanguageAccessibleName", IsPolish ? "JÄ™zyk" : "Language");
+    public string SplitHoursAccessibleName => Text("SplitHoursAccessibleName", IsPolish ? "Dziel nagrania co, godziny" : "Split recordings every, hours");
+    public string SplitMinutesAccessibleName => Text("SplitMinutesAccessibleName", IsPolish ? "Dziel nagrania co, minuty" : "Split recordings every, minutes");
+    public string SplitSecondsAccessibleName => Text("SplitSecondsAccessibleName", IsPolish ? "Dziel nagrania co, sekundy" : "Split recordings every, seconds");
     public string StationDialogAddTitle => Text("StationDialogAddTitle", IsPolish ? "Dodaj stacjÄ™" : "Add station");
     public string StationDialogEditTitle => Text("StationDialogEditTitle", IsPolish ? "Edytuj stacjÄ™" : "Edit station");
     public string StationDialogIntro => Text("StationDialogIntro", IsPolish
@@ -251,6 +258,7 @@ public sealed class AppLocalizer
     public string HlsRecordingStarted(string stationName, string outputPath, string formatName) => Format("HlsRecordingStarted", IsPolish ? "RozpoczÄ™to nagrywanie HLS: {0} -> {1} ({2})" : "HLS recording started: {0} -> {1} ({2})", stationName, outputPath, formatName);
     public string HlsSegmentError(string stationName, string message) => Format("HlsSegmentError", IsPolish ? "BĹ‚Ä…d segmentu HLS dla {0}: {1}" : "HLS segment error for {0}: {1}", stationName, message);
     public string RecordingStopped(string stationName) => Format("RecordingStopped", IsPolish ? "Nagrywanie zatrzymane: {0}" : "Recording stopped: {0}", stationName);
+    public string RecordingSegmentCompleted(string stationName, string outputPath) => Format("RecordingSegmentCompleted", IsPolish ? "ZamkniÄ™to segment nagrania: {0} -> {1}" : "Recording segment completed: {0} -> {1}", stationName, outputPath);
     public string UnknownStreamFormat(string stationName, string sourceUrl, string mime, string bytesDescription) => Format("UnknownStreamFormat", IsPolish
         ? "Nieznany format strumienia dla {0}. Nagrywanie bÄ™dzie kontynuowane jako BIN. ĹąrĂłdĹ‚o={1}, content-type={2}, pierwsze bajty={3}"
         : "Unknown stream format for {0}. Recording will continue as BIN. Source={1}, content type={2}, first bytes={3}", stationName, sourceUrl, mime, bytesDescription);

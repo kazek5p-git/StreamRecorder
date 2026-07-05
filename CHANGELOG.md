@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha8] - 2026-07-05
+
+### Added
+
+- Optional time-based recording splitting with hours, minutes, and seconds configured in Settings.
+- The system tray tooltip now includes the number of currently recording streams.
+
+### Fixed
+
+- Recording byte counter updates no longer trigger immediate full UI refreshes, reducing screen reader lag during active recording.
+- Stream reads and HTTP response waits now have inactivity timeouts so interrupted connections can reconnect and `Stop` can finish instead of staying on `Stopping`.
+
 ## [0.2.0-alpha7] - 2026-06-15
 
 ### Fixed

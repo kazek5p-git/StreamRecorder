@@ -42,6 +42,10 @@ public sealed class ConfigStoreTests : IDisposable
                 PreventSleep = true,
                 StartMinimized = true,
                 RemuxRawAacToM4A = false,
+                SplitRecordingsEnabled = true,
+                SplitHours = 2,
+                SplitMinutes = 15,
+                SplitSeconds = 30,
                 RecordingsFolder = "Parity recordings",
                 FileNameTemplate = "%t_custom_%h-%m-%s",
                 Language = LanguageCodes.English,
@@ -88,6 +92,10 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.True(reloaded.Settings.PreventSleep);
         Assert.True(reloaded.Settings.StartMinimized);
         Assert.False(reloaded.Settings.RemuxRawAacToM4A);
+        Assert.True(reloaded.Settings.SplitRecordingsEnabled);
+        Assert.Equal(2, reloaded.Settings.SplitHours);
+        Assert.Equal(15, reloaded.Settings.SplitMinutes);
+        Assert.Equal(30, reloaded.Settings.SplitSeconds);
         Assert.Equal("Parity recordings", reloaded.Settings.RecordingsFolder);
         Assert.Equal("%t_custom_%h-%m-%s", reloaded.Settings.FileNameTemplate);
         Assert.Equal(LanguageCodes.English, reloaded.Settings.Language);

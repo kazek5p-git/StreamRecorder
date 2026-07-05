@@ -10,6 +10,7 @@ The rewrite is already usable as a preview build. It includes:
 - HTTP, HTTPS, and HLS recording
 - preliminary `mms://` / `MMSH` recording for Windows Media streams
 - reconnect handling
+- optional time-based recording splitting configured in Settings
 - stream format detection for MP3, AAC, OGG, FLAC, WMA, WAV, and MPEG-TS
 - detailed fallback logging for unknown stream formats
 - optional RAW AAC to M4A remuxing through a locally available `MP4Box.exe`

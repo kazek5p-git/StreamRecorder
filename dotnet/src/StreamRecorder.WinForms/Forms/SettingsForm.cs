@@ -1,3 +1,4 @@
+using System.Globalization;
 using StreamRecorder.Core;
 using StreamRecorder.Core.Configuration;
 using StreamRecorder.Core.Localization;
@@ -16,7 +17,11 @@ public sealed class SettingsForm : Form
     private readonly CheckBox restartOnCrashCheckBox = new() { AutoSize = true, TabIndex = 4 };
     private readonly CheckBox preventSleepCheckBox = new() { AutoSize = true, TabIndex = 5 };
     private readonly CheckBox startMinimizedCheckBox = new() { AutoSize = true, TabIndex = 6 };
-    private readonly CheckBox remuxAacCheckBox = new() { AutoSize = true, TabIndex = 10 };
+    private readonly CheckBox splitRecordingsCheckBox = new() { AutoSize = true, TabIndex = 10 };
+    private readonly TextBox splitHoursTextBox = new() { Width = 48, TabIndex = 11, MaxLength = 3 };
+    private readonly TextBox splitMinutesTextBox = new() { Width = 48, TabIndex = 12, MaxLength = 2 };
+    private readonly TextBox splitSecondsTextBox = new() { Width = 48, TabIndex = 13, MaxLength = 2 };
+    private readonly CheckBox remuxAacCheckBox = new() { AutoSize = true, TabIndex = 14 };
     private readonly TextBox recordingsFolderTextBox = new();
     private readonly TextBox fileNameTemplateTextBox = new();
     private readonly ComboBox languageComboBox = new();
@@ -31,6 +36,9 @@ public sealed class SettingsForm : Form
     private readonly Label recordingsLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
     private readonly Label templateLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
     private readonly Label tokensLabel = new() { AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
+    private readonly Label splitHoursLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 4, 6) };
+    private readonly Label splitMinutesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(10, 6, 4, 6) };
+    private readonly Label splitSecondsLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(10, 6, 4, 6) };
     private readonly Label languageLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
     private IReadOnlyList<AppLocalizer.AvailableLanguage> availableLanguages = Array.Empty<AppLocalizer.AvailableLanguage>();
 
@@ -64,6 +72,10 @@ public sealed class SettingsForm : Form
             PreventSleep = preventSleepCheckBox.Checked,
             StartMinimized = startMinimizedCheckBox.Checked,
             RemuxRawAacToM4A = remuxAacCheckBox.Checked,
+            SplitRecordingsEnabled = splitRecordingsCheckBox.Checked,
+            SplitHours = ParseTimePart(splitHoursTextBox.Text, 999),
+            SplitMinutes = ParseTimePart(splitMinutesTextBox.Text, 59),
+            SplitSeconds = ParseTimePart(splitSecondsTextBox.Text, 59),
             RecordingsFolder = string.IsNullOrWhiteSpace(recordingsFolderTextBox.Text) ? AppDefaults.DefaultRecordingsFolder : recordingsFolderTextBox.Text.Trim(),
             FileNameTemplate = string.IsNullOrWhiteSpace(fileNameTemplateTextBox.Text) ? AppDefaults.DefaultFileNameTemplate : fileNameTemplateTextBox.Text.Trim(),
             Language = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Code : LanguageCodes.Default,
@@ -113,11 +125,11 @@ public sealed class SettingsForm : Form
         };
 
         saveButton.MinimumSize = new Size(90, 32);
-        saveButton.TabIndex = 12;
+        saveButton.TabIndex = 16;
         saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
         cancelButton.MinimumSize = new Size(90, 32);
-        cancelButton.TabIndex = 13;
+        cancelButton.TabIndex = 17;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = saveButton;
@@ -143,7 +155,7 @@ public sealed class SettingsForm : Form
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 3,
-            RowCount = 4,
+            RowCount = 6,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -169,6 +181,27 @@ public sealed class SettingsForm : Form
         fileNameTemplateTextBox.AccessibleName = localizer.FileNameTemplateAccessibleName;
         fileNameTemplateTextBox.TabIndex = 9;
 
+        splitRecordingsCheckBox.CheckedChanged += (_, _) => UpdateSplitTimeFieldsEnabled();
+        ConfigureTimePartTextBox(splitHoursTextBox);
+        ConfigureTimePartTextBox(splitMinutesTextBox);
+        ConfigureTimePartTextBox(splitSecondsTextBox);
+
+        var splitTimePanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(20, 0, 0, 6),
+        };
+        splitTimePanel.Controls.Add(splitHoursLabel);
+        splitTimePanel.Controls.Add(splitHoursTextBox);
+        splitTimePanel.Controls.Add(splitMinutesLabel);
+        splitTimePanel.Controls.Add(splitMinutesTextBox);
+        splitTimePanel.Controls.Add(splitSecondsLabel);
+        splitTimePanel.Controls.Add(splitSecondsTextBox);
+
         layout.Controls.Add(recordingsLabel, 0, 0);
         layout.Controls.Add(recordingsFolderTextBox, 1, 0);
         layout.Controls.Add(browseButton, 2, 0);
@@ -177,7 +210,11 @@ public sealed class SettingsForm : Form
         layout.SetColumnSpan(fileNameTemplateTextBox, 2);
         layout.Controls.Add(tokensLabel, 0, 2);
         layout.SetColumnSpan(tokensLabel, 3);
-        layout.Controls.Add(remuxAacCheckBox, 0, 3);
+        layout.Controls.Add(splitRecordingsCheckBox, 0, 3);
+        layout.SetColumnSpan(splitRecordingsCheckBox, 3);
+        layout.Controls.Add(splitTimePanel, 0, 4);
+        layout.SetColumnSpan(splitTimePanel, 3);
+        layout.Controls.Add(remuxAacCheckBox, 0, 5);
         layout.SetColumnSpan(remuxAacCheckBox, 3);
 
         return layout;
@@ -199,7 +236,7 @@ public sealed class SettingsForm : Form
         languageComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         languageComboBox.AccessibleName = localizer.LanguageAccessibleName;
         languageComboBox.Width = 180;
-        languageComboBox.TabIndex = 11;
+        languageComboBox.TabIndex = 15;
 
         layout.Controls.Add(languageLabel, 0, 0);
         layout.Controls.Add(languageComboBox, 1, 0);
@@ -222,6 +259,13 @@ public sealed class SettingsForm : Form
         restartOnCrashCheckBox.Text = localizer.RestartOnCrash;
         preventSleepCheckBox.Text = localizer.PreventSleep;
         startMinimizedCheckBox.Text = localizer.StartMinimized;
+        splitRecordingsCheckBox.Text = localizer.SplitRecordingsEvery;
+        splitHoursLabel.Text = localizer.HoursShortLabel;
+        splitMinutesLabel.Text = localizer.MinutesShortLabel;
+        splitSecondsLabel.Text = localizer.SecondsShortLabel;
+        splitHoursTextBox.AccessibleName = localizer.SplitHoursAccessibleName;
+        splitMinutesTextBox.AccessibleName = localizer.SplitMinutesAccessibleName;
+        splitSecondsTextBox.AccessibleName = localizer.SplitSecondsAccessibleName;
         remuxAacCheckBox.Text = localizer.RemuxRawAacToM4A;
 
         recordingsLabel.Text = localizer.RecordingFolderLabel;
@@ -288,6 +332,11 @@ public sealed class SettingsForm : Form
         restartOnCrashCheckBox.Checked = settings.RestartOnCrash;
         preventSleepCheckBox.Checked = settings.PreventSleep;
         startMinimizedCheckBox.Checked = settings.StartMinimized;
+        splitRecordingsCheckBox.Checked = settings.SplitRecordingsEnabled;
+        splitHoursTextBox.Text = FormatTimePart(settings.SplitHours);
+        splitMinutesTextBox.Text = FormatTimePart(settings.SplitMinutes);
+        splitSecondsTextBox.Text = FormatTimePart(settings.SplitSeconds);
+        UpdateSplitTimeFieldsEnabled();
         remuxAacCheckBox.Checked = settings.RemuxRawAacToM4A;
         recordingsFolderTextBox.Text = settings.RecordingsFolder;
         fileNameTemplateTextBox.Text = settings.FileNameTemplate;
@@ -310,6 +359,46 @@ public sealed class SettingsForm : Form
         {
             languageComboBox.SelectedIndex = 0;
         }
+    }
+
+    private void UpdateSplitTimeFieldsEnabled()
+    {
+        var enabled = splitRecordingsCheckBox.Checked;
+        splitHoursTextBox.Enabled = enabled;
+        splitMinutesTextBox.Enabled = enabled;
+        splitSecondsTextBox.Enabled = enabled;
+    }
+
+    private static void ConfigureTimePartTextBox(TextBox textBox)
+    {
+        textBox.TextAlign = HorizontalAlignment.Right;
+        textBox.KeyPress += (_, e) =>
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        };
+    }
+
+    private static int ParseTimePart(string value, int maxValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return 0;
+        }
+
+        if (!int.TryParse(value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return 0;
+        }
+
+        return Math.Max(0, Math.Min(maxValue, parsed));
+    }
+
+    private static string FormatTimePart(int value)
+    {
+        return value <= 0 ? string.Empty : value.ToString(CultureInfo.InvariantCulture);
     }
 
     private sealed record LanguageChoice(string Code, string Name)

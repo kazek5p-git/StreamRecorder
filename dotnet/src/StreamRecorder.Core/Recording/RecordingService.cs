@@ -16,6 +16,8 @@ public sealed class RecordingService : IDisposable
 {
     private const int InitialProbeBytes = 16 * 1024;
     private const int SegmentHistoryLimit = 2048;
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan StreamReadTimeout = TimeSpan.FromSeconds(30);
 
     private readonly string currentVersion;
     private readonly HttpClient httpClient;
@@ -151,6 +153,8 @@ public sealed class RecordingService : IDisposable
     {
         OutputSession? output = null;
         var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
+        var splitInterval = GetSplitInterval(settings);
+        var pendingSegmentFinalizations = new List<Task>();
         var requestContext = 1;
 
         try
@@ -166,7 +170,7 @@ public sealed class RecordingService : IDisposable
                 try
                 {
                     using var request = BuildMmshRequest(station, requestContext++);
-                    response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response = await SendWithTimeoutAsync(request, cancellationToken);
                     response.EnsureSuccessStatusCode();
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -179,7 +183,20 @@ public sealed class RecordingService : IDisposable
 
                 using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 var contentType = response.Content.Headers.ContentType?.MediaType;
-                var initialBytes = await ReadInitialMmshBytesAsync(responseStream, cancellationToken);
+                byte[] initialBytes;
+                try
+                {
+                    initialBytes = await ReadInitialMmshBytesAsync(responseStream, cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    response.Dispose();
+                    logs.Push(localizer.ConnectionInterrupted(station.Name, ex.Message));
+                    NoteReconnect(station.Id, "Waiting for reconnect");
+                    await WaitBeforeRetryAsync(cancellationToken);
+                    continue;
+                }
+
                 if (initialBytes.Length == 0)
                 {
                     response.Dispose();
@@ -192,26 +209,44 @@ public sealed class RecordingService : IDisposable
                 if (output is null)
                 {
                     var probe = StreamProbeService.ProbeStream(station.Url, contentType, initialBytes);
-                    LogUnknownFormatDetails(logs, localizer, station.Name, station.Url, probe, initialBytes);
-                    var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
-                    var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
-                    await file.WriteAsync(initialBytes, cancellationToken);
-                    output = new OutputSession(file, outputPath, probe.Format);
-                    MarkOutputStarted(station, probe.Format, outputPath);
-                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
-                    logs.Push(localizer.RecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                    output = await WriteBytesToOutputAsync(
+                        station,
+                        settings,
+                        paths,
+                        logs,
+                        localizer,
+                        output,
+                        splitInterval,
+                        pendingSegmentFinalizations,
+                        () => probe,
+                        station.Url,
+                        initialBytes,
+                        hls: false,
+                        cancellationToken);
                 }
                 else
                 {
-                    await output.File.WriteAsync(initialBytes, cancellationToken);
-                    IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                    output = await WriteBytesToOutputAsync(
+                        station,
+                        settings,
+                        paths,
+                        logs,
+                        localizer,
+                        output,
+                        splitInterval,
+                        pendingSegmentFinalizations,
+                        () => StreamProbeService.ProbeStream(station.Url, contentType, initialBytes),
+                        station.Url,
+                        initialBytes,
+                        hls: false,
+                        cancellationToken);
                 }
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
                     {
-                        var chunk = await MmshStreamReader.ReadChunkAsync(responseStream, cancellationToken);
+                        var chunk = await MmshStreamReader.ReadChunkAsync(responseStream, StreamReadTimeout, cancellationToken);
                         if (chunk is null)
                         {
                             logs.Push(localizer.ConnectionEndedRetrying(station.Name));
@@ -224,8 +259,20 @@ public sealed class RecordingService : IDisposable
                             continue;
                         }
 
-                        await output.File.WriteAsync(chunk.Data, cancellationToken);
-                        IncrementBytesWritten(station.Id, chunk.Data.LongLength);
+                        output = await WriteBytesToOutputAsync(
+                            station,
+                            settings,
+                            paths,
+                            logs,
+                            localizer,
+                            output,
+                            splitInterval,
+                            pendingSegmentFinalizations,
+                            () => StreamProbeService.ProbeStream(station.Url, contentType, chunk.Data),
+                            station.Url,
+                            chunk.Data,
+                            hls: false,
+                            cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -248,7 +295,8 @@ public sealed class RecordingService : IDisposable
         }
         finally
         {
-            await FinalizeOutputAsync(station, settings, paths, logs, output);
+            await FinalizeOutputAsync(station, settings, paths, logs, output, markStopped: true);
+            await AwaitPendingSegmentFinalizationsAsync(logs, pendingSegmentFinalizations);
         }
     }
 
@@ -261,6 +309,8 @@ public sealed class RecordingService : IDisposable
     {
         OutputSession? output = null;
         var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
+        var splitInterval = GetSplitInterval(settings);
+        var pendingSegmentFinalizations = new List<Task>();
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -287,7 +337,19 @@ public sealed class RecordingService : IDisposable
                 {
                     var responseStream = source.Stream;
                     var contentType = source.ContentType;
-                    var initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
+                    byte[] initialBytes;
+                    try
+                    {
+                        initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        logs.Push(localizer.ConnectionInterrupted(station.Name, ex.Message));
+                        NoteReconnect(station.Id, "Waiting for reconnect");
+                        await WaitBeforeRetryAsync(cancellationToken);
+                        continue;
+                    }
+
                     if (initialBytes.Length == 0)
                     {
                         logs.Push(localizer.StreamProducedNoDataRetrying(station.Name));
@@ -305,19 +367,37 @@ public sealed class RecordingService : IDisposable
                             return;
                         }
 
-                        LogUnknownFormatDetails(logs, localizer, station.Name, station.Url, probe, initialBytes);
-                        var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
-                        var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
-                        await file.WriteAsync(initialBytes, cancellationToken);
-                        output = new OutputSession(file, outputPath, probe.Format);
-                        MarkOutputStarted(station, probe.Format, outputPath);
-                        IncrementBytesWritten(station.Id, initialBytes.LongLength);
-                        logs.Push(localizer.RecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                        output = await WriteBytesToOutputAsync(
+                            station,
+                            settings,
+                            paths,
+                            logs,
+                            localizer,
+                            output,
+                            splitInterval,
+                            pendingSegmentFinalizations,
+                            () => probe,
+                            station.Url,
+                            initialBytes,
+                            hls: false,
+                            cancellationToken);
                     }
                     else
                     {
-                        await output.File.WriteAsync(initialBytes, cancellationToken);
-                        IncrementBytesWritten(station.Id, initialBytes.LongLength);
+                        output = await WriteBytesToOutputAsync(
+                            station,
+                            settings,
+                            paths,
+                            logs,
+                            localizer,
+                            output,
+                            splitInterval,
+                            pendingSegmentFinalizations,
+                            () => StreamProbeService.ProbeStream(station.Url, contentType, initialBytes),
+                            station.Url,
+                            initialBytes,
+                            hls: false,
+                            cancellationToken);
                     }
 
                     var chunkBuffer = new byte[8192];
@@ -325,7 +405,7 @@ public sealed class RecordingService : IDisposable
                     {
                         try
                         {
-                            var read = await responseStream.ReadAsync(chunkBuffer.AsMemory(0, chunkBuffer.Length), cancellationToken);
+                            var read = await ReadWithTimeoutAsync(responseStream, chunkBuffer, 0, chunkBuffer.Length, cancellationToken);
                             if (read == 0)
                             {
                                 logs.Push(localizer.ConnectionEndedRetrying(station.Name));
@@ -333,8 +413,21 @@ public sealed class RecordingService : IDisposable
                                 break;
                             }
 
-                            await output.File.WriteAsync(chunkBuffer.AsMemory(0, read), cancellationToken);
-                            IncrementBytesWritten(station.Id, read);
+                            var bytes = chunkBuffer.Take(read).ToArray();
+                            output = await WriteBytesToOutputAsync(
+                                station,
+                                settings,
+                                paths,
+                                logs,
+                                localizer,
+                                output,
+                                splitInterval,
+                                pendingSegmentFinalizations,
+                                () => StreamProbeService.ProbeStream(station.Url, contentType, bytes),
+                                station.Url,
+                                bytes,
+                                hls: false,
+                                cancellationToken);
                         }
                         catch (OperationCanceledException)
                         {
@@ -357,7 +450,8 @@ public sealed class RecordingService : IDisposable
         }
         finally
         {
-            await FinalizeOutputAsync(station, settings, paths, logs, output);
+            await FinalizeOutputAsync(station, settings, paths, logs, output, markStopped: true);
+            await AwaitPendingSegmentFinalizationsAsync(logs, pendingSegmentFinalizations);
         }
     }
 
@@ -373,6 +467,8 @@ public sealed class RecordingService : IDisposable
         var seenSegments = new HashSet<string>(StringComparer.Ordinal);
         var segmentOrder = new Queue<string>();
         var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
+        var splitInterval = GetSplitInterval(settings);
+        var pendingSegmentFinalizations = new List<Task>();
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -381,9 +477,13 @@ public sealed class RecordingService : IDisposable
                 try
                 {
                     using var request = BuildRequest(station, playlistUrl.ToString());
-                    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    using var response = await SendWithTimeoutAsync(request, cancellationToken);
                     response.EnsureSuccessStatusCode();
-                    playlistBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    playlistBody = await AwaitWithTimeoutAsync(
+                        response.Content.ReadAsStringAsync(cancellationToken),
+                        RequestTimeout,
+                        "Timed out while reading HLS playlist.",
+                        cancellationToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -417,9 +517,13 @@ public sealed class RecordingService : IDisposable
                     try
                     {
                         using var request = BuildRequest(station, segmentUrl.ToString());
-                        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                        using var response = await SendWithTimeoutAsync(request, cancellationToken);
                         response.EnsureSuccessStatusCode();
-                        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                        var bytes = await AwaitWithTimeoutAsync(
+                            response.Content.ReadAsByteArrayAsync(cancellationToken),
+                            RequestTimeout,
+                            "Timed out while reading HLS segment.",
+                            cancellationToken);
                         if (bytes.Length == 0)
                         {
                             continue;
@@ -429,20 +533,38 @@ public sealed class RecordingService : IDisposable
                         {
                             var contentType = response.Content.Headers.ContentType?.MediaType;
                             var probe = StreamProbeService.ProbeStream(segmentUrl.ToString(), contentType, bytes);
-                            LogUnknownFormatDetails(logs, localizer, station.Name, segmentUrl.ToString(), probe, bytes);
-                            var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, probe.Extension, DateTimeOffset.Now);
-                            var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
-                            await file.WriteAsync(bytes, cancellationToken);
-                            output = new OutputSession(file, outputPath, probe.Format);
-
-                            MarkOutputStarted(station, probe.Format, outputPath);
-                            IncrementBytesWritten(station.Id, bytes.LongLength);
-                            logs.Push(localizer.HlsRecordingStarted(station.Name, outputPath, probe.Format.GetDisplayName(settings.Language)));
+                            output = await WriteBytesToOutputAsync(
+                                station,
+                                settings,
+                                paths,
+                                logs,
+                                localizer,
+                                output,
+                                splitInterval,
+                                pendingSegmentFinalizations,
+                                () => probe,
+                                segmentUrl.ToString(),
+                                bytes,
+                                hls: true,
+                                cancellationToken);
                         }
                         else
                         {
-                            await output.File.WriteAsync(bytes, cancellationToken);
-                            IncrementBytesWritten(station.Id, bytes.LongLength);
+                            var contentType = response.Content.Headers.ContentType?.MediaType;
+                            output = await WriteBytesToOutputAsync(
+                                station,
+                                settings,
+                                paths,
+                                logs,
+                                localizer,
+                                output,
+                                splitInterval,
+                                pendingSegmentFinalizations,
+                                () => StreamProbeService.ProbeStream(segmentUrl.ToString(), contentType, bytes),
+                                segmentUrl.ToString(),
+                                bytes,
+                                hls: true,
+                                cancellationToken);
                         }
 
                         segmentOrder.Enqueue(key);
@@ -469,7 +591,8 @@ public sealed class RecordingService : IDisposable
         }
         finally
         {
-            await FinalizeOutputAsync(station, settings, paths, logs, output);
+            await FinalizeOutputAsync(station, settings, paths, logs, output, markStopped: true);
+            await AwaitPendingSegmentFinalizationsAsync(logs, pendingSegmentFinalizations);
         }
     }
 
@@ -478,8 +601,10 @@ public sealed class RecordingService : IDisposable
         AppSettings settings,
         AppPaths paths,
         LogBus logs,
-        OutputSession? output)
+        OutputSession? output,
+        bool markStopped)
     {
+        var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
         if (output is not null)
         {
             await output.File.FlushAsync(CancellationToken.None);
@@ -491,15 +616,22 @@ public sealed class RecordingService : IDisposable
                 finalOutputPath = await Mp4BoxRemuxer.RemuxRawAacAsync(paths, logs, settings.Language, output.Path);
             }
 
-            UpdateSnapshot(station.Id, value =>
+            if (markStopped)
             {
-                value.Active = false;
-                value.StateLabel = "Stopped";
-                value.OutputPath = finalOutputPath;
-            });
-            logs.Push(AppLocalizer.For(settings.Language, paths.RootDirectory).RecordingStopped(station.Name));
+                UpdateSnapshot(station.Id, value =>
+                {
+                    value.Active = false;
+                    value.StateLabel = "Stopped";
+                    value.OutputPath = finalOutputPath;
+                });
+                logs.Push(localizer.RecordingStopped(station.Name));
+            }
+            else
+            {
+                logs.Push(localizer.RecordingSegmentCompleted(station.Name, finalOutputPath));
+            }
         }
-        else
+        else if (markStopped)
         {
             UpdateSnapshot(station.Id, value =>
             {
@@ -507,6 +639,152 @@ public sealed class RecordingService : IDisposable
                 value.StateLabel = "Stopped";
             });
         }
+    }
+
+    private async Task<OutputSession> WriteBytesToOutputAsync(
+        Station station,
+        AppSettings settings,
+        AppPaths paths,
+        LogBus logs,
+        AppLocalizer localizer,
+        OutputSession? output,
+        TimeSpan? splitInterval,
+        List<Task> pendingSegmentFinalizations,
+        Func<StreamProbe> probeFactory,
+        string sourceUrl,
+        byte[] bytes,
+        bool hls,
+        CancellationToken cancellationToken)
+    {
+        output = RotateOutputIfDue(station, settings, paths, logs, output, splitInterval, pendingSegmentFinalizations);
+        if (output is null)
+        {
+            var probe = probeFactory();
+            LogUnknownFormatDetails(logs, localizer, station.Name, sourceUrl, probe, bytes);
+            output = OpenOutput(station, settings, paths, logs, localizer, probe.Format, hls);
+        }
+
+        await output.File.WriteAsync(bytes, cancellationToken);
+        IncrementBytesWritten(station.Id, bytes.LongLength);
+        return output;
+    }
+
+    private OutputSession? RotateOutputIfDue(
+        Station station,
+        AppSettings settings,
+        AppPaths paths,
+        LogBus logs,
+        OutputSession? output,
+        TimeSpan? splitInterval,
+        List<Task> pendingSegmentFinalizations)
+    {
+        if (output is null || splitInterval is null)
+        {
+            return output;
+        }
+
+        if (DateTimeOffset.Now - output.StartedAt < splitInterval.Value)
+        {
+            return output;
+        }
+
+        PruneCompletedSegmentFinalizations(logs, pendingSegmentFinalizations);
+        pendingSegmentFinalizations.Add(FinalizeOutputAsync(station, settings, paths, logs, output, markStopped: false));
+        return null;
+    }
+
+    private OutputSession OpenOutput(
+        Station station,
+        AppSettings settings,
+        AppPaths paths,
+        LogBus logs,
+        AppLocalizer localizer,
+        StreamFormat format,
+        bool hls)
+    {
+        var startedAt = DateTimeOffset.Now;
+        var outputPath = FileNameTemplate.BuildOutputPath(paths, settings, station, format.GetExtension(), startedAt);
+        var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.Read, 81920, useAsync: true);
+        var output = new OutputSession(file, outputPath, format, startedAt);
+        MarkOutputStarted(station, format, outputPath);
+        var formatName = format.GetDisplayName(settings.Language);
+        logs.Push(hls
+            ? localizer.HlsRecordingStarted(station.Name, outputPath, formatName)
+            : localizer.RecordingStarted(station.Name, outputPath, formatName));
+        return output;
+    }
+
+    private static async Task AwaitPendingSegmentFinalizationsAsync(LogBus logs, List<Task> pendingSegmentFinalizations)
+    {
+        foreach (var task in pendingSegmentFinalizations.ToArray())
+        {
+            try
+            {
+                await task;
+            }
+            catch (Exception ex)
+            {
+                logs.Push($"Recording segment finalization failed: {ex.Message}");
+            }
+        }
+    }
+
+    private static void PruneCompletedSegmentFinalizations(LogBus logs, List<Task> pendingSegmentFinalizations)
+    {
+        for (var index = pendingSegmentFinalizations.Count - 1; index >= 0; index--)
+        {
+            var task = pendingSegmentFinalizations[index];
+            if (!task.IsCompleted)
+            {
+                continue;
+            }
+
+            if (task.IsFaulted && task.Exception is not null)
+            {
+                logs.Push($"Recording segment finalization failed: {task.Exception.GetBaseException().Message}");
+            }
+
+            pendingSegmentFinalizations.RemoveAt(index);
+        }
+    }
+
+    private static TimeSpan? GetSplitInterval(AppSettings settings)
+    {
+        if (!settings.SplitRecordingsEnabled)
+        {
+            return null;
+        }
+
+        var hours = Math.Max(0, settings.SplitHours);
+        var minutes = Math.Max(0, Math.Min(59, settings.SplitMinutes));
+        var seconds = Math.Max(0, Math.Min(59, settings.SplitSeconds));
+        var totalSeconds = checked((hours * 3600L) + (minutes * 60L) + seconds);
+        return totalSeconds <= 0 ? null : TimeSpan.FromSeconds(totalSeconds);
+    }
+
+    private async Task<HttpResponseMessage> SendWithTimeoutAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var sendTask = httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await AwaitWithTimeoutAsync(sendTask, RequestTimeout, "Timed out while waiting for stream response headers.", cancellationToken);
+    }
+
+    private static async Task<T> AwaitWithTimeoutAsync<T>(
+        Task<T> task,
+        TimeSpan timeout,
+        string timeoutMessage,
+        CancellationToken cancellationToken)
+    {
+        _ = task.ContinueWith(static completedTask => _ = completedTask.Exception, TaskContinuationOptions.OnlyOnFaulted);
+        var delayTask = Task.Delay(timeout, cancellationToken);
+        var completed = await Task.WhenAny(task, delayTask);
+        if (completed == task)
+        {
+            return await task;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new TimeoutException(timeoutMessage);
     }
 
     private HttpRequestMessage BuildRequest(Station station, string? url)
@@ -547,7 +825,7 @@ public sealed class RecordingService : IDisposable
         try
         {
             using var request = BuildRequest(station, null);
-            response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            response = await SendWithTimeoutAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
             var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
             return OpenStreamSession.FromHttp(response, responseStream, response.Content.Headers.ContentType?.MediaType);
@@ -594,7 +872,7 @@ public sealed class RecordingService : IDisposable
 
         while (memory.Length < InitialProbeBytes)
         {
-            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            var read = await ReadWithTimeoutAsync(stream, buffer, 0, buffer.Length, cancellationToken);
             if (read == 0)
             {
                 break;
@@ -616,7 +894,7 @@ public sealed class RecordingService : IDisposable
 
         while (memory.Length < InitialProbeBytes)
         {
-            var chunk = await MmshStreamReader.ReadChunkAsync(stream, cancellationToken);
+            var chunk = await MmshStreamReader.ReadChunkAsync(stream, StreamReadTimeout, cancellationToken);
             if (chunk is null)
             {
                 break;
@@ -637,6 +915,27 @@ public sealed class RecordingService : IDisposable
         return memory.ToArray();
     }
 
+    private static async Task<int> ReadWithTimeoutAsync(
+        Stream stream,
+        byte[] buffer,
+        int offset,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var readTask = stream.ReadAsync(buffer, offset, count, cancellationToken);
+        _ = readTask.ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+        var delayTask = Task.Delay(StreamReadTimeout, cancellationToken);
+        var completed = await Task.WhenAny(readTask, delayTask);
+        if (completed == readTask)
+        {
+            return await readTask;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new TimeoutException($"No stream data was received for {StreamReadTimeout.TotalSeconds:0} seconds.");
+    }
+
     private void MarkOutputStarted(Station station, StreamFormat format, string outputPath)
     {
         UpdateSnapshot(station.Id, value =>
@@ -654,7 +953,7 @@ public sealed class RecordingService : IDisposable
 
     private void IncrementBytesWritten(Guid stationId, long bytes)
     {
-        UpdateSnapshot(stationId, value => value.BytesWritten += bytes);
+        UpdateSnapshot(stationId, value => value.BytesWritten += bytes, notify: false);
     }
 
     private void NoteReconnect(Guid stationId, string stateLabel)
@@ -666,7 +965,7 @@ public sealed class RecordingService : IDisposable
         });
     }
 
-    private void UpdateSnapshot(Guid stationId, Action<RecordingSnapshot> update)
+    private void UpdateSnapshot(Guid stationId, Action<RecordingSnapshot> update, bool notify = true)
     {
         snapshots.AddOrUpdate(
             stationId,
@@ -682,7 +981,10 @@ public sealed class RecordingService : IDisposable
                 return existing;
             });
 
-        RaiseSnapshotsChanged();
+        if (notify)
+        {
+            RaiseSnapshotsChanged();
+        }
     }
 
     private void RaiseSnapshotsChanged()
@@ -841,7 +1143,7 @@ public sealed class RecordingService : IDisposable
 
     private sealed record RecordingSession(CancellationTokenSource Cancellation, Task Task);
 
-    private sealed record OutputSession(FileStream File, string Path, StreamFormat Format);
+    private sealed record OutputSession(FileStream File, string Path, StreamFormat Format, DateTimeOffset StartedAt);
 
     private sealed record PlaylistParseResult(Uri? MasterPlaylist, IReadOnlyList<Uri> Segments, TimeSpan PollInterval);
 

@@ -22,6 +22,10 @@ public sealed class StreamRecorderAppTests : IDisposable
             PreventSleep = true,
             StartMinimized = true,
             RemuxRawAacToM4A = false,
+            SplitRecordingsEnabled = true,
+            SplitHours = 1,
+            SplitMinutes = 2,
+            SplitSeconds = 3,
             RecordingsFolder = "Settings parity output",
             FileNameTemplate = "%t_session_%h-%m-%s",
             Language = LanguageCodes.English,
@@ -43,6 +47,10 @@ public sealed class StreamRecorderAppTests : IDisposable
         Assert.True(loaded.PreventSleep);
         Assert.True(loaded.StartMinimized);
         Assert.False(loaded.RemuxRawAacToM4A);
+        Assert.True(loaded.SplitRecordingsEnabled);
+        Assert.Equal(1, loaded.SplitHours);
+        Assert.Equal(2, loaded.SplitMinutes);
+        Assert.Equal(3, loaded.SplitSeconds);
         Assert.Equal("Settings parity output", loaded.RecordingsFolder);
         Assert.Equal("%t_session_%h-%m-%s", loaded.FileNameTemplate);
         Assert.Equal(LanguageCodes.English, loaded.Language);

@@ -306,6 +306,7 @@ public sealed class MainForm : Form
 
         var recordingCount = snapshots.Values.Count(static snapshot => snapshot.Active);
         statusLabel.Text = localizer.CurrentlyRecording(recordingCount);
+        UpdateTrayText(localizer, recordingCount);
         UpdateLogButtonText();
     }
 
@@ -826,11 +827,17 @@ public sealed class MainForm : Form
         trayShowMenuItem.Text = localizer.Show;
         traySettingsMenuItem.Text = localizer.Settings;
         trayExitMenuItem.Text = localizer.Exit;
-        trayIcon.Text = localizer.AppTitle;
+        UpdateTrayText(localizer, app.Recorder.GetSnapshots().Values.Count(static snapshot => snapshot.Active));
 
         logForm.ApplyLocalization(localizer);
         UpdateLogButtonText();
         RefreshUi();
+    }
+
+    private void UpdateTrayText(AppLocalizer localizer, int recordingCount)
+    {
+        var text = $"{localizer.AppTitle} - {localizer.CurrentlyRecording(recordingCount)}";
+        trayIcon.Text = text.Length <= 63 ? text : text.Substring(0, 63);
     }
 
     private Guid? GetFocusedStationId()

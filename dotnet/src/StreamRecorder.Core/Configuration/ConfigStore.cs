@@ -91,6 +91,10 @@ public static class ConfigStore
                 PreventSleep = persisted.Settings.PreventSleep,
                 StartMinimized = persisted.Settings.StartMinimized,
                 RemuxRawAacToM4A = persisted.Settings.RemuxRawAacToM4A,
+                SplitRecordingsEnabled = persisted.Settings.SplitRecordingsEnabled,
+                SplitHours = persisted.Settings.SplitHours,
+                SplitMinutes = persisted.Settings.SplitMinutes,
+                SplitSeconds = persisted.Settings.SplitSeconds,
                 RecordingsFolder = persisted.Settings.RecordingsFolder,
                 FileNameTemplate = persisted.Settings.FileNameTemplate,
                 Language = LanguageCodes.Normalize(persisted.Settings.Language),
@@ -144,6 +148,10 @@ public static class ConfigStore
                 PreventSleep = config.Settings.PreventSleep,
                 StartMinimized = config.Settings.StartMinimized,
                 RemuxRawAacToM4A = config.Settings.RemuxRawAacToM4A,
+                SplitRecordingsEnabled = config.Settings.SplitRecordingsEnabled,
+                SplitHours = config.Settings.SplitHours,
+                SplitMinutes = config.Settings.SplitMinutes,
+                SplitSeconds = config.Settings.SplitSeconds,
                 RecordingsFolder = config.Settings.RecordingsFolder,
                 FileNameTemplate = config.Settings.FileNameTemplate,
                 Language = LanguageCodes.Normalize(config.Settings.Language),
@@ -225,6 +233,14 @@ public static class ConfigStore
         public bool StartMinimized { get; set; }
 
         public bool RemuxRawAacToM4A { get; set; } = true;
+
+        public bool SplitRecordingsEnabled { get; set; }
+
+        public int SplitHours { get; set; }
+
+        public int SplitMinutes { get; set; }
+
+        public int SplitSeconds { get; set; }
 
         public string RecordingsFolder { get; set; } = AppDefaults.DefaultRecordingsFolder;
 
