@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha9] - 2026-07-05
+
+### Changed
+
+- Release packaging can now include an optional local `third_party/GPAC` MP4Box bundle as `Tools/GPAC` in the portable ZIP.
+- Documentation now records the target lightweight GPAC-MP4Box MINI build for bundled release packages.
+
 ## [0.2.0-alpha8] - 2026-07-05
 
 ### Added

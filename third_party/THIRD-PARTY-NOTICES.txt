@@ -1,0 +1,24 @@
+Third-Party Notices
+===================
+
+GPAC / MP4Box
+-------------
+
+StreamRecorder release packages may include MP4Box from the GPAC project for RAW AAC to M4A remuxing.
+
+Target bundled build:
+
+- Package: GPAC-MP4Box-26.02-rev0-g118e60a9_Win_GCC161.7z
+- Version: GPAC-MP4Box v26.02-rev0-g118e60a9-ab-suite
+- Build date: May 02, 2026
+- Compiler: GCC 16.1.0
+- Variant: MINI build, with encoders, decoders, audio output, and video output disabled
+- Bundled executable: Win64/MP4Box.exe
+- Bundled executable SHA256: DDFF6C4EEE526EA92B65A953370A4CE9C5CFB374A140A2D98B76A0A23AED895B
+
+GPAC project links:
+
+- http://gpac.io/
+- https://github.com/gpac/gpac
+
+GPAC is licensed by its upstream project. Keep the GPAC license files from the distributed package together with the bundled MP4Box files.

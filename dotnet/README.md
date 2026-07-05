@@ -60,6 +60,8 @@ The packaging script creates a portable ZIP for the `net48` build with:
 - empty `My recordings`
 - `README.html`
 
+If `third_party/GPAC/MP4Box.exe` exists, the packaging script also copies the extracted GPAC files into `Tools/GPAC/` inside the ZIP and adds `THIRD-PARTY-NOTICES.txt`.
+
 ## Translations
 
 The rewrite no longer keeps translations hardcoded inside the executable.
@@ -74,6 +76,20 @@ Detailed instructions are documented in:
 - `docs/translations.md`
 
 ## MP4Box / GPAC
+
+Release packages may include a lightweight GPAC-MP4Box MINI build in `Tools/GPAC/MP4Box.exe`. StreamRecorder automatically checks this location, so no user configuration is needed when the file is bundled.
+
+Current target bundled build:
+
+- `GPAC-MP4Box-26.02-rev0-g118e60a9_Win_GCC161.7z`
+- `GPAC-MP4Box v26.02-rev0-g118e60a9-ab-suite`
+- built on May 02, 2026 with GCC 16.1.0
+- MINI build with encoders, decoders, audio output, and video output disabled
+
+Official GPAC project links:
+
+- http://gpac.io/
+- https://github.com/gpac/gpac
 
 If you want a lightweight Windows build of `MP4Box.exe` instead of the full GPAC package, use one of these community sources:
 

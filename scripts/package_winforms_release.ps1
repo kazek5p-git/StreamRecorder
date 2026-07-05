@@ -42,6 +42,9 @@ function Convert-MarkdownToHtml {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $projectFile = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\StreamRecorder.WinForms.csproj'
 $readmePath = Join-Path $repoRoot 'dotnet\README.md'
+$thirdPartyDir = Join-Path $repoRoot 'third_party'
+$gpacSourceDir = Join-Path $thirdPartyDir 'GPAC'
+$thirdPartyNoticesPath = Join-Path $thirdPartyDir 'THIRD-PARTY-NOTICES.txt'
 $versionToUse = if ($Version) { $Version } else { Get-ProjectVersion -ProjectFilePath $projectFile }
 $buildDir = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\bin\Release\net48'
 $packageRoot = Join-Path $repoRoot 'dotnet\target\release-package'
@@ -84,6 +87,21 @@ Get-ChildItem -LiteralPath $buildDir -File | Where-Object { $_.Extension -ne '.p
 }
 
 Copy-Item -Path (Join-Path $buildDir 'locales\*') -Destination (Join-Path $stageDir 'locales') -Recurse -Force
+
+if (Test-Path -LiteralPath $gpacSourceDir) {
+    $mp4BoxPath = Join-Path $gpacSourceDir 'MP4Box.exe'
+    if (-not (Test-Path -LiteralPath $mp4BoxPath)) {
+        throw "third_party\GPAC exists, but MP4Box.exe was not found: $mp4BoxPath"
+    }
+
+    $gpacTargetDir = Join-Path $stageDir 'Tools\GPAC'
+    New-Item -ItemType Directory -Path $gpacTargetDir -Force | Out-Null
+    Copy-Item -Path (Join-Path $gpacSourceDir '*') -Destination $gpacTargetDir -Recurse -Force
+
+    if (Test-Path -LiteralPath $thirdPartyNoticesPath) {
+        Copy-Item -LiteralPath $thirdPartyNoticesPath -Destination (Join-Path $stageDir 'THIRD-PARTY-NOTICES.txt') -Force
+    }
+}
 
 $markdown = Get-Content -LiteralPath $readmePath -Raw
 $htmlBody = Convert-MarkdownToHtml -Markdown $markdown
