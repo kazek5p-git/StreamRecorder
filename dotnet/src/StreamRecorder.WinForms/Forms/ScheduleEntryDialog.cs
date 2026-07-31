@@ -7,10 +7,9 @@ public sealed class ScheduleEntryDialog : Form
 {
     private readonly AppLocalizer localizer;
     private readonly ComboBox stationComboBox = new();
-    private readonly RadioButton startRecordingRadioButton = new() { AutoSize = true, TabIndex = 8 };
-    private readonly RadioButton stopRecordingRadioButton = new() { AutoSize = true, TabIndex = 9 };
-    private readonly DateTimePicker timePicker = new();
-    private readonly CheckBox enabledCheckBox = new() { AutoSize = true, TabIndex = 11 };
+    private readonly DateTimePicker startTimePicker = new();
+    private readonly DateTimePicker endTimePicker = new();
+    private readonly CheckBox enabledCheckBox = new() { AutoSize = true, TabIndex = 10 };
     private readonly Button okButton = new() { AutoSize = true };
     private readonly Button cancelButton = new() { AutoSize = true };
     private readonly IReadOnlyList<DaySelector> daySelectors;
@@ -37,26 +36,22 @@ public sealed class ScheduleEntryDialog : Form
 
         BuildLayout();
         PopulateStations(stations);
-        ConfigureActionButtons();
 
         if (schedule is not null)
         {
             enabledCheckBox.Checked = schedule.Enabled;
             SelectStation(schedule.StationId);
             SelectDays(schedule.GetDays());
-            SelectAction(schedule.Action);
-            timePicker.Value = DateTime.Today
-                .AddHours(schedule.Hour)
-                .AddMinutes(schedule.Minute)
-                .AddSeconds(schedule.Second);
+            startTimePicker.Value = DateTime.Today.Add(schedule.GetStartTime());
+            endTimePicker.Value = DateTime.Today.Add(schedule.GetEndTime());
         }
         else
         {
             enabledCheckBox.Checked = true;
             SelectStation(preferredStationId ?? stations[0].Id);
             SelectDays([DateTime.Today.DayOfWeek]);
-            SelectAction(ScheduleAction.StartRecording);
-            timePicker.Value = DateTime.Today;
+            startTimePicker.Value = DateTime.Today;
+            endTimePicker.Value = DateTime.Today.AddHours(1);
         }
     }
 
@@ -68,10 +63,12 @@ public sealed class ScheduleEntryDialog : Form
             StationId = SelectedStationId(),
             Enabled = enabledCheckBox.Checked,
             Days = SelectedDays().ToList(),
-            Action = SelectedAction(),
-            Hour = timePicker.Value.Hour,
-            Minute = timePicker.Value.Minute,
-            Second = timePicker.Value.Second,
+            StartHour = startTimePicker.Value.Hour,
+            StartMinute = startTimePicker.Value.Minute,
+            StartSecond = startTimePicker.Value.Second,
+            EndHour = endTimePicker.Value.Hour,
+            EndMinute = endTimePicker.Value.Minute,
+            EndSecond = endTimePicker.Value.Second,
         };
     }
 
@@ -123,23 +120,16 @@ public sealed class ScheduleEntryDialog : Form
 
         var stationLabel = new Label { Text = localizer.StationLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
         var dayLabel = new Label { Text = localizer.DaysLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
-        var actionLabel = new Label { Text = localizer.ActionLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
-        var timeLabel = new Label { Text = localizer.TimeLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var startTimeLabel = new Label { Text = localizer.StartTimeLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
+        var endTimeLabel = new Label { Text = localizer.EndTimeLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
 
         stationComboBox.Dock = DockStyle.Fill;
         stationComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         stationComboBox.AccessibleName = localizer.StationColumn;
         stationComboBox.TabIndex = 0;
 
-        var actionPanel = BuildActionPanel();
-
-        timePicker.Dock = DockStyle.Left;
-        timePicker.Width = 140;
-        timePicker.Format = DateTimePickerFormat.Custom;
-        timePicker.CustomFormat = "HH:mm:ss";
-        timePicker.ShowUpDown = true;
-        timePicker.AccessibleName = localizer.TimeAccessibleName;
-        timePicker.TabIndex = 9;
+        ConfigureTimePicker(startTimePicker, localizer.StartTimeAccessibleName, 8);
+        ConfigureTimePicker(endTimePicker, localizer.EndTimeAccessibleName, 9);
 
         enabledCheckBox.Text = localizer.Enabled;
 
@@ -149,10 +139,10 @@ public sealed class ScheduleEntryDialog : Form
         fields.Controls.Add(stationComboBox, 1, 0);
         fields.Controls.Add(dayLabel, 0, 1);
         fields.Controls.Add(dayPanel, 1, 1);
-        fields.Controls.Add(actionLabel, 0, 2);
-        fields.Controls.Add(actionPanel, 1, 2);
-        fields.Controls.Add(timeLabel, 0, 3);
-        fields.Controls.Add(timePicker, 1, 3);
+        fields.Controls.Add(startTimeLabel, 0, 2);
+        fields.Controls.Add(startTimePicker, 1, 2);
+        fields.Controls.Add(endTimeLabel, 0, 3);
+        fields.Controls.Add(endTimePicker, 1, 3);
         fields.Controls.Add(enabledCheckBox, 1, 4);
 
         scheduleGroup.Controls.Add(fields);
@@ -167,7 +157,7 @@ public sealed class ScheduleEntryDialog : Form
         };
 
         okButton.MinimumSize = new Size(90, 32);
-        okButton.TabIndex = 12;
+        okButton.TabIndex = 11;
         okButton.Text = localizer.Ok;
         okButton.Click += (_, _) =>
         {
@@ -178,7 +168,7 @@ public sealed class ScheduleEntryDialog : Form
         };
 
         cancelButton.MinimumSize = new Size(90, 32);
-        cancelButton.TabIndex = 13;
+        cancelButton.TabIndex = 12;
         cancelButton.Text = localizer.Cancel;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
@@ -203,14 +193,6 @@ public sealed class ScheduleEntryDialog : Form
             .Select(station => new StationChoice(station.Id, station.Name))
             .Cast<object>()
             .ToArray());
-    }
-
-    private void ConfigureActionButtons()
-    {
-        startRecordingRadioButton.Text = localizer.ScheduleActionName(ScheduleAction.StartRecording);
-        startRecordingRadioButton.AccessibleName = startRecordingRadioButton.Text;
-        stopRecordingRadioButton.Text = localizer.ScheduleActionName(ScheduleAction.StopRecording);
-        stopRecordingRadioButton.AccessibleName = stopRecordingRadioButton.Text;
     }
 
     private void SelectStation(Guid stationId)
@@ -239,12 +221,6 @@ public sealed class ScheduleEntryDialog : Form
         }
     }
 
-    private void SelectAction(ScheduleAction action)
-    {
-        startRecordingRadioButton.Checked = action == ScheduleAction.StartRecording;
-        stopRecordingRadioButton.Checked = action == ScheduleAction.StopRecording;
-    }
-
     private Guid SelectedStationId()
     {
         return stationComboBox.SelectedItem is StationChoice choice
@@ -266,14 +242,21 @@ public sealed class ScheduleEntryDialog : Form
 
     private bool ValidateScheduleInput()
     {
-        if (daySelectors.Any(static selector => selector.CheckBox.Checked))
+        if (!daySelectors.Any(static selector => selector.CheckBox.Checked))
         {
-            return true;
+            MessageBox.Show(this, localizer.ScheduleEntryRequiresDay, localizer.ValidationTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            daySelectors[0].CheckBox.Focus();
+            return false;
         }
 
-        MessageBox.Show(this, localizer.ScheduleEntryRequiresDay, localizer.ValidationTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
-        daySelectors[0].CheckBox.Focus();
-        return false;
+        if (startTimePicker.Value.TimeOfDay == endTimePicker.Value.TimeOfDay)
+        {
+            MessageBox.Show(this, localizer.ScheduleEntryRequiresDifferentTimes, localizer.ValidationTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            startTimePicker.Focus();
+            return false;
+        }
+
+        return true;
     }
 
     private Control BuildDayPanel()
@@ -332,30 +315,15 @@ public sealed class ScheduleEntryDialog : Form
         return selectors;
     }
 
-    private Control BuildActionPanel()
+    private static void ConfigureTimePicker(DateTimePicker picker, string accessibleName, int tabIndex)
     {
-        var panel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            Margin = new Padding(0),
-        };
-
-        startRecordingRadioButton.Margin = new Padding(0, 2, 18, 2);
-        stopRecordingRadioButton.Margin = new Padding(0, 2, 18, 2);
-        panel.Controls.Add(startRecordingRadioButton);
-        panel.Controls.Add(stopRecordingRadioButton);
-        return panel;
-    }
-
-    private ScheduleAction SelectedAction()
-    {
-        return stopRecordingRadioButton.Checked
-            ? ScheduleAction.StopRecording
-            : ScheduleAction.StartRecording;
+        picker.Dock = DockStyle.Left;
+        picker.Width = 140;
+        picker.Format = DateTimePickerFormat.Custom;
+        picker.CustomFormat = "HH:mm:ss";
+        picker.ShowUpDown = true;
+        picker.AccessibleName = accessibleName;
+        picker.TabIndex = tabIndex;
     }
 
     private sealed record StationChoice(Guid Id, string Name)

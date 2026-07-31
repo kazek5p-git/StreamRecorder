@@ -226,6 +226,7 @@ public sealed class StreamRecorderApp : IDisposable
                 RestartOnCrash = source.Settings.RestartOnCrash,
                 PreventSleep = source.Settings.PreventSleep,
                 StartMinimized = source.Settings.StartMinimized,
+                UseWindowsTaskScheduler = source.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = source.Settings.RemuxRawAacToM4A,
                 SplitRecordingsEnabled = source.Settings.SplitRecordingsEnabled,
                 SplitHours = source.Settings.SplitHours,
@@ -265,10 +266,12 @@ public sealed class StreamRecorderApp : IDisposable
             StationId = schedule.StationId,
             Enabled = schedule.Enabled,
             Days = schedule.GetDays().ToList(),
-            Action = schedule.Action,
-            Hour = schedule.Hour,
-            Minute = schedule.Minute,
-            Second = schedule.Second,
+            StartHour = schedule.StartHour,
+            StartMinute = schedule.StartMinute,
+            StartSecond = schedule.StartSecond,
+            EndHour = schedule.EndHour,
+            EndMinute = schedule.EndMinute,
+            EndSecond = schedule.EndSecond,
         };
     }
 }

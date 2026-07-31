@@ -47,17 +47,24 @@ public sealed class MainForm : Form
     private readonly ToolStripMenuItem trayExitMenuItem = new();
     private readonly System.Windows.Forms.Timer refreshTimer = new();
     private readonly WindowsStartupRegistration startupRegistration = new();
+    private readonly WindowsScheduledTasksRegistration scheduledTasksRegistration = new();
     private readonly WindowsPowerAssertion powerAssertion = new();
+    private readonly ScheduledCommandServer scheduledCommandServer;
     private readonly LogForm logForm;
+    private readonly ScheduledCommand? startupScheduledCommand;
+    private readonly bool forceStartMinimizedToTray;
 
     private bool allowClose;
     private bool hideFromAltTab;
     private bool menuPrimed;
     private bool suspendStationListRefresh;
 
-    public MainForm(StreamRecorderApp app)
+    public MainForm(StreamRecorderApp app, ScheduledCommand? startupScheduledCommand = null, bool forceStartMinimizedToTray = false)
     {
         this.app = app ?? throw new ArgumentNullException(nameof(app));
+        this.startupScheduledCommand = startupScheduledCommand;
+        this.forceStartMinimizedToTray = forceStartMinimizedToTray;
+        scheduledCommandServer = new ScheduledCommandServer(HandleScheduledCommand);
         logForm = new LogForm(app.Logs, app.GetLocalizer());
 
         Text = app.GetLocalizer().AppTitle;
@@ -85,23 +92,25 @@ public sealed class MainForm : Form
         FormClosed += (_, _) =>
         {
             trayIcon.Visible = false;
+            scheduledCommandServer.Dispose();
             powerAssertion.Dispose();
             trayIcon.Dispose();
             logForm.Dispose();
         };
         Shown += (_, _) =>
         {
+            scheduledCommandServer.Start();
             var settings = app.GetSettings();
             ApplyShellSettings(settings, persistExternalState: true);
             PrimeMenuAccessibilityObjects();
             PrimeStationMenuAccessibilityObjects();
             RefreshUi();
-            if (settings.StartMinimized)
+            if (forceStartMinimizedToTray || settings.StartMinimized)
             {
                 BeginInvoke((Action)(() =>
                 {
                     WindowState = FormWindowState.Minimized;
-                    if (settings.MinimizeToTray)
+                    if (forceStartMinimizedToTray || settings.MinimizeToTray)
                     {
                         MinimizeIntoTray();
                     }
@@ -111,6 +120,11 @@ public sealed class MainForm : Form
             {
                 FocusPrimaryControl();
                 BeginInvoke((Action)PrimeMainMenuForFirstAlt);
+            }
+
+            if (startupScheduledCommand is not null)
+            {
+                BeginInvoke((Action)(() => _ = ExecuteScheduledCommandAsync(startupScheduledCommand)));
             }
         };
     }
@@ -640,6 +654,63 @@ public sealed class MainForm : Form
         catch (Exception ex)
         {
             app.Logs.Push(app.GetLocalizer().FailedSyncSleep(ex.Message));
+        }
+
+        try
+        {
+            var result = scheduledTasksRegistration.Apply(
+                settings.UseWindowsTaskScheduler,
+                Application.ExecutablePath,
+                app.GetSchedules(),
+                app.GetStations());
+            app.Logs.Push(app.GetLocalizer().SyncedWindowsScheduledTasks(result.TaskCount, result.Enabled));
+        }
+        catch (Exception ex)
+        {
+            app.Logs.Push(app.GetLocalizer().FailedSyncWindowsTaskScheduler(ex.Message));
+        }
+    }
+
+    private void HandleScheduledCommand(ScheduledCommand command)
+    {
+        if (!IsHandleCreated)
+        {
+            return;
+        }
+
+        BeginInvoke((Action)(() => _ = ExecuteScheduledCommandAsync(command)));
+    }
+
+    private async Task ExecuteScheduledCommandAsync(ScheduledCommand command)
+    {
+        var schedule = app.GetSchedules().FirstOrDefault(value => value.Id == command.ScheduleId);
+        if (schedule is null || !schedule.Enabled)
+        {
+            return;
+        }
+
+        var station = app.GetStation(schedule.StationId);
+        if (station is null)
+        {
+            return;
+        }
+
+        var localizer = app.GetLocalizer();
+        if (command.Kind == ScheduledCommandKind.Start)
+        {
+            if (!app.Recorder.IsRecording(station.Id))
+            {
+                await app.StartRecordingAsync(station.Id);
+                app.Logs.Push(localizer.ScheduleStartedRecording(station.Name));
+            }
+
+            return;
+        }
+
+        if (app.Recorder.IsRecording(station.Id))
+        {
+            app.StopRecording(station.Id);
+            app.Logs.Push(localizer.ScheduleStoppedRecording(station.Name));
         }
     }
 

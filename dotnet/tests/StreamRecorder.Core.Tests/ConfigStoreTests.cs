@@ -41,6 +41,7 @@ public sealed class ConfigStoreTests : IDisposable
                 RestartOnCrash = true,
                 PreventSleep = true,
                 StartMinimized = true,
+                UseWindowsTaskScheduler = true,
                 RemuxRawAacToM4A = false,
                 SplitRecordingsEnabled = true,
                 SplitHours = 2,
@@ -72,10 +73,12 @@ public sealed class ConfigStoreTests : IDisposable
                     StationId = stationId,
                     Enabled = true,
                     Days = [DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday],
-                    Action = ScheduleAction.StopRecording,
-                    Hour = 8,
-                    Minute = 15,
-                    Second = 30,
+                    StartHour = 8,
+                    StartMinute = 15,
+                    StartSecond = 30,
+                    EndHour = 10,
+                    EndMinute = 45,
+                    EndSecond = 50,
                 },
             ],
         };
@@ -91,6 +94,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.True(reloaded.Settings.RestartOnCrash);
         Assert.True(reloaded.Settings.PreventSleep);
         Assert.True(reloaded.Settings.StartMinimized);
+        Assert.True(reloaded.Settings.UseWindowsTaskScheduler);
         Assert.False(reloaded.Settings.RemuxRawAacToM4A);
         Assert.True(reloaded.Settings.SplitRecordingsEnabled);
         Assert.Equal(2, reloaded.Settings.SplitHours);
@@ -114,10 +118,55 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.True(schedule.Enabled);
         Assert.Equal(new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday }, schedule.GetDays());
         Assert.Equal(DayOfWeek.Monday, schedule.DayOfWeek);
-        Assert.Equal(ScheduleAction.StopRecording, schedule.Action);
-        Assert.Equal(8, schedule.Hour);
-        Assert.Equal(15, schedule.Minute);
-        Assert.Equal(30, schedule.Second);
+        Assert.Equal(new TimeSpan(8, 15, 30), schedule.GetStartTime());
+        Assert.Equal(new TimeSpan(10, 45, 50), schedule.GetEndTime());
+    }
+
+    [Fact]
+    public void LoadOrCreate_MigratesLegacyStartStopSchedulesIntoRecordingWindow()
+    {
+        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        paths.EnsureDirectories();
+        var stationId = Guid.NewGuid();
+        var startId = Guid.NewGuid();
+        var stopId = Guid.NewGuid();
+        var toml = $"""
+            [[stations]]
+            id = "{stationId:D}"
+            name = "Legacy FM"
+            url = "https://example.invalid/legacy.mp3"
+
+            [[schedules]]
+            id = "{startId:D}"
+            station_id = "{stationId:D}"
+            enabled = true
+            days = ["Monday", "Tuesday"]
+            action = "StartRecording"
+            hour = 22
+            minute = 30
+            second = 15
+
+            [[schedules]]
+            id = "{stopId:D}"
+            station_id = "{stationId:D}"
+            enabled = true
+            days = ["Monday", "Tuesday"]
+            action = "StopRecording"
+            hour = 2
+            minute = 5
+            second = 10
+            """;
+        File.WriteAllText(paths.ConfigFilePath, toml);
+
+        var config = ConfigStore.LoadOrCreate(paths);
+
+        var schedule = Assert.Single(config.Schedules);
+        Assert.Equal(startId, schedule.Id);
+        Assert.Equal(stationId, schedule.StationId);
+        Assert.Equal(new[] { DayOfWeek.Monday, DayOfWeek.Tuesday }, schedule.GetDays());
+        Assert.Equal(new TimeSpan(22, 30, 15), schedule.GetStartTime());
+        Assert.Equal(new TimeSpan(2, 5, 10), schedule.GetEndTime());
+        Assert.True(schedule.CrossesMidnight());
     }
 
     public void Dispose()

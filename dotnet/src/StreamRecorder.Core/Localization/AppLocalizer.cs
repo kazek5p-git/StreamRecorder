@@ -139,6 +139,7 @@ public sealed class AppLocalizer
     public string RestartOnCrash => Text("RestartOnCrash", IsPolish ? "Uruchom ponownie program po awarii" : "Restart program after a crash");
     public string PreventSleep => Text("PreventSleep", IsPolish ? "Zapobiegaj usypianiu komputera" : "Prevent the computer from sleeping");
     public string StartMinimized => Text("StartMinimized", IsPolish ? "Uruchamiaj zminimalizowany" : "Start minimized");
+    public string UseWindowsTaskScheduler => Text("UseWindowsTaskScheduler", IsPolish ? "Używaj zaplanowanych zadań Windows do uruchamiania nagrań" : "Use Windows scheduled tasks to start recordings");
     public string RemuxRawAacToM4A => Text("RemuxRawAacToM4A", IsPolish ? "Remuksuj surowy AAC do M4A po nagraniu" : "Remux RAW AAC to M4A after recording");
     public string SplitRecordingsEvery => Text("SplitRecordingsEvery", IsPolish ? "Dziel nagrania co" : "Split recordings every");
     public string HoursShortLabel => Text("HoursShortLabel", IsPolish ? "Godziny:" : "Hours:");
@@ -185,6 +186,8 @@ public sealed class AppLocalizer
     public string DayColumn => Text("DayColumn", IsPolish ? "DzieĹ„" : "Day");
     public string DaysColumn => Text("DaysColumn", IsPolish ? "Dni" : "Days");
     public string TimeColumn => Text("TimeColumn", IsPolish ? "Czas" : "Time");
+    public string StartTimeColumn => Text("StartTimeColumn", IsPolish ? "Początek" : "Start time");
+    public string EndTimeColumn => Text("EndTimeColumn", IsPolish ? "Koniec" : "End time");
     public string ActionColumn => Text("ActionColumn", IsPolish ? "Akcja" : "Action");
     public string EnabledColumn => Text("EnabledColumn", IsPolish ? "WĹ‚Ä…czony" : "Enabled");
     public string MissingStation => Text("MissingStation", IsPolish ? "(brak stacji)" : "(missing station)");
@@ -201,20 +204,25 @@ public sealed class AppLocalizer
         ? "Do edycji harmonogramu wymagana jest co najmniej jedna stacja."
         : "At least one station is required to edit a schedule.");
     public string ScheduleEntryIntro => Text("ScheduleEntryIntro", IsPolish
-        ? "Wybierz stacjÄ™, dzieĹ„, akcjÄ™ i dokĹ‚adny czas dla tego wpisu harmonogramu."
-        : "Choose the station, day, action and exact time for this schedule entry.");
+        ? "Wybierz stację, dni oraz dokładny czas rozpoczęcia i zakończenia nagrywania."
+        : "Choose the station, days, and exact recording start and end time.");
     public string ScheduleEntryGroup => Text("ScheduleEntryGroup", IsPolish ? "Wpis harmonogramu" : "Schedule entry");
     public string StationLabel => Text("StationLabel", IsPolish ? "&Stacja:" : "&Station:");
     public string DayLabel => Text("DayLabel", IsPolish ? "&DzieĹ„:" : "&Day:");
     public string DaysLabel => Text("DaysLabel", IsPolish ? "&Dni:" : "&Days:");
     public string ActionLabel => Text("ActionLabel", IsPolish ? "&Akcja:" : "&Action:");
     public string TimeLabel => Text("TimeLabel", IsPolish ? "&Czas:" : "&Time:");
+    public string StartTimeLabel => Text("StartTimeLabel", IsPolish ? "Czas &rozpoczęcia:" : "&Start time:");
+    public string EndTimeLabel => Text("EndTimeLabel", IsPolish ? "Czas za&kończenia:" : "&End time:");
     public string Enabled => Text("Enabled", IsPolish ? "&WĹ‚Ä…czony" : "&Enabled");
     public string DayAccessibleName => Text("DayAccessibleName", IsPolish ? "DzieĹ„" : "Day");
     public string DaysAccessibleName => Text("DaysAccessibleName", IsPolish ? "Dni" : "Days");
     public string ActionAccessibleName => Text("ActionAccessibleName", IsPolish ? "Akcja" : "Action");
     public string TimeAccessibleName => Text("TimeAccessibleName", IsPolish ? "Czas" : "Time");
+    public string StartTimeAccessibleName => Text("StartTimeAccessibleName", IsPolish ? "Czas rozpoczęcia nagrywania" : "Recording start time");
+    public string EndTimeAccessibleName => Text("EndTimeAccessibleName", IsPolish ? "Czas zakończenia nagrywania" : "Recording end time");
     public string ScheduleEntryRequiresDay => Text("ScheduleEntryRequiresDay", IsPolish ? "Wybierz co najmniej jeden dzieĹ„." : "Select at least one day.");
+    public string ScheduleEntryRequiresDifferentTimes => Text("ScheduleEntryRequiresDifferentTimes", IsPolish ? "Czas rozpoczęcia i zakończenia nie może być taki sam." : "Start and end time cannot be the same.");
     public string DeleteStationTitle => Text("DeleteStationTitle", IsPolish ? "UsuĹ„ stacjÄ™" : "Delete station");
     public string NoNewerVersion => Text("NoNewerVersion", IsPolish ? "Nie ma nowszej wersji." : "No newer version is available.");
     public string UpdatesTitle => Text("UpdatesTitle", IsPolish ? "Aktualizacje" : "Updates");
@@ -248,6 +256,10 @@ public sealed class AppLocalizer
     public string ConfirmClosePrompt => Text("ConfirmClosePrompt", IsPolish ? "Czy na pewno chcesz zamknÄ…Ä‡ StreamRecorder?" : "Do you really want to close StreamRecorder?");
     public string FailedSyncStartup(string message) => Format("FailedSyncStartup", IsPolish ? "Nie udaĹ‚o siÄ™ zsynchronizowaÄ‡ ustawienia autostartu: {0}" : "Failed to sync startup setting: {0}", message);
     public string FailedSyncSleep(string message) => Format("FailedSyncSleep", IsPolish ? "Nie udaĹ‚o siÄ™ zsynchronizowaÄ‡ blokady usypiania: {0}" : "Failed to sync sleep prevention: {0}", message);
+    public string FailedSyncWindowsTaskScheduler(string message) => Format("FailedSyncWindowsTaskScheduler", IsPolish ? "Nie udało się zsynchronizować zaplanowanych zadań Windows: {0}" : "Failed to sync Windows scheduled tasks: {0}", message);
+    public string SyncedWindowsScheduledTasks(int taskCount, bool enabled) => enabled
+        ? Format("SyncedWindowsScheduledTasks.Enabled", IsPolish ? "Zsynchronizowano zaplanowane zadania Windows: {0}" : "Synchronized Windows scheduled tasks: {0}", taskCount)
+        : Text("SyncedWindowsScheduledTasks.Disabled", IsPolish ? "Zaplanowane zadania Windows są wyłączone; usunięto zadania StreamRecorder." : "Windows scheduled tasks are disabled; StreamRecorder tasks were removed.");
     public string RecordingState(string formatDisplayName) => Format("RecordingState", IsPolish ? "Nagrywanie {0}" : "Recording {0}", formatDisplayName);
     public string ConnectionFailed(string stationName, string message) => Format("ConnectionFailed", IsPolish ? "Nie udaĹ‚o siÄ™ poĹ‚Ä…czyÄ‡ ze stacjÄ… {0}: {1}" : "Connection failed for {0}: {1}", stationName, message);
     public string StreamProducedNoDataRetrying(string stationName) => Format("StreamProducedNoDataRetrying", IsPolish ? "StrumieĹ„ {0} tymczasowo nie zwrĂłciĹ‚ danych, ponawiam prĂłbÄ™" : "Stream {0} temporarily produced no data, retrying", stationName);

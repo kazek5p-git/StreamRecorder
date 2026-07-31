@@ -90,6 +90,7 @@ public static class ConfigStore
                 RestartOnCrash = persisted.Settings.RestartOnCrash,
                 PreventSleep = persisted.Settings.PreventSleep,
                 StartMinimized = persisted.Settings.StartMinimized,
+                UseWindowsTaskScheduler = persisted.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = persisted.Settings.RemuxRawAacToM4A,
                 SplitRecordingsEnabled = persisted.Settings.SplitRecordingsEnabled,
                 SplitHours = persisted.Settings.SplitHours,
@@ -118,19 +119,7 @@ public static class ConfigStore
                         },
                 })
                 .ToList(),
-            Schedules = (persisted.Schedules ?? [])
-                .Select(static schedule => new ScheduleEntry
-                {
-                    Id = ParseGuidOrNew(schedule.Id),
-                    StationId = ParseGuidOrNew(schedule.StationId),
-                    Enabled = schedule.Enabled,
-                    Days = NormalizeScheduleDays(schedule.Days, schedule.DayOfWeek),
-                    Action = schedule.Action,
-                    Hour = schedule.Hour,
-                    Minute = schedule.Minute,
-                    Second = schedule.Second,
-                })
-                .ToList(),
+            Schedules = FromPersistedSchedules(persisted.Schedules),
         };
     }
 
@@ -147,6 +136,7 @@ public static class ConfigStore
                 RestartOnCrash = config.Settings.RestartOnCrash,
                 PreventSleep = config.Settings.PreventSleep,
                 StartMinimized = config.Settings.StartMinimized,
+                UseWindowsTaskScheduler = config.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = config.Settings.RemuxRawAacToM4A,
                 SplitRecordingsEnabled = config.Settings.SplitRecordingsEnabled,
                 SplitHours = config.Settings.SplitHours,
@@ -178,11 +168,12 @@ public static class ConfigStore
                     StationId = schedule.StationId.ToString("D"),
                     Enabled = schedule.Enabled,
                     Days = schedule.GetDays().ToList(),
-                    DayOfWeek = schedule.DayOfWeek,
-                    Action = schedule.Action,
-                    Hour = schedule.Hour,
-                    Minute = schedule.Minute,
-                    Second = schedule.Second,
+                    StartHour = ClampHour(schedule.StartHour),
+                    StartMinute = ClampMinuteOrSecond(schedule.StartMinute),
+                    StartSecond = ClampMinuteOrSecond(schedule.StartSecond),
+                    EndHour = ClampHour(schedule.EndHour),
+                    EndMinute = ClampMinuteOrSecond(schedule.EndMinute),
+                    EndSecond = ClampMinuteOrSecond(schedule.EndSecond),
                 })
                 .ToList(),
         };
@@ -205,6 +196,193 @@ public static class ConfigStore
             .Distinct()
             .OrderBy(static day => day == DayOfWeek.Sunday ? 6 : (int)day - 1)
             .ToList();
+    }
+
+    private static List<ScheduleEntry> FromPersistedSchedules(List<PersistedScheduleEntry>? schedules)
+    {
+        if (schedules is null || schedules.Count == 0)
+        {
+            return [];
+        }
+
+        var result = new List<ScheduleEntry>();
+        var legacyEvents = new List<LegacyScheduleEvent>();
+
+        foreach (var schedule in schedules)
+        {
+            var id = ParseGuidOrNew(schedule.Id);
+            var stationId = ParseGuidOrNew(schedule.StationId);
+            var days = NormalizeScheduleDays(schedule.Days, schedule.DayOfWeek);
+
+            if (HasWindowScheduleFields(schedule))
+            {
+                result.Add(new ScheduleEntry
+                {
+                    Id = id,
+                    StationId = stationId,
+                    Enabled = schedule.Enabled,
+                    Days = days,
+                    StartHour = ClampHour(schedule.StartHour ?? 0),
+                    StartMinute = ClampMinuteOrSecond(schedule.StartMinute ?? 0),
+                    StartSecond = ClampMinuteOrSecond(schedule.StartSecond ?? 0),
+                    EndHour = ClampHour(schedule.EndHour ?? 1),
+                    EndMinute = ClampMinuteOrSecond(schedule.EndMinute ?? 0),
+                    EndSecond = ClampMinuteOrSecond(schedule.EndSecond ?? 0),
+                });
+                continue;
+            }
+
+            legacyEvents.Add(new LegacyScheduleEvent
+            {
+                Id = id,
+                StationId = stationId,
+                Enabled = schedule.Enabled,
+                Days = days,
+                Action = schedule.Action ?? ScheduleAction.StartRecording,
+                Time = new TimeSpan(
+                    ClampHour(schedule.Hour ?? 0),
+                    ClampMinuteOrSecond(schedule.Minute ?? 0),
+                    ClampMinuteOrSecond(schedule.Second ?? 0)),
+            });
+        }
+
+        result.AddRange(PairLegacyScheduleEvents(legacyEvents));
+        return result;
+    }
+
+    private static bool HasWindowScheduleFields(PersistedScheduleEntry schedule)
+    {
+        return schedule.StartHour.HasValue
+            || schedule.StartMinute.HasValue
+            || schedule.StartSecond.HasValue
+            || schedule.EndHour.HasValue
+            || schedule.EndMinute.HasValue
+            || schedule.EndSecond.HasValue;
+    }
+
+    private static IEnumerable<ScheduleEntry> PairLegacyScheduleEvents(IReadOnlyList<LegacyScheduleEvent> events)
+    {
+        foreach (var group in events.GroupBy(static value => BuildLegacyScheduleGroupKey(value.StationId, value.Days)))
+        {
+            var starts = group
+                .Where(static value => value.Action == ScheduleAction.StartRecording)
+                .OrderBy(static value => value.Time)
+                .ToList();
+            var stops = group
+                .Where(static value => value.Action == ScheduleAction.StopRecording)
+                .OrderBy(static value => value.Time)
+                .ToList();
+            var usedStops = new HashSet<Guid>();
+
+            foreach (var start in starts)
+            {
+                var stop = FindMatchingLegacyStop(start, stops, usedStops);
+                if (stop is not null)
+                {
+                    usedStops.Add(stop.Id);
+                }
+
+                yield return CreateScheduleFromLegacyPair(
+                    start.Id,
+                    start.StationId,
+                    stop is null ? start.Enabled : start.Enabled && stop.Enabled,
+                    start.Days,
+                    start.Time,
+                    stop?.Time ?? AddLegacyDefaultDuration(start.Time));
+            }
+
+            foreach (var stop in stops.Where(stop => !usedStops.Contains(stop.Id)))
+            {
+                yield return CreateScheduleFromLegacyPair(
+                    stop.Id,
+                    stop.StationId,
+                    stop.Enabled,
+                    stop.Days,
+                    SubtractLegacyDefaultDuration(stop.Time),
+                    stop.Time);
+            }
+        }
+    }
+
+    private static LegacyScheduleEvent? FindMatchingLegacyStop(
+        LegacyScheduleEvent start,
+        IReadOnlyList<LegacyScheduleEvent> stops,
+        HashSet<Guid> usedStops)
+    {
+        var sameDayStop = stops
+            .Where(stop => !usedStops.Contains(stop.Id) && stop.Time > start.Time)
+            .OrderBy(stop => stop.Time - start.Time)
+            .FirstOrDefault();
+
+        if (sameDayStop is not null)
+        {
+            return sameDayStop;
+        }
+
+        return stops
+            .Where(stop => !usedStops.Contains(stop.Id))
+            .OrderBy(stop => (TimeSpan.FromDays(1) - start.Time) + stop.Time)
+            .FirstOrDefault();
+    }
+
+    private static ScheduleEntry CreateScheduleFromLegacyPair(
+        Guid id,
+        Guid stationId,
+        bool enabled,
+        IReadOnlyList<DayOfWeek> days,
+        TimeSpan startTime,
+        TimeSpan endTime)
+    {
+        var schedule = new ScheduleEntry
+        {
+            Id = id,
+            StationId = stationId,
+            Enabled = enabled,
+            Days = days.ToList(),
+        };
+        schedule.SetStartTime(startTime);
+        schedule.SetEndTime(endTime);
+        return schedule;
+    }
+
+    private static TimeSpan AddLegacyDefaultDuration(TimeSpan time)
+    {
+        return NormalizeTimeOfDay(time + TimeSpan.FromHours(1));
+    }
+
+    private static TimeSpan SubtractLegacyDefaultDuration(TimeSpan time)
+    {
+        return NormalizeTimeOfDay(time - TimeSpan.FromHours(1));
+    }
+
+    private static TimeSpan NormalizeTimeOfDay(TimeSpan time)
+    {
+        while (time < TimeSpan.Zero)
+        {
+            time += TimeSpan.FromDays(1);
+        }
+
+        while (time >= TimeSpan.FromDays(1))
+        {
+            time -= TimeSpan.FromDays(1);
+        }
+
+        return time;
+    }
+
+    private static string BuildLegacyScheduleGroupKey(Guid stationId, IEnumerable<DayOfWeek> days)
+    {
+        return stationId.ToString("D") + "|" + string.Join(",", days.Select(static day => day.ToString()));
+    }
+
+    private static int ClampHour(int value)
+    {
+        return Math.Max(0, Math.Min(23, value));
+    }
+
+    private static int ClampMinuteOrSecond(int value)
+    {
+        return Math.Max(0, Math.Min(59, value));
     }
 
     private sealed class PersistedAppConfig
@@ -231,6 +409,8 @@ public static class ConfigStore
         public bool PreventSleep { get; set; }
 
         public bool StartMinimized { get; set; }
+
+        public bool UseWindowsTaskScheduler { get; set; }
 
         public bool RemuxRawAacToM4A { get; set; } = true;
 
@@ -279,12 +459,39 @@ public static class ConfigStore
 
         public DayOfWeek? DayOfWeek { get; set; }
 
-        public ScheduleAction Action { get; set; } = ScheduleAction.StartRecording;
+        public int? StartHour { get; set; }
 
-        public int Hour { get; set; }
+        public int? StartMinute { get; set; }
 
-        public int Minute { get; set; }
+        public int? StartSecond { get; set; }
 
-        public int Second { get; set; }
+        public int? EndHour { get; set; }
+
+        public int? EndMinute { get; set; }
+
+        public int? EndSecond { get; set; }
+
+        public ScheduleAction? Action { get; set; }
+
+        public int? Hour { get; set; }
+
+        public int? Minute { get; set; }
+
+        public int? Second { get; set; }
+    }
+
+    private sealed class LegacyScheduleEvent
+    {
+        public Guid Id { get; set; }
+
+        public Guid StationId { get; set; }
+
+        public bool Enabled { get; set; }
+
+        public IReadOnlyList<DayOfWeek> Days { get; set; } = [];
+
+        public ScheduleAction Action { get; set; }
+
+        public TimeSpan Time { get; set; }
     }
 }

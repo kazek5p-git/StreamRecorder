@@ -27,6 +27,11 @@ internal static class Program
         var config = ConfigStore.LoadOrCreate(paths);
         AppLocalizer.ApplyThreadCulture(config.Settings.Language);
 
+        if (options.ScheduledCommand is not null && ScheduledCommandServer.TrySend(options.ScheduledCommand))
+        {
+            return 0;
+        }
+
         if (config.Settings.RestartOnCrash && !options.GuardedChild)
         {
             var logPath = Path.Combine(paths.ConfigDirectory, "crash_guard.log");
@@ -51,7 +56,7 @@ internal static class Program
             ?? "0.2.0-alpha3";
 
         using var app = new StreamRecorderApp(version, paths);
-        Application.Run(new MainForm(app));
+        Application.Run(new MainForm(app, options.ScheduledCommand, options.ScheduledMinimizedToTray));
         return 0;
     }
 
@@ -124,6 +129,10 @@ internal static class Program
 
         public bool GuardedChild { get; set; }
 
+        public ScheduledCommand? ScheduledCommand { get; set; }
+
+        public bool ScheduledMinimizedToTray { get; set; }
+
         public IReadOnlyList<string> ForwardedArgs { get; set; } = [];
 
         public CrashTestOptions CrashTest { get; set; } = new();
@@ -136,6 +145,8 @@ internal static class Program
             var crashUntil = 0;
             var exitDelayMs = 1000;
             var crashExitCode = 101;
+            ScheduledCommand? scheduledCommand = null;
+            var scheduledMinimizedToTray = false;
             var forwarded = new List<string>();
 
             for (var index = 0; index < args.Count; index++)
@@ -168,6 +179,22 @@ internal static class Program
                         forwarded.Add("--test-crash-exit-code");
                         forwarded.Add(crashExitCode.ToString());
                         break;
+                    case "--scheduled-start":
+                        var startScheduleId = Guid.Parse(RequireValue(args, ref index));
+                        scheduledCommand = new ScheduledCommand(ScheduledCommandKind.Start, startScheduleId);
+                        forwarded.Add("--scheduled-start");
+                        forwarded.Add(startScheduleId.ToString("D"));
+                        break;
+                    case "--scheduled-stop":
+                        var stopScheduleId = Guid.Parse(RequireValue(args, ref index));
+                        scheduledCommand = new ScheduledCommand(ScheduledCommandKind.Stop, stopScheduleId);
+                        forwarded.Add("--scheduled-stop");
+                        forwarded.Add(stopScheduleId.ToString("D"));
+                        break;
+                    case "--scheduled-minimized-to-tray":
+                        scheduledMinimizedToTray = true;
+                        forwarded.Add("--scheduled-minimized-to-tray");
+                        break;
                     default:
                         forwarded.Add(args[index]);
                         break;
@@ -178,6 +205,8 @@ internal static class Program
             {
                 GuardMode = guardMode,
                 GuardedChild = guardedChild,
+                ScheduledCommand = scheduledCommand,
+                ScheduledMinimizedToTray = scheduledMinimizedToTray,
                 ForwardedArgs = forwarded,
                 CrashTest = new CrashTestOptions
                 {

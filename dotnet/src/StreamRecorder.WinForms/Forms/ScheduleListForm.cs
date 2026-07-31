@@ -56,7 +56,7 @@ public sealed class ScheduleListForm : Form
         scheduleList.Columns.Add(string.Empty, 220);
         scheduleList.Columns.Add(string.Empty, 120);
         scheduleList.Columns.Add(string.Empty, 120);
-        scheduleList.Columns.Add(string.Empty, 170);
+        scheduleList.Columns.Add(string.Empty, 120);
         scheduleList.Columns.Add(string.Empty, 100);
         scheduleList.DoubleClick += (_, _) => EditSchedule();
         scheduleList.KeyDown += (_, e) =>
@@ -115,8 +115,8 @@ public sealed class ScheduleListForm : Form
         scheduleList.AccessibleDescription = localizer.ScheduleEntriesAccessibleDescription;
         scheduleList.Columns[0].Text = localizer.StationColumn;
         scheduleList.Columns[1].Text = localizer.DaysColumn;
-        scheduleList.Columns[2].Text = localizer.TimeColumn;
-        scheduleList.Columns[3].Text = localizer.ActionColumn;
+        scheduleList.Columns[2].Text = localizer.StartTimeColumn;
+        scheduleList.Columns[3].Text = localizer.EndTimeColumn;
         scheduleList.Columns[4].Text = localizer.EnabledColumn;
 
         addScheduleMenuItem.Text = localizer.Add;
@@ -142,9 +142,9 @@ public sealed class ScheduleListForm : Form
             foreach (var schedule in app.GetSchedules()
                          .OrderBy(entry => stations.TryGetValue(entry.StationId, out var name) ? name : string.Empty, StringComparer.CurrentCultureIgnoreCase)
                          .ThenBy(entry => DaySortKey(entry.GetDays().First()))
-                         .ThenBy(entry => entry.Hour)
-                         .ThenBy(entry => entry.Minute)
-                         .ThenBy(entry => entry.Second))
+                         .ThenBy(entry => entry.StartHour)
+                         .ThenBy(entry => entry.StartMinute)
+                         .ThenBy(entry => entry.StartSecond))
             {
                 var stationName = stations.TryGetValue(schedule.StationId, out var name) ? name : localizer.MissingStation;
                 var item = new ListViewItem(stationName)
@@ -152,8 +152,8 @@ public sealed class ScheduleListForm : Form
                     Tag = schedule.Id,
                 };
                 item.SubItems.Add(FormatDays(schedule));
-                item.SubItems.Add($"{schedule.Hour:00}:{schedule.Minute:00}:{schedule.Second:00}");
-                item.SubItems.Add(localizer.ScheduleActionName(schedule.Action));
+                item.SubItems.Add($"{schedule.StartHour:00}:{schedule.StartMinute:00}:{schedule.StartSecond:00}");
+                item.SubItems.Add($"{schedule.EndHour:00}:{schedule.EndMinute:00}:{schedule.EndSecond:00}");
                 item.SubItems.Add(schedule.Enabled ? localizer.Yes : localizer.No);
                 scheduleList.Items.Add(item);
 

@@ -8,6 +8,10 @@
     <Content Include="..\..\locales\*.json" Link="locales\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
@@ -17,7 +21,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>StreamRecorder</AssemblyName>
     <Product>StreamRecorder</Product>
-    <Version>0.2.0-alpha9</Version>
+    <Version>0.2.0-alpha10</Version>
   </PropertyGroup>
 
 </Project>

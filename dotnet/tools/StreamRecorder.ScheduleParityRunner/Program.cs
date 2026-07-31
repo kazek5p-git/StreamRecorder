@@ -49,18 +49,14 @@ static async Task<int> ProgramMainAsync(string[] args)
     var stopATime = now.AddSeconds(options.LeadSeconds + 5);
     var stopBTime = now.AddSeconds(options.LeadSeconds + 7);
 
-    var startASchedule = CreateSchedule(stationA.Id, ScheduleAction.StartRecording, startATime);
-    var startBSchedule = CreateSchedule(stationB.Id, ScheduleAction.StartRecording, startBOriginalTime);
-    var stopASchedule = CreateSchedule(stationA.Id, ScheduleAction.StopRecording, stopATime);
-    var stopBSchedule = CreateSchedule(stationB.Id, ScheduleAction.StopRecording, stopBTime);
-    var deletedSchedule = CreateSchedule(stationA.Id, ScheduleAction.StartRecording, now.AddMinutes(5));
+    var scheduleA = CreateSchedule(stationA.Id, startATime, stopATime);
+    var scheduleB = CreateSchedule(stationB.Id, startBOriginalTime, stopBTime);
+    var deletedSchedule = CreateSchedule(stationA.Id, now.AddMinutes(5), now.AddMinutes(6));
 
     result.SeededSchedules =
     [
-        ScheduleSeed.FromSchedule(startASchedule, stationA.Name),
-        ScheduleSeed.FromSchedule(startBSchedule, stationB.Name),
-        ScheduleSeed.FromSchedule(stopASchedule, stationA.Name),
-        ScheduleSeed.FromSchedule(stopBSchedule, stationB.Name),
+        ScheduleSeed.FromSchedule(scheduleA, stationA.Name),
+        ScheduleSeed.FromSchedule(scheduleB, stationB.Name),
     ];
 
     try
@@ -77,14 +73,12 @@ static async Task<int> ProgramMainAsync(string[] args)
             seedApp.UpsertStation(stationA);
             seedApp.UpsertStation(stationB);
 
-            seedApp.UpsertSchedule(startASchedule);
-            seedApp.UpsertSchedule(startBSchedule);
-            seedApp.UpsertSchedule(stopASchedule);
-            seedApp.UpsertSchedule(stopBSchedule);
+            seedApp.UpsertSchedule(scheduleA);
+            seedApp.UpsertSchedule(scheduleB);
             seedApp.UpsertSchedule(deletedSchedule);
 
-            startBSchedule.SetTime(new TimeOnly(startBEditedTime.Hour, startBEditedTime.Minute, startBEditedTime.Second));
-            seedApp.UpsertSchedule(startBSchedule);
+            scheduleB.SetStartTime(new TimeSpan(startBEditedTime.Hour, startBEditedTime.Minute, startBEditedTime.Second));
+            seedApp.UpsertSchedule(scheduleB);
             seedApp.DeleteSchedule(deletedSchedule.Id);
         }
 
@@ -99,14 +93,14 @@ static async Task<int> ProgramMainAsync(string[] args)
             })
             .ToList();
 
-        result.ScheduleCountPassed = reloadedSchedules.Count == 4;
+        result.ScheduleCountPassed = reloadedSchedules.Count == 2;
         result.DeletePassed = reloadedSchedules.All(schedule => schedule.Id != deletedSchedule.Id);
 
-        var reloadedEdited = reloadedSchedules.SingleOrDefault(schedule => schedule.Id == startBSchedule.Id);
+        var reloadedEdited = reloadedSchedules.SingleOrDefault(schedule => schedule.Id == scheduleB.Id);
         result.EditPassed = reloadedEdited is not null
-            && reloadedEdited.Hour == startBEditedTime.Hour
-            && reloadedEdited.Minute == startBEditedTime.Minute
-            && reloadedEdited.Second == startBEditedTime.Second;
+            && reloadedEdited.StartHour == startBEditedTime.Hour
+            && reloadedEdited.StartMinute == startBEditedTime.Minute
+            && reloadedEdited.StartSecond == startBEditedTime.Second;
 
         var finalWait = stopBTime.AddSeconds(4);
         while (DateTime.Now < finalWait)
@@ -148,24 +142,26 @@ static async Task<int> ProgramMainAsync(string[] args)
     return result.Pass ? 0 : 1;
 }
 
-static ScheduleEntry CreateSchedule(Guid stationId, ScheduleAction action, DateTime when)
+static ScheduleEntry CreateSchedule(Guid stationId, DateTime start, DateTime end)
 {
     return new ScheduleEntry
     {
         Id = Guid.NewGuid(),
         StationId = stationId,
         Enabled = true,
-        DayOfWeek = when.DayOfWeek,
-        Action = action,
-        Hour = when.Hour,
-        Minute = when.Minute,
-        Second = when.Second,
+        DayOfWeek = start.DayOfWeek,
+        StartHour = start.Hour,
+        StartMinute = start.Minute,
+        StartSecond = start.Second,
+        EndHour = end.Hour,
+        EndMinute = end.Minute,
+        EndSecond = end.Second,
     };
 }
 
 static bool HasLog(IEnumerable<string> lines, string fragment)
 {
-    return lines.Any(line => line.Contains(fragment, StringComparison.Ordinal));
+    return lines.Any(line => line.IndexOf(fragment, StringComparison.Ordinal) >= 0);
 }
 
 static bool SnapshotStopped(RecordingSnapshot? snapshot)
@@ -264,11 +260,11 @@ internal sealed class ScheduleSeed
 
     public string StationName { get; set; } = string.Empty;
 
-    public string Action { get; set; } = string.Empty;
-
     public string Day { get; set; } = string.Empty;
 
-    public string Time { get; set; } = string.Empty;
+    public string StartTime { get; set; } = string.Empty;
+
+    public string EndTime { get; set; } = string.Empty;
 
     public static ScheduleSeed FromSchedule(ScheduleEntry schedule, string stationName)
     {
@@ -276,9 +272,9 @@ internal sealed class ScheduleSeed
         {
             Id = schedule.Id,
             StationName = stationName,
-            Action = schedule.Action.ToString(),
             Day = schedule.DayOfWeek.ToString(),
-            Time = $"{schedule.Hour:00}:{schedule.Minute:00}:{schedule.Second:00}",
+            StartTime = $"{schedule.StartHour:00}:{schedule.StartMinute:00}:{schedule.StartSecond:00}",
+            EndTime = $"{schedule.EndHour:00}:{schedule.EndMinute:00}:{schedule.EndSecond:00}",
         };
     }
 }
@@ -340,12 +336,13 @@ internal sealed class OutputReport
         }
 
         var exists = File.Exists(path);
+        var outputPath = path!;
         return new OutputReport
         {
-            Path = path,
+            Path = outputPath,
             Exists = exists,
-            Extension = System.IO.Path.GetExtension(path),
-            Length = exists ? new FileInfo(path).Length : 0,
+            Extension = System.IO.Path.GetExtension(outputPath) ?? string.Empty,
+            Length = exists ? new FileInfo(outputPath).Length : 0,
         };
     }
 }
@@ -402,11 +399,7 @@ internal sealed class LoopbackMp3Server : IAsyncDisposable
             TcpClient? client = null;
             try
             {
-                client = await listener.AcceptTcpClientAsync(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
+                client = await listener.AcceptTcpClientAsync();
             }
             catch (ObjectDisposedException)
             {
@@ -425,14 +418,14 @@ internal sealed class LoopbackMp3Server : IAsyncDisposable
     private async Task ServeClientAsync(TcpClient client, byte[] chunk, CancellationToken cancellationToken)
     {
         using (client)
-        await using (var stream = client.GetStream())
+        using (var stream = client.GetStream())
         {
             Interlocked.Increment(ref connectionCount);
 
             var requestBuffer = new byte[2048];
             try
             {
-                _ = await stream.ReadAsync(requestBuffer, cancellationToken);
+                _ = await stream.ReadAsync(requestBuffer, 0, requestBuffer.Length, cancellationToken);
             }
             catch
             {
@@ -444,16 +437,16 @@ internal sealed class LoopbackMp3Server : IAsyncDisposable
                 "X-Stream-Name: " + name + "\r\n" +
                 "Cache-Control: no-cache\r\n" +
                 "Connection: close\r\n\r\n");
-            await stream.WriteAsync(headers, cancellationToken);
+            await stream.WriteAsync(headers, 0, headers.Length, cancellationToken);
 
             byte[] id3 = [0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F];
-            await stream.WriteAsync(id3, cancellationToken);
+            await stream.WriteAsync(id3, 0, id3.Length, cancellationToken);
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    await stream.WriteAsync(chunk, cancellationToken);
+                    await stream.WriteAsync(chunk, 0, chunk.Length, cancellationToken);
                     await stream.FlushAsync(cancellationToken);
                     await Task.Delay(100, cancellationToken);
                 }

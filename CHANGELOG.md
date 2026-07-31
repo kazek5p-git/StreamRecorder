@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha10] - 2026-07-31
+
+### Added
+
+- Recording schedules can now optionally be synchronized with Windows Task Scheduler so scheduled starts can launch StreamRecorder minimized to the tray.
+
+### Changed
+
+- Schedule entries now use a single recording window with start and end times instead of separate start/stop action entries.
+- Legacy action-based schedule entries are migrated to the new start/end schedule model when loading `app.toml`.
+- Windows scheduled tasks wording was simplified in the settings and log messages.
+- Successful Windows scheduled tasks synchronization is now written to the log.
+
 ## [0.2.0-alpha9] - 2026-07-05
 
 ### Changed

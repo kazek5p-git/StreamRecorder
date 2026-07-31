@@ -17,15 +17,16 @@ public sealed class SettingsForm : Form
     private readonly CheckBox restartOnCrashCheckBox = new() { AutoSize = true, TabIndex = 4 };
     private readonly CheckBox preventSleepCheckBox = new() { AutoSize = true, TabIndex = 5 };
     private readonly CheckBox startMinimizedCheckBox = new() { AutoSize = true, TabIndex = 6 };
-    private readonly CheckBox splitRecordingsCheckBox = new() { AutoSize = true, TabIndex = 10 };
-    private readonly TextBox splitHoursTextBox = new() { Width = 48, TabIndex = 11, MaxLength = 3 };
-    private readonly TextBox splitMinutesTextBox = new() { Width = 48, TabIndex = 12, MaxLength = 2 };
-    private readonly TextBox splitSecondsTextBox = new() { Width = 48, TabIndex = 13, MaxLength = 2 };
-    private readonly CheckBox remuxAacCheckBox = new() { AutoSize = true, TabIndex = 14 };
+    private readonly CheckBox useWindowsTaskSchedulerCheckBox = new() { AutoSize = true, TabIndex = 7 };
+    private readonly CheckBox splitRecordingsCheckBox = new() { AutoSize = true, TabIndex = 11 };
+    private readonly TextBox splitHoursTextBox = new() { Width = 48, TabIndex = 12, MaxLength = 3 };
+    private readonly TextBox splitMinutesTextBox = new() { Width = 48, TabIndex = 13, MaxLength = 2 };
+    private readonly TextBox splitSecondsTextBox = new() { Width = 48, TabIndex = 14, MaxLength = 2 };
+    private readonly CheckBox remuxAacCheckBox = new() { AutoSize = true, TabIndex = 15 };
     private readonly TextBox recordingsFolderTextBox = new();
     private readonly TextBox fileNameTemplateTextBox = new();
     private readonly ComboBox languageComboBox = new();
-    private readonly Button browseButton = new() { AutoSize = true, TabIndex = 8 };
+    private readonly Button browseButton = new() { AutoSize = true, TabIndex = 9 };
     private readonly Button saveButton = new() { AutoSize = true };
     private readonly Button cancelButton = new() { AutoSize = true };
     private readonly FolderBrowserDialog folderDialog = new();
@@ -71,6 +72,7 @@ public sealed class SettingsForm : Form
             RestartOnCrash = restartOnCrashCheckBox.Checked,
             PreventSleep = preventSleepCheckBox.Checked,
             StartMinimized = startMinimizedCheckBox.Checked,
+            UseWindowsTaskScheduler = useWindowsTaskSchedulerCheckBox.Checked,
             RemuxRawAacToM4A = remuxAacCheckBox.Checked,
             SplitRecordingsEnabled = splitRecordingsCheckBox.Checked,
             SplitHours = ParseTimePart(splitHoursTextBox.Text, 999),
@@ -110,7 +112,8 @@ public sealed class SettingsForm : Form
             confirmOnExitCheckBox,
             restartOnCrashCheckBox,
             preventSleepCheckBox,
-            startMinimizedCheckBox));
+            startMinimizedCheckBox,
+            useWindowsTaskSchedulerCheckBox));
 
         recordingGroup.Controls.Add(BuildRecordingSettingsLayout());
         otherGroup.Controls.Add(BuildOtherSettingsLayout());
@@ -125,11 +128,11 @@ public sealed class SettingsForm : Form
         };
 
         saveButton.MinimumSize = new Size(90, 32);
-        saveButton.TabIndex = 16;
+        saveButton.TabIndex = 17;
         saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
         cancelButton.MinimumSize = new Size(90, 32);
-        cancelButton.TabIndex = 17;
+        cancelButton.TabIndex = 18;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = saveButton;
@@ -163,7 +166,7 @@ public sealed class SettingsForm : Form
 
         recordingsFolderTextBox.Dock = DockStyle.Fill;
         recordingsFolderTextBox.AccessibleName = localizer.RecordingFolderAccessibleName;
-        recordingsFolderTextBox.TabIndex = 7;
+        recordingsFolderTextBox.TabIndex = 8;
 
         browseButton.MinimumSize = new Size(90, 32);
         browseButton.Click += (_, _) =>
@@ -179,7 +182,7 @@ public sealed class SettingsForm : Form
 
         fileNameTemplateTextBox.Dock = DockStyle.Fill;
         fileNameTemplateTextBox.AccessibleName = localizer.FileNameTemplateAccessibleName;
-        fileNameTemplateTextBox.TabIndex = 9;
+        fileNameTemplateTextBox.TabIndex = 10;
 
         splitRecordingsCheckBox.CheckedChanged += (_, _) => UpdateSplitTimeFieldsEnabled();
         ConfigureTimePartTextBox(splitHoursTextBox);
@@ -236,7 +239,7 @@ public sealed class SettingsForm : Form
         languageComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         languageComboBox.AccessibleName = localizer.LanguageAccessibleName;
         languageComboBox.Width = 180;
-        languageComboBox.TabIndex = 15;
+        languageComboBox.TabIndex = 16;
 
         layout.Controls.Add(languageLabel, 0, 0);
         layout.Controls.Add(languageComboBox, 1, 0);
@@ -259,6 +262,7 @@ public sealed class SettingsForm : Form
         restartOnCrashCheckBox.Text = localizer.RestartOnCrash;
         preventSleepCheckBox.Text = localizer.PreventSleep;
         startMinimizedCheckBox.Text = localizer.StartMinimized;
+        useWindowsTaskSchedulerCheckBox.Text = localizer.UseWindowsTaskScheduler;
         splitRecordingsCheckBox.Text = localizer.SplitRecordingsEvery;
         splitHoursLabel.Text = localizer.HoursShortLabel;
         splitMinutesLabel.Text = localizer.MinutesShortLabel;
@@ -294,7 +298,7 @@ public sealed class SettingsForm : Form
 
             if (!string.IsNullOrWhiteSpace(selected))
             {
-                SelectLanguage(selected);
+                SelectLanguage(selected!);
             }
         }
         finally
@@ -332,6 +336,7 @@ public sealed class SettingsForm : Form
         restartOnCrashCheckBox.Checked = settings.RestartOnCrash;
         preventSleepCheckBox.Checked = settings.PreventSleep;
         startMinimizedCheckBox.Checked = settings.StartMinimized;
+        useWindowsTaskSchedulerCheckBox.Checked = settings.UseWindowsTaskScheduler;
         splitRecordingsCheckBox.Checked = settings.SplitRecordingsEnabled;
         splitHoursTextBox.Text = FormatTimePart(settings.SplitHours);
         splitMinutesTextBox.Text = FormatTimePart(settings.SplitMinutes);

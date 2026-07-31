@@ -16,6 +16,8 @@ public sealed class AppSettings
 
     public bool StartMinimized { get; set; }
 
+    public bool UseWindowsTaskScheduler { get; set; }
+
     public bool RemuxRawAacToM4A { get; set; } = true;
 
     public bool SplitRecordingsEnabled { get; set; }

@@ -21,6 +21,7 @@ public sealed class StreamRecorderAppTests : IDisposable
             RestartOnCrash = true,
             PreventSleep = true,
             StartMinimized = true,
+            UseWindowsTaskScheduler = true,
             RemuxRawAacToM4A = false,
             SplitRecordingsEnabled = true,
             SplitHours = 1,
@@ -46,6 +47,7 @@ public sealed class StreamRecorderAppTests : IDisposable
         Assert.True(loaded.RestartOnCrash);
         Assert.True(loaded.PreventSleep);
         Assert.True(loaded.StartMinimized);
+        Assert.True(loaded.UseWindowsTaskScheduler);
         Assert.False(loaded.RemuxRawAacToM4A);
         Assert.True(loaded.SplitRecordingsEnabled);
         Assert.Equal(1, loaded.SplitHours);
