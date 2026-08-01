@@ -56,6 +56,7 @@ public sealed class MainForm : Form
 
     private bool allowClose;
     private bool hideFromAltTab;
+    private bool isClosing;
     private bool menuPrimed;
     private bool suspendStationListRefresh;
 
@@ -91,9 +92,14 @@ public sealed class MainForm : Form
         FormClosing += OnMainFormClosing;
         FormClosed += (_, _) =>
         {
+            refreshTimer.Stop();
+            app.ConfigChanged -= OnConfigChanged;
+            app.Recorder.SnapshotsChanged -= OnSnapshotsChanged;
+            logForm.VisibleChanged -= OnLogFormVisibleChanged;
             trayIcon.Visible = false;
             scheduledCommandServer.Dispose();
             powerAssertion.Dispose();
+            refreshTimer.Dispose();
             trayIcon.Dispose();
             logForm.Dispose();
         };
@@ -107,24 +113,24 @@ public sealed class MainForm : Form
             RefreshUi();
             if (forceStartMinimizedToTray || settings.StartMinimized)
             {
-                BeginInvoke((Action)(() =>
+                SafeBeginInvoke(() =>
                 {
                     WindowState = FormWindowState.Minimized;
                     if (forceStartMinimizedToTray || settings.MinimizeToTray)
                     {
                         MinimizeIntoTray();
                     }
-                }));
+                });
             }
             else
             {
                 FocusPrimaryControl();
-                BeginInvoke((Action)PrimeMainMenuForFirstAlt);
+                SafeBeginInvoke(PrimeMainMenuForFirstAlt);
             }
 
             if (startupScheduledCommand is not null)
             {
-                BeginInvoke((Action)(() => _ = ExecuteScheduledCommandAsync(startupScheduledCommand)));
+                SafeBeginInvoke(() => _ = ExecuteScheduledCommandAsync(startupScheduledCommand));
             }
         };
     }
@@ -236,10 +242,7 @@ public sealed class MainForm : Form
         stationMenu.Closed += (_, _) =>
         {
             suspendStationListRefresh = false;
-            if (IsHandleCreated)
-            {
-                BeginInvoke((Action)RefreshUi);
-            }
+            SafeBeginInvoke(RefreshUi);
         };
         addStationMenuItem.Click += (_, _) => AddStation();
         startRecordingMenuItem.Click += async (_, _) => await StartSelectedStationAsync();
@@ -296,12 +299,12 @@ public sealed class MainForm : Form
             location = new Point(Math.Max(8, bounds.Left), Math.Max(8, bounds.Bottom));
         }
 
-        BeginInvoke((Action)(() =>
+        SafeBeginInvoke(() =>
         {
             stationMenu.Show(stationList, location);
             stationMenu.Focus();
             SelectFirstAvailableStationMenuItem();
-        }));
+        });
     }
 
     private void RefreshUi()
@@ -549,17 +552,18 @@ public sealed class MainForm : Form
         Show();
         WindowState = FormWindowState.Normal;
         Activate();
-        BeginInvoke((Action)(() =>
+        SafeBeginInvoke(() =>
         {
             FocusPrimaryControl();
             PrimeMainMenuForFirstAlt();
-        }));
+        });
     }
 
     private void OnMainFormClosing(object? sender, FormClosingEventArgs e)
     {
         if (allowClose)
         {
+            isClosing = true;
             trayIcon.Visible = false;
             return;
         }
@@ -571,10 +575,12 @@ public sealed class MainForm : Form
             if (answer != DialogResult.Yes)
             {
                 e.Cancel = true;
+                isClosing = false;
                 return;
             }
         }
 
+        isClosing = true;
         trayIcon.Visible = false;
     }
 
@@ -586,24 +592,18 @@ public sealed class MainForm : Form
 
     private void OnConfigChanged()
     {
-        if (IsHandleCreated)
+        SafeBeginInvoke(() =>
         {
-            BeginInvoke((Action)(() =>
-            {
-                var settings = app.GetSettings();
-                AppLocalizer.ApplyThreadCulture(settings.Language);
-                ApplyShellSettings(settings, persistExternalState: true);
-                ApplyLocalization();
-            }));
-        }
+            var settings = app.GetSettings();
+            AppLocalizer.ApplyThreadCulture(settings.Language);
+            ApplyShellSettings(settings, persistExternalState: true);
+            ApplyLocalization();
+        });
     }
 
     private void OnSnapshotsChanged()
     {
-        if (IsHandleCreated)
-        {
-            BeginInvoke((Action)RefreshUi);
-        }
+        SafeBeginInvoke(RefreshUi);
     }
 
     private void OpenPath(string value, bool useRoot)
@@ -678,7 +678,7 @@ public sealed class MainForm : Form
             return;
         }
 
-        BeginInvoke((Action)(() => _ = ExecuteScheduledCommandAsync(command)));
+        SafeBeginInvoke(() => _ = ExecuteScheduledCommandAsync(command));
     }
 
     private async Task ExecuteScheduledCommandAsync(ScheduledCommand command)
@@ -732,11 +732,11 @@ public sealed class MainForm : Form
 
         if (!logForm.Visible && Visible && WindowState != FormWindowState.Minimized)
         {
-            BeginInvoke((Action)(() =>
+            SafeBeginInvoke(() =>
             {
                 showLogButton.Focus();
                 showLogButton.Select();
-            }));
+            });
         }
     }
 
@@ -987,7 +987,7 @@ public sealed class MainForm : Form
             return;
         }
 
-        BeginInvoke((Action)(() =>
+        SafeBeginInvoke(() =>
         {
             stationList.Focus();
             if (stationList.SelectedItems.Count > 0)
@@ -1002,7 +1002,7 @@ public sealed class MainForm : Form
                 stationList.Items[0].Focused = true;
                 stationList.Items[0].EnsureVisible();
             }
-        }));
+        });
     }
 
     private void FocusPrimaryControl()
@@ -1017,14 +1017,14 @@ public sealed class MainForm : Form
             return;
         }
 
-        BeginInvoke((Action)(() =>
+        SafeBeginInvoke(() =>
         {
             var targetItem = stationMenu.Items
                 .Cast<ToolStripItem>()
                 .FirstOrDefault(static item => item.Available && item.Enabled && item is not ToolStripSeparator);
 
             targetItem?.Select();
-        }));
+        });
     }
 
     private bool IsMainMenuActive()
@@ -1078,12 +1078,39 @@ public sealed class MainForm : Form
 
         menuPrimed = true;
         ActivateMainMenuForAccessibility();
-        BeginInvoke((Action)(() =>
+        SafeBeginInvoke(() =>
         {
             keybd_event(VkEscape, 0, 0, UIntPtr.Zero);
             keybd_event(VkEscape, 0, KeyeventfKeyup, UIntPtr.Zero);
-            BeginInvoke((Action)FocusPrimaryControl);
-        }));
+            SafeBeginInvoke(FocusPrimaryControl);
+        });
+    }
+
+    private void SafeBeginInvoke(Action action)
+    {
+        if (isClosing || IsDisposed || Disposing || !IsHandleCreated)
+        {
+            return;
+        }
+
+        try
+        {
+            BeginInvoke((Action)(() =>
+            {
+                if (isClosing || IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                action();
+            }));
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private static Guid? TryGetStationId(ListViewItem item)

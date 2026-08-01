@@ -8,6 +8,7 @@ internal sealed class WindowsScheduledTasksRegistration
 {
     private const string FolderName = "StreamRecorder";
     private const string TaskNamePrefix = "Schedule_";
+    private const int FileNotFoundHResult = unchecked((int)0x80070002);
     private const int TaskTriggerWeekly = 3;
     private const int TaskActionExec = 0;
     private const int TaskCreateOrUpdate = 6;
@@ -35,19 +36,29 @@ internal sealed class WindowsScheduledTasksRegistration
             return new WindowsScheduledTasksSyncResult(enabled: false, taskCount: 0);
         }
 
-        var folder = existingFolder ?? EnsureFolder(service);
         var stationIds = new HashSet<Guid>(stations.Select(static station => station.Id));
+        var activeSchedules = schedules
+            .Where(schedule => schedule.Enabled && stationIds.Contains(schedule.StationId))
+            .ToList();
+
+        if (activeSchedules.Count == 0 && existingFolder is null)
+        {
+            return new WindowsScheduledTasksSyncResult(enabled: true, taskCount: 0);
+        }
+
+        var normalizedExecutablePath = NormalizeExecutablePath(executablePath);
+        var folder = existingFolder ?? EnsureFolder(service);
         var desiredTaskNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var schedule in schedules.Where(schedule => schedule.Enabled && stationIds.Contains(schedule.StationId)))
+        foreach (var schedule in activeSchedules)
         {
             var startTaskName = BuildTaskName(schedule.Id, ScheduledCommandKind.Start);
             var stopTaskName = BuildTaskName(schedule.Id, ScheduledCommandKind.Stop);
             desiredTaskNames.Add(startTaskName);
             desiredTaskNames.Add(stopTaskName);
 
-            RegisterBoundaryTask(service, folder, executablePath, schedule, ScheduledCommandKind.Start, schedule.GetDays(), schedule.GetStartTime());
-            RegisterBoundaryTask(service, folder, executablePath, schedule, ScheduledCommandKind.Stop, GetStopDays(schedule), schedule.GetEndTime());
+            RegisterBoundaryTask(service, folder, normalizedExecutablePath, schedule, ScheduledCommandKind.Start, schedule.GetDays(), schedule.GetStartTime());
+            RegisterBoundaryTask(service, folder, normalizedExecutablePath, schedule, ScheduledCommandKind.Stop, GetStopDays(schedule), schedule.GetEndTime());
         }
 
         DeleteStaleTasks(folder, desiredTaskNames);
@@ -69,7 +80,7 @@ internal sealed class WindowsScheduledTasksRegistration
         {
             return service.GetFolder("\\" + FolderName);
         }
-        catch (COMException)
+        catch (Exception ex) when (IsTaskSchedulerFileNotFound(ex))
         {
             return null;
         }
@@ -85,6 +96,22 @@ internal sealed class WindowsScheduledTasksRegistration
 
         dynamic root = service.GetFolder("\\");
         return root.CreateFolder(FolderName);
+    }
+
+    private static string NormalizeExecutablePath(string executablePath)
+    {
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            throw new FileNotFoundException("StreamRecorder executable path is empty.");
+        }
+
+        var normalized = Path.GetFullPath(executablePath);
+        if (!File.Exists(normalized))
+        {
+            throw new FileNotFoundException("StreamRecorder executable path does not exist.", normalized);
+        }
+
+        return normalized;
     }
 
     private static void RegisterBoundaryTask(
@@ -230,6 +257,11 @@ internal sealed class WindowsScheduledTasksRegistration
     private static int DaySortKey(DayOfWeek day)
     {
         return day == DayOfWeek.Sunday ? 6 : (int)day - 1;
+    }
+
+    private static bool IsTaskSchedulerFileNotFound(Exception ex)
+    {
+        return ex.HResult == FileNotFoundHResult || ex is FileNotFoundException;
     }
 }
 

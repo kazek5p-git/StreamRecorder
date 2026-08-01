@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows Task Scheduler synchronization now treats a missing `\StreamRecorder` task folder as a normal first-run state instead of logging `0x80070002`.
+- Closing StreamRecorder while a recording is active now shuts down recording sessions more deterministically and avoids late UI callbacks after the main window handle is gone.
+
 ## [0.2.0-alpha10] - 2026-07-31
 
 ### Added

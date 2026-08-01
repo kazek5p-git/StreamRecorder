@@ -18,6 +18,7 @@ public sealed class RecordingService : IDisposable
     private const int SegmentHistoryLimit = 2048;
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan StreamReadTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(5);
 
     private readonly string currentVersion;
     private readonly HttpClient httpClient;
@@ -95,7 +96,11 @@ public sealed class RecordingService : IDisposable
             }
             finally
             {
-                sessions.TryRemove(station.Id, out _);
+                if (sessions.TryRemove(station.Id, out var removed))
+                {
+                    removed.Cancellation.Dispose();
+                }
+
                 RaiseSnapshotsChanged();
             }
         }, CancellationToken.None);
@@ -109,17 +114,31 @@ public sealed class RecordingService : IDisposable
         if (sessions.TryGetValue(stationId, out var session))
         {
             session.Cancellation.Cancel();
+            UpdateSnapshot(stationId, value => value.StateLabel = "Stopping");
         }
-
-        UpdateSnapshot(stationId, value => value.StateLabel = "Stopping");
     }
 
     public void StopAll()
     {
-        foreach (var stationId in sessions.Keys.ToArray())
+        CancelAll();
+    }
+
+    public bool StopAllAndWait(TimeSpan timeout)
+    {
+        var tasks = CancelAll();
+        return WaitForTasks(tasks, timeout);
+    }
+
+    private List<Task> CancelAll()
+    {
+        var activeSessions = sessions.ToArray();
+        foreach (var pair in activeSessions)
         {
-            Stop(stationId);
+            pair.Value.Cancellation.Cancel();
+            UpdateSnapshot(pair.Key, value => value.StateLabel = "Stopping");
         }
+
+        return activeSessions.Select(static pair => pair.Value.Task).ToList();
     }
 
     private async Task RecordStationAsync(
@@ -181,6 +200,7 @@ public sealed class RecordingService : IDisposable
                     continue;
                 }
 
+                using var responseCancellationRegistration = cancellationToken.Register(static state => ((IDisposable)state!).Dispose(), response);
                 using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 var contentType = response.Content.Headers.ContentType?.MediaType;
                 byte[] initialBytes;
@@ -334,6 +354,7 @@ public sealed class RecordingService : IDisposable
                 }
 
                 using (source)
+                using (cancellationToken.Register(static state => ((IDisposable)state!).Dispose(), source))
                 {
                     var responseStream = source.Stream;
                     var contentType = source.ContentType;
@@ -478,6 +499,7 @@ public sealed class RecordingService : IDisposable
                 {
                     using var request = BuildRequest(station, playlistUrl.ToString());
                     using var response = await SendWithTimeoutAsync(request, cancellationToken);
+                    using var cancellationRegistration = cancellationToken.Register(static state => ((IDisposable)state!).Dispose(), response);
                     response.EnsureSuccessStatusCode();
                     playlistBody = await AwaitWithTimeoutAsync(
                         response.Content.ReadAsStringAsync(cancellationToken),
@@ -518,6 +540,7 @@ public sealed class RecordingService : IDisposable
                     {
                         using var request = BuildRequest(station, segmentUrl.ToString());
                         using var response = await SendWithTimeoutAsync(request, cancellationToken);
+                        using var cancellationRegistration = cancellationToken.Register(static state => ((IDisposable)state!).Dispose(), response);
                         response.EnsureSuccessStatusCode();
                         var bytes = await AwaitWithTimeoutAsync(
                             response.Content.ReadAsByteArrayAsync(cancellationToken),
@@ -1137,8 +1160,29 @@ public sealed class RecordingService : IDisposable
 
     public void Dispose()
     {
-        StopAll();
+        var stopped = StopAllAndWait(DisposeWaitTimeout);
         httpClient.Dispose();
+        if (!stopped)
+        {
+            WaitForTasks(sessions.Values.Select(static session => session.Task).ToList(), TimeSpan.FromSeconds(2));
+        }
+    }
+
+    private static bool WaitForTasks(IReadOnlyCollection<Task> tasks, TimeSpan timeout)
+    {
+        if (tasks.Count == 0)
+        {
+            return true;
+        }
+
+        try
+        {
+            return Task.WaitAll(tasks.ToArray(), timeout);
+        }
+        catch (AggregateException)
+        {
+            return tasks.All(static task => task.IsCompleted);
+        }
     }
 
     private sealed record RecordingSession(CancellationTokenSource Cancellation, Task Task);
