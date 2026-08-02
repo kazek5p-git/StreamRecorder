@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-alpha11] - 2026-08-02
+
 ### Fixed
 
 - Windows Task Scheduler synchronization now treats a missing `\StreamRecorder` task folder as a normal first-run state instead of logging `0x80070002`.
