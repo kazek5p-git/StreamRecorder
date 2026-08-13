@@ -1,4 +1,4 @@
-; Instalator StreamRecorder dla Inno Setup.
+; StreamRecorder installer for Inno Setup.
 
 #ifndef Version
   #define Version "1.0.0"
@@ -41,7 +41,7 @@ CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
 VersionInfoCompany={#AppPublisher}
-VersionInfoDescription=StreamRecorder - nagrywanie strumieni radiowych
+VersionInfoDescription=StreamRecorder - radio stream recording
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#Version}
 

@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - WinForms release packaging now creates versioned and fixed-name assets for both the portable ZIP and the installer, following the same naming convention as Sonic Pitch.
 - The WinForms preview now contains the first separate HTTP/HTTPS playback path with selectable audio output and automatic reconnect attempts.
-- Domyślny katalog nagrań jest teraz tworzony w `%USERPROFILE%\Documents\StreamRecorder`, niezależnie od tego, czy aplikacja jest portable, czy zainstalowana.
+- The default recording folder is now created at `%USERPROFILE%\Documents\StreamRecorder`, regardless of whether the application is portable or installed.
 
 ### Fixed
 
@@ -16,12 +16,12 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.0] - 2026-08-13
 
-### Dodane
+### Added
 
-- Pierwsze stabilne wydanie aktywnej wersji C# i WinForms.
-- Odsłuch strumieni HTTP i HTTPS z wyborem urządzenia audio, obsługą AAC/AAC+ oraz automatycznym ponownym łączeniem.
-- Nagrywanie wielu stacji, harmonogramy zintegrowane z Harmonogramem zadań Windows, dzielenie nagrań i remuks RAW AAC do M4A.
-- Portable ZIP oraz instalator Inno Setup z wyborem języka polskiego lub angielskiego.
+- First stable release of the active C# and WinForms version.
+- HTTP and HTTPS stream playback with audio device selection, AAC/AAC+ support, and automatic reconnect attempts.
+- Multi-station recording, Windows Task Scheduler integration, recording splitting, and RAW AAC to M4A remuxing.
+- Portable ZIP and Inno Setup installer with English and Polish language selection.
 
 ## [0.2.0-alpha11] - 2026-08-02
 

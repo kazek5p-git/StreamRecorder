@@ -37,11 +37,11 @@ Project link:
 BASS_AAC
 --------
 
-Pakiet zawiera dodatek BASS_AAC 2.4.7.2 do dekodowania strumieni AAC i
-AAC+, w tym strumieni Shoutcast AAC+. Odpowiednie pliki DLL znajdują się w
-`Tools/BASS/x64/` i `Tools/BASS/x86/`. Dołączone pliki `bass_aac.txt` oraz
-`bass_aac-gpl.txt` zawierają warunki upstream i tekst licencji.
+The package includes the BASS_AAC 2.4.7.2 add-on for decoding AAC and AAC+
+streams, including Shoutcast AAC+ streams. The corresponding DLL files are in
+`Tools/BASS/x64/` and `Tools/BASS/x86/`. The included `bass_aac.txt` and
+`bass_aac-gpl.txt` files contain the upstream terms and license text.
 
-Źródło dodatku:
+Add-on source:
 
 - https://www.un4seen.com/bass.html

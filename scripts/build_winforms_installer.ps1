@@ -11,7 +11,7 @@ function Get-ProjectVersion {
 
     $match = Select-String -Path $ProjectFilePath -Pattern '<Version>([^<]+)</Version>' | Select-Object -First 1
     if (-not $match) {
-        throw "Nie można odczytać wersji z pliku projektu: $ProjectFilePath"
+        throw "Unable to read the version from the project file: $ProjectFilePath"
     }
 
     return $match.Matches[0].Groups[1].Value
@@ -22,7 +22,7 @@ function Resolve-Iscc {
 
     if ($RequestedPath) {
         if (-not (Test-Path -LiteralPath $RequestedPath -PathType Leaf)) {
-            throw "Nie znaleziono kompilatora Inno Setup: $RequestedPath"
+            throw "Inno Setup compiler was not found: $RequestedPath"
         }
 
         return (Resolve-Path -LiteralPath $RequestedPath).Path
@@ -46,7 +46,7 @@ function Resolve-Iscc {
         }
     }
 
-    throw "Nie znaleziono ISCC.exe. Zainstaluj Inno Setup 6 lub 7 albo przekaż -IsccPath C:\sciezka\ISCC.exe."
+    throw "ISCC.exe was not found. Install Inno Setup 6 or 7, or pass -IsccPath C:\path\ISCC.exe."
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -58,26 +58,26 @@ $iscc = Resolve-Iscc -RequestedPath $IsccPath
 
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $packageScript -Version $versionToUse
 if ($LASTEXITCODE -ne 0) {
-    throw "Pakowanie portable nie powiodło się. Kod: $LASTEXITCODE"
+    throw "Portable packaging failed. Exit code: $LASTEXITCODE"
 }
 
 $stageDir = Join-Path $repoRoot ("dotnet\target\release-package\StreamRecorder-v{0}-winforms-net48" -f $versionToUse)
 $outputDir = Join-Path $repoRoot 'dotnet\target\release-package'
 $legacyInstallerPath = Join-Path $outputDir ("StreamRecorder-v{0}-setup.exe" -f $versionToUse)
 if (-not (Test-Path -LiteralPath (Join-Path $stageDir 'StreamRecorder.exe') -PathType Leaf)) {
-    throw "Nie znaleziono gotowej paczki portable: $stageDir"
+    throw "The prepared portable package was not found: $stageDir"
 }
 
 Remove-Item -LiteralPath $legacyInstallerPath -Force -ErrorAction SilentlyContinue
 
 & $iscc "/DVersion=$versionToUse" "/DStageDir=$stageDir" "/DOutputDir=$outputDir" $issFile
 if ($LASTEXITCODE -ne 0) {
-    throw "Kompilacja instalatora nie powiodła się. Kod: $LASTEXITCODE"
+    throw "Installer compilation failed. Exit code: $LASTEXITCODE"
 }
 
 $installerPath = Join-Path $outputDir ("StreamRecorder-{0}-setup.exe" -f $versionToUse)
 if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
-    throw "ISCC zakończył pracę, ale nie znaleziono instalatora: $installerPath"
+    throw "ISCC completed, but the installer was not found: $installerPath"
 }
 
 $stableInstallerPath = Join-Path $outputDir 'StreamRecorder-setup.exe'

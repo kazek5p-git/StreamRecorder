@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-The C# + WinForms rewrite now builds, packages, and passes the main parity checks needed for a first public preview. It is ready for a GitHub pre-release, but it is still not intended to replace the stable Rust branch as the default release line.
+The C# + WinForms rewrite now builds, packages, and passes the main parity checks for the stable 1.0.0 release. It is the active release line and has replaced the archived Rust application as the default release line.
 
 ## Accessibility / NVDA
 
@@ -17,9 +17,9 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
 - Tray restore and context menu behavior were smoke-tested.
 - Live NVDA checks were already done for the older Rust GUI and informed the rewrite layout.
 
-### Still recommended before stable
+### Further recommended validation
 
-- Full live NVDA pass on the WinForms preview build from top to bottom.
+- Additional live NVDA regression testing on the stable build from top to bottom.
 - Longer manual session focused on tray focus restoration, menu narration, and context menus.
 
 ## Functional Parity vs. Rust
@@ -57,33 +57,34 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
 - updater check, download, install, and restart flow
 - crash guard behavior
 
-### Still outside full stable parity
+### Known follow-up work
 
 - no full long-run real-world regression pass yet
-- no completed full live NVDA pass on the rewrite itself yet
-- the rewrite release line is still preview-only, not the default stable branch
+- additional full live NVDA regression coverage on the rewrite is still recommended
+- the archived Rust application is no longer the default release line
 
 ## Packaging / Release Readiness
 
 ### Done
 
 - rewrite requirements are documented in:
-  - [README.md](/C:/Users/Kazek/Documents/StreamRecorder/README.md)
-  - [README.md](/C:/Users/Kazek/Documents/StreamRecorder/dotnet/README.md)
+  - [README.md](../README.md)
+  - [README.md](../dotnet/README.md)
 - packaging script exists:
-  - [package_winforms_release.ps1](/C:/Users/Kazek/Documents/StreamRecorder/scripts/package_winforms_release.ps1)
+  - [package_winforms_release.ps1](../scripts/package_winforms_release.ps1)
 - packaging produces a portable `net48` ZIP with:
   - `StreamRecorder.exe`
   - required assemblies
   - empty `Config`
   - `README.html`
 
-Domyślny katalog nagrań jest tworzony przy pierwszym uruchomieniu w
-`%USERPROFILE%\Documents\StreamRecorder`, a nie obok pliku EXE. Paczka portable
-nie zawiera katalogu nagrań; ręcznie ustawione ścieżki pozostają bez zmian.
+The default recording folder is created on first launch at
+`%USERPROFILE%\Documents\StreamRecorder`, rather than next to the EXE file. The
+portable package does not include a recording folder; manually selected paths
+remain unchanged.
 
-### Recommended next milestone after pre-release
+### Recommended follow-up
 
 - manual install/run verification on a clean profile with only `.NET Framework 4.8`
-- broader user testing of the WinForms preview
-- final decision about when the rewrite becomes the default stable release line
+- broader user testing of the stable WinForms release
+- longer real-world recording and reconnect sessions
