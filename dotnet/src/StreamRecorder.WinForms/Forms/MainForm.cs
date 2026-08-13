@@ -3,6 +3,7 @@ using StreamRecorder.Core;
 using StreamRecorder.Core.Compatibility;
 using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
+using StreamRecorder.Core.Playback;
 using StreamRecorder.WinForms.Services;
 
 namespace StreamRecorder.WinForms.Forms;
@@ -28,6 +29,8 @@ public sealed class MainForm : Form
     private readonly ToolStripMenuItem addStationMenuItem = new();
     private readonly ToolStripMenuItem startRecordingMenuItem = new();
     private readonly ToolStripMenuItem stopRecordingMenuItem = new();
+    private readonly ToolStripMenuItem startListeningMenuItem = new();
+    private readonly ToolStripMenuItem stopListeningMenuItem = new();
     private readonly ToolStripMenuItem editStationMenuItem = new();
     private readonly ToolStripMenuItem schedulesMenuItem = new();
     private readonly ToolStripMenuItem deleteStationMenuItem = new();
@@ -86,6 +89,7 @@ public sealed class MainForm : Form
 
         app.ConfigChanged += OnConfigChanged;
         app.Recorder.SnapshotsChanged += OnSnapshotsChanged;
+        app.Playback.SnapshotsChanged += OnPlaybackSnapshotsChanged;
         logForm.VisibleChanged += OnLogFormVisibleChanged;
 
         Resize += OnMainResize;
@@ -95,6 +99,7 @@ public sealed class MainForm : Form
             refreshTimer.Stop();
             app.ConfigChanged -= OnConfigChanged;
             app.Recorder.SnapshotsChanged -= OnSnapshotsChanged;
+            app.Playback.SnapshotsChanged -= OnPlaybackSnapshotsChanged;
             logForm.VisibleChanged -= OnLogFormVisibleChanged;
             trayIcon.Visible = false;
             scheduledCommandServer.Dispose();
@@ -226,6 +231,8 @@ public sealed class MainForm : Form
         stationMenu.Items.Add(stationMenuActionsSeparator);
         stationMenu.Items.Add(startRecordingMenuItem);
         stationMenu.Items.Add(stopRecordingMenuItem);
+        stationMenu.Items.Add(startListeningMenuItem);
+        stationMenu.Items.Add(stopListeningMenuItem);
         stationMenu.Items.Add(stationMenuEditSeparator);
         stationMenu.Items.Add(editStationMenuItem);
         stationMenu.Items.Add(deleteStationMenuItem);
@@ -247,6 +254,8 @@ public sealed class MainForm : Form
         addStationMenuItem.Click += (_, _) => AddStation();
         startRecordingMenuItem.Click += async (_, _) => await StartSelectedStationAsync();
         stopRecordingMenuItem.Click += (_, _) => StopSelectedStation();
+        startListeningMenuItem.Click += async (_, _) => await StartSelectedListeningAsync();
+        stopListeningMenuItem.Click += (_, _) => StopSelectedListening();
         editStationMenuItem.Click += (_, _) => EditSelectedStation();
         deleteStationMenuItem.Click += (_, _) => DeleteSelectedStation();
         UpdateStationMenuState();
@@ -312,13 +321,14 @@ public sealed class MainForm : Form
         var localizer = app.GetLocalizer();
         var stations = app.GetStations();
         var snapshots = app.Recorder.GetSnapshots();
+        var playbackSnapshots = app.Playback.GetSnapshots();
 
         if (!suspendStationListRefresh)
         {
             var selectedId = GetSelectedStationId();
             var focusedId = GetFocusedStationId();
             var topId = GetTopStationId();
-            UpdateStationList(stations, snapshots, selectedId, focusedId, topId);
+            UpdateStationList(stations, snapshots, playbackSnapshots, selectedId, focusedId, topId);
         }
 
         var recordingCount = snapshots.Values.Count(static snapshot => snapshot.Active);
@@ -331,18 +341,23 @@ public sealed class MainForm : Form
     {
         var hasSelection = GetSelectedStation() is not null;
         var isRecording = hasSelection && app.Recorder.IsRecording(GetSelectedStation()!.Id);
+        var isListening = hasSelection && app.Playback.IsListening(GetSelectedStation()!.Id);
 
         addStationMenuItem.Visible = true;
         addStationMenuItem.Enabled = true;
 
         startRecordingMenuItem.Enabled = !isRecording;
         stopRecordingMenuItem.Enabled = isRecording;
+        startListeningMenuItem.Enabled = !isListening;
+        stopListeningMenuItem.Enabled = isListening;
         editStationMenuItem.Enabled = true;
         deleteStationMenuItem.Enabled = true;
 
         stationMenuActionsSeparator.Visible = hasSelection;
         startRecordingMenuItem.Visible = hasSelection;
         stopRecordingMenuItem.Visible = hasSelection;
+        startListeningMenuItem.Visible = hasSelection;
+        stopListeningMenuItem.Visible = hasSelection;
         stationMenuEditSeparator.Visible = hasSelection;
         editStationMenuItem.Visible = hasSelection;
         deleteStationMenuItem.Visible = hasSelection;
@@ -418,6 +433,30 @@ public sealed class MainForm : Form
         RefreshUi();
     }
 
+    private async Task StartSelectedListeningAsync()
+    {
+        var station = GetSelectedStation();
+        if (station is null)
+        {
+            return;
+        }
+
+        await app.StartPlaybackAsync(station.Id);
+        RefreshUi();
+    }
+
+    private void StopSelectedListening()
+    {
+        var station = GetSelectedStation();
+        if (station is null)
+        {
+            return;
+        }
+
+        app.StopPlayback(station.Id);
+        RefreshUi();
+    }
+
     private void DeleteSelectedStation()
     {
         var station = GetSelectedStation();
@@ -477,7 +516,7 @@ public sealed class MainForm : Form
     private void OpenSettings()
     {
         var selectedId = GetSelectedStationId();
-        using var dialog = new SettingsForm(app.GetLocalizer(), app.GetSettings(), app.Paths);
+        using var dialog = new SettingsForm(app.GetLocalizer(), app.GetSettings(), app.Paths, app.Playback);
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             app.SaveSettings(dialog.BuildSettings());
@@ -602,6 +641,11 @@ public sealed class MainForm : Form
     }
 
     private void OnSnapshotsChanged()
+    {
+        SafeBeginInvoke(RefreshUi);
+    }
+
+    private void OnPlaybackSnapshotsChanged()
     {
         SafeBeginInvoke(RefreshUi);
     }
@@ -743,6 +787,7 @@ public sealed class MainForm : Form
     private void UpdateStationList(
         IReadOnlyList<Station> stations,
         IReadOnlyDictionary<Guid, RecordingSnapshot> snapshots,
+        IReadOnlyDictionary<Guid, PlaybackSnapshot> playbackSnapshots,
         Guid? selectedId,
         Guid? focusedId,
         Guid? topId)
@@ -760,6 +805,7 @@ public sealed class MainForm : Form
             {
                 var station = stations[index];
                 snapshots.TryGetValue(station.Id, out var snapshot);
+                playbackSnapshots.TryGetValue(station.Id, out var playbackSnapshot);
 
                 if (!existingItems.TryGetValue(station.Id, out var item))
                 {
@@ -771,7 +817,7 @@ public sealed class MainForm : Form
                     stationList.Items.Add(item);
                 }
 
-                ApplyStationToItem(item, station, snapshot);
+                ApplyStationToItem(item, station, snapshot, playbackSnapshot);
                 if (item.Index != index)
                 {
                     stationList.Items.Remove(item);
@@ -839,13 +885,13 @@ public sealed class MainForm : Form
         }
     }
 
-    private void ApplyStationToItem(ListViewItem item, Station station, RecordingSnapshot? snapshot)
+    private void ApplyStationToItem(ListViewItem item, Station station, RecordingSnapshot? snapshot, PlaybackSnapshot? playbackSnapshot)
     {
         var localizer = app.GetLocalizer();
         EnsureSubItemCount(item, 5);
         item.Text = station.Name;
         item.SubItems[1].Text = station.Url;
-        item.SubItems[2].Text = FormatStatus(snapshot, localizer);
+        item.SubItems[2].Text = FormatStatus(snapshot, playbackSnapshot, localizer);
         item.SubItems[3].Text = snapshot?.Format is { } format ? localizer.FormatDisplayName(format) : "-";
         item.SubItems[4].Text = snapshot?.OutputPath is { Length: > 0 } output ? Path.GetFileName(output) : "-";
     }
@@ -858,9 +904,19 @@ public sealed class MainForm : Form
         }
     }
 
-    private static string FormatStatus(RecordingSnapshot? snapshot, AppLocalizer localizer)
+    private static string FormatStatus(RecordingSnapshot? snapshot, PlaybackSnapshot? playbackSnapshot, AppLocalizer localizer)
     {
-        return localizer.TranslateStateLabel(snapshot?.StateLabel);
+        if (playbackSnapshot?.Active == true || playbackSnapshot?.State == PlaybackState.Error)
+        {
+            return localizer.TranslatePlaybackState(playbackSnapshot.State, playbackSnapshot.Error);
+        }
+
+        if (snapshot?.Active == true || snapshot?.StateLabel is not null)
+        {
+            return localizer.TranslateStateLabel(snapshot.StateLabel);
+        }
+
+        return localizer.TranslatePlaybackState(playbackSnapshot?.State, playbackSnapshot?.Error);
     }
 
     private void ApplyLocalization()
@@ -892,6 +948,8 @@ public sealed class MainForm : Form
         addStationMenuItem.Text = localizer.AddStation;
         startRecordingMenuItem.Text = localizer.StartRecording;
         stopRecordingMenuItem.Text = localizer.StopRecording;
+        startListeningMenuItem.Text = localizer.StartListening;
+        stopListeningMenuItem.Text = localizer.StopListening;
         editStationMenuItem.Text = localizer.EditStation;
         deleteStationMenuItem.Text = localizer.DeleteStation;
 
@@ -1065,6 +1123,8 @@ public sealed class MainForm : Form
         _ = addStationMenuItem.AccessibilityObject;
         _ = startRecordingMenuItem.AccessibilityObject;
         _ = stopRecordingMenuItem.AccessibilityObject;
+        _ = startListeningMenuItem.AccessibilityObject;
+        _ = stopListeningMenuItem.AccessibilityObject;
         _ = editStationMenuItem.AccessibilityObject;
         _ = deleteStationMenuItem.AccessibilityObject;
     }

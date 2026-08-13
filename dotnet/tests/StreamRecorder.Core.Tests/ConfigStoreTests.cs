@@ -11,7 +11,9 @@ public sealed class ConfigStoreTests : IDisposable
     [Fact]
     public void LoadOrCreate_CreatesDefaultConfigAndDirectories()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
 
         var config = ConfigStore.LoadOrCreate(paths);
 
@@ -24,9 +26,26 @@ public sealed class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void DefaultRecordingsFolder_UsesCurrentUsersDocuments()
+    {
+        var baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (string.IsNullOrWhiteSpace(baseDirectory))
+        {
+            baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
+
+        Assert.False(string.IsNullOrWhiteSpace(baseDirectory));
+        Assert.Equal(
+            Path.Combine(baseDirectory, AppDefaults.DefaultRecordingsFolderName),
+            AppDefaults.DefaultRecordingsFolder);
+    }
+
+    [Fact]
     public void SaveAndReload_RoundTripsSettingsStationsAndSchedules()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
         var stationId = Guid.NewGuid();
         var scheduleId = Guid.NewGuid();
 
@@ -44,6 +63,7 @@ public sealed class ConfigStoreTests : IDisposable
                 UseWindowsTaskScheduler = true,
                 RemuxRawAacToM4A = false,
                 SplitRecordingsEnabled = true,
+                PlaybackDevice = "driver:test|index:4",
                 SplitHours = 2,
                 SplitMinutes = 15,
                 SplitSeconds = 30,
@@ -97,6 +117,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.True(reloaded.Settings.UseWindowsTaskScheduler);
         Assert.False(reloaded.Settings.RemuxRawAacToM4A);
         Assert.True(reloaded.Settings.SplitRecordingsEnabled);
+        Assert.Equal("driver:test|index:4", reloaded.Settings.PlaybackDevice);
         Assert.Equal(2, reloaded.Settings.SplitHours);
         Assert.Equal(15, reloaded.Settings.SplitMinutes);
         Assert.Equal(30, reloaded.Settings.SplitSeconds);
@@ -125,7 +146,9 @@ public sealed class ConfigStoreTests : IDisposable
     [Fact]
     public void LoadOrCreate_MigratesLegacyStartStopSchedulesIntoRecordingWindow()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
         paths.EnsureDirectories();
         var stationId = Guid.NewGuid();
         var startId = Guid.NewGuid();

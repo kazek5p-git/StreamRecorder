@@ -1,10 +1,10 @@
 # StreamRecorder WinForms Rewrite
 
-This directory contains the in-progress C# + WinForms rewrite of StreamRecorder.
+This directory contains the C# + WinForms release line of StreamRecorder.
 
 ## Current State
 
-The rewrite is already usable as a preview build. It includes:
+The stable 1.0.0 build includes:
 
 - WinForms main window with station list, context menu, tray integration, log window, settings, and global schedules
 - HTTP, HTTPS, and HLS recording
@@ -18,8 +18,9 @@ The rewrite is already usable as a preview build. It includes:
 - portable `Config/app.toml`
 - GitHub release update checks
 - crash recovery through an internal guard mode when `Restart on crash` is enabled
+- first playback preview for HTTP and HTTPS stations through the bundled BASS backend
 
-This build is still intended as a preview and not yet as a replacement for the stable Rust release.
+This release line replaces the archived Rust application as the active version.
 
 ## Requirements
 
@@ -57,20 +58,47 @@ The packaging script creates a portable ZIP for the `net48` build with:
 - `StreamRecorder.exe`
 - required `.NET` assemblies
 - empty `Config`
-- empty `My recordings`
 - `README.html`
 
-The same package is also written to the fixed filename `StreamRecorder.zip`.
-Use this permanent link for the latest stable release:
+On the first run, the default recording folder is created as
+`%USERPROFILE%\Documents\StreamRecorder`. The portable package does not create
+a recording folder next to `StreamRecorder.exe`. A manually selected recording
+path remains unchanged, and existing recordings are not moved automatically.
+
+The package is written using both the versioned filename
+`StreamRecorder-1.0.0.zip` and the fixed filename `StreamRecorder.zip`. Use
+this permanent link for the latest stable release:
 
 https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder.zip
+
+The installer is published in the same way: `StreamRecorder-1.0.0-setup.exe`
+and the fixed `StreamRecorder-setup.exe`. Its permanent link is:
+
+https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder-setup.exe
 
 GitHub's `latest` endpoint intentionally ignores pre-releases. During preview
 testing, use the same fixed asset name with the tag of the selected release:
 
 `https://github.com/kazek5p-git/StreamRecorder/releases/download/<RELEASE_TAG>/StreamRecorder.zip`
 
+For a normal Windows installation, build the Inno Setup installer with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build_winforms_installer.ps1 -Version 1.0.0
+```
+
+The installer offers English and Polish at startup and installs by default into
+the current user's profile, so StreamRecorder can write its configuration and
+recordings without administrator privileges.
+
 If `third_party/GPAC/MP4Box.exe` exists, the packaging script also copies the extracted GPAC files into `Tools/GPAC/` inside the ZIP and adds `THIRD-PARTY-NOTICES.txt`.
+
+If the BASS files and the `BASS_AAC` add-on exist under `third_party/BASS/`,
+the package also contains both architectures under `Tools/BASS/`. The
+application uses the matching DLL for the current process architecture and
+loads `bass_aac.dll` automatically for AAC/AAC+ streams. The playback stage
+accepts HTTP and HTTPS stream URLs; HLS, MMS, and other formats requiring
+additional BASS plugins are not included in this stage.
 
 ## Translations
 
@@ -106,7 +134,20 @@ If you want a lightweight Windows build of `MP4Box.exe` instead of the full GPAC
 - https://www.rarewares.org/files/mp4/MP4Box-GPAC-v.26.03-DEV-rev102-gfc485902-ab-suite-x64.zip
 - https://forum.doom9.org/showthread.php?t=184719&page=25
 
+## Playback / BASS
+
+The context menu can start and stop a separate audio connection for the
+selected station. Playback does not reuse the recording connection, so a
+station can be recorded and listened to at the same time. Only one station is
+played at a time; starting another station stops the previous preview.
+
+The output device is selected in Settings. The default option uses the normal
+Windows audio device. The BASS 2.4 library is free for non-commercial use
+under its upstream terms; commercial distribution requires the appropriate
+Un4seen license. The full license is kept in `third_party/BASS/bass.txt` and
+is copied into the release package.
+
 ## Notes
 
 - The rewrite uses `Config/app.toml`, not INI.
-- The preview build should be tested with keyboard navigation, tray behavior, updater flow, and real-world recording before a stable release replaces the Rust branch.
+- The stable build should continue to be tested with keyboard navigation, tray behavior, updater flow, and real-world recording.

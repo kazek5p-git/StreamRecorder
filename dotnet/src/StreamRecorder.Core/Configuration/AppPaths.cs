@@ -12,7 +12,7 @@ public sealed class AppPaths
 
     public string LogFilePath { get; set; } = string.Empty;
 
-    public static AppPaths Discover(string? executablePath = null)
+    public static AppPaths Discover(string? executablePath = null, string? recordingsDirectoryOverride = null)
     {
         executablePath ??= System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
         if (string.IsNullOrWhiteSpace(executablePath))
@@ -27,7 +27,9 @@ public sealed class AppPaths
         }
 
         var configDirectory = Path.Combine(rootDirectory, AppDefaults.ConfigDirectoryName);
-        var recordingsDirectory = Path.Combine(rootDirectory, AppDefaults.DefaultRecordingsFolder);
+        var recordingsDirectory = string.IsNullOrWhiteSpace(recordingsDirectoryOverride)
+            ? AppDefaults.DefaultRecordingsFolder
+            : recordingsDirectoryOverride!;
 
         return new AppPaths
         {

@@ -14,7 +14,9 @@ public sealed class RecordingServiceSplitTests : IDisposable
     [Fact]
     public async Task RecordingService_SplitsOutputFiles_WhenSplitIntervalIsEnabled()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
         paths.EnsureDirectories();
 
         using var server = new StreamingHttpServer();
@@ -28,7 +30,7 @@ public sealed class RecordingServiceSplitTests : IDisposable
         };
         var settings = new AppSettings
         {
-            RecordingsFolder = AppDefaults.DefaultRecordingsFolder,
+            RecordingsFolder = AppDefaults.DefaultRecordingsFolderName,
             FileNameTemplate = "%t_%h-%m-%s",
             Language = LanguageCodes.English,
             RemuxRawAacToM4A = false,
@@ -51,7 +53,9 @@ public sealed class RecordingServiceSplitTests : IDisposable
     [Fact]
     public async Task RecordingService_ReconnectsAfterStreamDisconnects()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
         paths.EnsureDirectories();
 
         using var server = new StreamingHttpServer(closeAfterWrites: 3);
@@ -76,7 +80,9 @@ public sealed class RecordingServiceSplitTests : IDisposable
     [Fact]
     public async Task RecordingService_StopCompletesWhenStreamReadIsStalled()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
         paths.EnsureDirectories();
 
         using var server = new StreamingHttpServer(stallAfterWrites: 2);
@@ -126,7 +132,7 @@ public sealed class RecordingServiceSplitTests : IDisposable
     {
         return new AppSettings
         {
-            RecordingsFolder = AppDefaults.DefaultRecordingsFolder,
+            RecordingsFolder = AppDefaults.DefaultRecordingsFolderName,
             FileNameTemplate = "%t_%h-%m-%s",
             Language = LanguageCodes.English,
             RemuxRawAacToM4A = false,

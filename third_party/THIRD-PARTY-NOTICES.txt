@@ -22,3 +22,26 @@ GPAC project links:
 - https://github.com/gpac/gpac
 
 GPAC is licensed by its upstream project. Keep the GPAC license files from the distributed package together with the bundled MP4Box files.
+
+BASS 2.4
+--------
+
+StreamRecorder may include the BASS 2.4 playback library from Un4seen
+Developments Ltd. The corresponding `bass.txt` file is included in
+`Tools/BASS/` and contains the upstream license and terms of use.
+
+Project link:
+
+- https://www.un4seen.com/
+
+BASS_AAC
+--------
+
+Pakiet zawiera dodatek BASS_AAC 2.4.7.2 do dekodowania strumieni AAC i
+AAC+, w tym strumieni Shoutcast AAC+. Odpowiednie pliki DLL znajdują się w
+`Tools/BASS/x64/` i `Tools/BASS/x86/`. Dołączone pliki `bass_aac.txt` oraz
+`bass_aac-gpl.txt` zawierają warunki upstream i tekst licencji.
+
+Źródło dodatku:
+
+- https://www.un4seen.com/bass.html

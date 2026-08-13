@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using StreamRecorder.Core.Models;
+using StreamRecorder.Core.Playback;
 
 namespace StreamRecorder.Core.Localization;
 
@@ -105,6 +106,8 @@ public sealed class AppLocalizer
     public string AddStation => Text("AddStation", IsPolish ? "&Dodaj stacjÄ™" : "&Add station");
     public string StartRecording => Text("StartRecording", IsPolish ? "&Rozpocznij nagrywanie" : "&Start recording");
     public string StopRecording => Text("StopRecording", IsPolish ? "&Zatrzymaj nagrywanie" : "S&top recording");
+    public string StartListening => Text("StartListening", IsPolish ? "&Włącz odsłuch" : "&Start listening");
+    public string StopListening => Text("StopListening", IsPolish ? "&Wyłącz odsłuch" : "S&top listening");
     public string EditStation => Text("EditStation", IsPolish ? "&Edytuj stacjÄ™" : "&Edit station");
     public string Schedules => Text("Schedules", IsPolish ? "&Harmonogram..." : "Sche&dules...");
     public string DeleteStation => Text("DeleteStation", IsPolish ? "&UsuĹ„ stacjÄ™" : "&Delete station");
@@ -132,6 +135,9 @@ public sealed class AppLocalizer
     public string GeneralGroup => Text("GeneralGroup", IsPolish ? "OgĂłlne" : "General");
     public string RecordingGroup => Text("RecordingGroup", IsPolish ? "Nagrywanie" : "Recording");
     public string OtherGroup => Text("OtherGroup", IsPolish ? "Inne" : "Other");
+    public string PlaybackDeviceLabel => Text("PlaybackDeviceLabel", IsPolish ? "Urządzenie audio odsłuchu:" : "Playback audio device:");
+    public string PlaybackDeviceAccessibleName => Text("PlaybackDeviceAccessibleName", IsPolish ? "Urządzenie audio odsłuchu" : "Playback audio device");
+    public string SystemDefaultAudioDevice => Text("SystemDefaultAudioDevice", IsPolish ? "Domyślne urządzenie systemowe" : "System default device");
     public string LaunchOnStartup => Text("LaunchOnStartup", IsPolish ? "Uruchamiaj aplikacjÄ™ wraz ze startem Windows" : "Launch application at Windows startup");
     public string AlwaysOnTop => Text("AlwaysOnTop", IsPolish ? "Zawsze na wierzchu" : "Always on top");
     public string MinimizeToTray => Text("MinimizeToTray", IsPolish ? "Minimalizuj do zasobnika systemowego" : "Minimize to system tray");
@@ -240,6 +246,15 @@ public sealed class AppLocalizer
     public string ErrorPrefix => Text("ErrorPrefix", IsPolish ? "BĹ‚Ä…d: " : "Error: ");
     public string RemuxSkippingMp4BoxMissing => Text("RemuxSkippingMp4BoxMissing", IsPolish ? "Pomijam remuks AAC do M4A: nie znaleziono MP4Box.exe" : "Skipping AAC to M4A remux: MP4Box.exe was not found");
     public string RemuxFailed => Text("RemuxFailed", IsPolish ? "Remuks AAC do M4A nie powiĂłdĹ‚ siÄ™" : "AAC to M4A remux failed");
+    public string PlaybackOnlyHttpMessage => Text("PlaybackOnlyHttpMessage", IsPolish
+        ? "Pierwsza wersja odsłuchu obsługuje wyłącznie adresy HTTP i HTTPS."
+        : "The first playback version supports HTTP and HTTPS URLs only.");
+    public string PlaybackHlsNotAvailable => Text("PlaybackHlsNotAvailable", IsPolish
+        ? "Odsłuch HLS nie jest jeszcze dostępny w tej wersji."
+        : "HLS playback is not available in this version yet.");
+    public string PlaybackUnavailableDevice(string deviceId) => Format("PlaybackUnavailableDevice", IsPolish
+        ? "Zapisane urządzenie audio nie jest dostępne: {0}"
+        : "The saved audio device is not available: {0}", deviceId);
 
     public string CurrentlyRecording(int count) => Format("CurrentlyRecording", IsPolish ? "Aktualnie nagrywa: {0}" : "Currently recording: {0}", count);
     public string DeleteStationPrompt(string stationName) => Format("DeleteStationPrompt", IsPolish ? "UsunÄ…Ä‡ stacjÄ™ '{0}'?" : "Delete station '{0}'?", stationName);
@@ -277,6 +292,12 @@ public sealed class AppLocalizer
     public string ScheduleStartedRecording(string stationName) => Format("ScheduleStartedRecording", IsPolish ? "Harmonogram rozpoczÄ…Ĺ‚ nagrywanie: {0}" : "Schedule started recording: {0}", stationName);
     public string ScheduleStoppedRecording(string stationName) => Format("ScheduleStoppedRecording", IsPolish ? "Harmonogram zatrzymaĹ‚ nagrywanie: {0}" : "Schedule stopped recording: {0}", stationName);
     public string RemuxStarted(string outputPath) => Format("RemuxStarted", IsPolish ? "Remuks AAC do M4A: {0}" : "AAC to M4A remux: {0}", outputPath);
+    public string PlaybackStarted(string stationName) => Format("PlaybackStarted", IsPolish ? "Rozpoczęto odsłuch: {0}" : "Playback started: {0}", stationName);
+    public string PlaybackStopped(string stationName) => Format("PlaybackStopped", IsPolish ? "Odsłuch zatrzymany: {0}" : "Playback stopped: {0}", stationName);
+    public string PlaybackReconnecting(string stationName) => Format("PlaybackReconnecting", IsPolish ? "Odsłuch utracił połączenie ze stacją {0}, łączę ponownie" : "Playback lost connection to {0}, reconnecting", stationName);
+    public string PlaybackConnectionFailed(string stationName, string message) => Format("PlaybackConnectionFailed", IsPolish ? "Nie udało się uruchomić odsłuchu stacji {0}: {1}" : "Playback failed for {0}: {1}", stationName, message);
+    public string PlaybackUnsupported(string stationName, string reason) => Format("PlaybackUnsupported", IsPolish ? "Odsłuch stacji {0} jest niedostępny: {1}" : "Playback is unavailable for {0}: {1}", stationName, reason);
+    public string PlaybackBackendMissing(string message) => Format("PlaybackBackendMissing", IsPolish ? "Nie udało się uruchomić biblioteki odsłuchu: {0}" : "Playback library could not be started: {0}", message);
 
     public string DayName(DayOfWeek day)
     {
@@ -382,6 +403,25 @@ public sealed class AppLocalizer
         }
 
         return stateLabel;
+    }
+
+    public string TranslatePlaybackState(PlaybackState? state, string? error)
+    {
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            return ErrorPrefix + error;
+        }
+
+        return state switch
+        {
+            PlaybackState.Connecting => Text("PlaybackState.Connecting", IsPolish ? "Łączenie odsłuchu" : "Playback connecting"),
+            PlaybackState.Playing => Text("PlaybackState.Playing", IsPolish ? "Odsłuch" : "Listening"),
+            PlaybackState.Reconnecting => Text("PlaybackState.Reconnecting", IsPolish ? "Ponowne łączenie odsłuchu" : "Playback reconnecting"),
+            PlaybackState.Stopping => Text("PlaybackState.Stopping", IsPolish ? "Zatrzymywanie odsłuchu" : "Stopping playback"),
+            PlaybackState.Stopped => Text("PlaybackState.Stopped", IsPolish ? "Odsłuch zatrzymany" : "Playback stopped"),
+            PlaybackState.Error => Text("PlaybackState.Error", IsPolish ? "Błąd odsłuchu" : "Playback error"),
+            _ => TranslateStateLabel(null),
+        };
     }
 
     private string Text(string key, string fallback)

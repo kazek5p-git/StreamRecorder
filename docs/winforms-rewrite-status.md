@@ -76,8 +76,11 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
   - `StreamRecorder.exe`
   - required assemblies
   - empty `Config`
-  - empty `My recordings`
   - `README.html`
+
+Domyślny katalog nagrań jest tworzony przy pierwszym uruchomieniu w
+`%USERPROFILE%\Documents\StreamRecorder`, a nie obok pliku EXE. Paczka portable
+nie zawiera katalogu nagrań; ręcznie ustawione ścieżki pozostają bez zmian.
 
 ### Recommended next milestone after pre-release
 

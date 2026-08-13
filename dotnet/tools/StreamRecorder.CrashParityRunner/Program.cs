@@ -51,7 +51,9 @@ static async Task<CrashCaseResult> RunCaseAsync(string sourceBuildDir, string in
     CopyBuildFiles(sourceBuildDir, installRoot);
 
     var executablePath = Path.Combine(installRoot, "StreamRecorder.exe");
-    var paths = AppPaths.Discover(executablePath);
+    var paths = AppPaths.Discover(
+        executablePath,
+        Path.Combine(installRoot, AppDefaults.DefaultRecordingsFolderName));
     var config = new AppConfig
     {
         Settings = new AppSettings
@@ -60,7 +62,7 @@ static async Task<CrashCaseResult> RunCaseAsync(string sourceBuildDir, string in
             RestartOnCrash = restartOnCrash,
             MinimizeToTray = false,
             StartMinimized = false,
-            RecordingsFolder = AppDefaults.DefaultRecordingsFolder,
+            RecordingsFolder = AppDefaults.DefaultRecordingsFolderName,
             FileNameTemplate = AppDefaults.DefaultFileNameTemplate,
             Language = LanguageCodes.English,
         },

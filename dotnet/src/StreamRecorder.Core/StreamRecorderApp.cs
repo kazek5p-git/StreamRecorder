@@ -2,6 +2,7 @@ using StreamRecorder.Core.Configuration;
 using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Logging;
 using StreamRecorder.Core.Models;
+using StreamRecorder.Core.Playback;
 using StreamRecorder.Core.Recording;
 using StreamRecorder.Core.Scheduling;
 using StreamRecorder.Core.Updates;
@@ -20,6 +21,7 @@ public sealed class StreamRecorderApp : IDisposable
         config = ConfigStore.LoadOrCreate(paths);
         Logs = new LogBus(paths.LogFilePath);
         Recorder = new RecordingService(version);
+        Playback = new PlaybackService(paths.RootDirectory);
         Scheduler = new SchedulerService();
         Updater = new UpdaterService(version);
         StartScheduler();
@@ -32,6 +34,8 @@ public sealed class StreamRecorderApp : IDisposable
     public LogBus Logs { get; }
 
     public RecordingService Recorder { get; }
+
+    public PlaybackService Playback { get; }
 
     public SchedulerService Scheduler { get; }
 
@@ -132,6 +136,7 @@ public sealed class StreamRecorderApp : IDisposable
         }
 
         Recorder.Stop(stationId);
+        Playback.Stop(stationId);
         ConfigChanged?.Invoke();
     }
 
@@ -189,10 +194,34 @@ public sealed class StreamRecorderApp : IDisposable
         Recorder.Stop(stationId);
     }
 
+    public Task StartPlaybackAsync(Guid stationId)
+    {
+        Station? station;
+        AppSettings settings;
+
+        lock (gate)
+        {
+            station = config.Stations.FirstOrDefault(value => value.Id == stationId) is { } found
+                ? CloneStation(found)
+                : null;
+            settings = CloneConfig(config).Settings;
+        }
+
+        return station is null
+            ? Task.CompletedTask
+            : Playback.StartAsync(station, settings, Paths, Logs);
+    }
+
+    public void StopPlayback(Guid stationId)
+    {
+        Playback.Stop(stationId);
+    }
+
     public void Dispose()
     {
         Scheduler.Dispose();
         Recorder.Dispose();
+        Playback.Dispose();
     }
 
     private void StartScheduler()
@@ -229,6 +258,7 @@ public sealed class StreamRecorderApp : IDisposable
                 UseWindowsTaskScheduler = source.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = source.Settings.RemuxRawAacToM4A,
                 SplitRecordingsEnabled = source.Settings.SplitRecordingsEnabled,
+                PlaybackDevice = source.Settings.PlaybackDevice,
                 SplitHours = source.Settings.SplitHours,
                 SplitMinutes = source.Settings.SplitMinutes,
                 SplitSeconds = source.Settings.SplitSeconds,

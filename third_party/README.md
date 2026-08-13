@@ -35,3 +35,34 @@ Project links:
 
 - http://gpac.io/
 - https://github.com/gpac/gpac
+
+## BASS playback library
+
+The first playback implementation uses the BASS 2.4 library for native Windows
+audio output. The release input layout is:
+
+```text
+third_party/BASS/x64/bass.dll
+third_party/BASS/x86/bass.dll
+third_party/BASS/bass.txt
+```
+
+The packaging script copies both architectures to `Tools/BASS/` in the portable
+ZIP. `bass.txt` remains next to the DLLs because it contains the upstream
+license and notices. BASS is free for non-commercial use under its upstream
+license; commercial distribution requires the appropriate Un4seen license.
+
+The playback stage also bundles the official `BASS_AAC` add-on because it is
+required for AAC/AAC+ Shoutcast streams, including `audio/aacp` stations. The
+files are stored next to the matching base library:
+
+```text
+third_party/BASS/x64/bass_aac.dll
+third_party/BASS/x86/bass_aac.dll
+third_party/BASS/bass_aac.txt
+third_party/BASS/bass_aac-gpl.txt
+```
+
+The application loads the add-on automatically before opening a playback
+stream. HLS, MMS, and other formats requiring additional BASS plugins remain
+outside this stage.

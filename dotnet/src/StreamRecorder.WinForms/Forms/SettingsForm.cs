@@ -3,6 +3,7 @@ using StreamRecorder.Core;
 using StreamRecorder.Core.Configuration;
 using StreamRecorder.Core.Localization;
 using StreamRecorder.Core.Models;
+using StreamRecorder.Core.Playback;
 
 namespace StreamRecorder.WinForms.Forms;
 
@@ -10,6 +11,7 @@ public sealed class SettingsForm : Form
 {
     private readonly AppLocalizer localizer;
     private readonly AppPaths paths;
+    private readonly PlaybackService playback;
     private readonly CheckBox launchOnStartupCheckBox = new() { AutoSize = true, TabIndex = 0 };
     private readonly CheckBox alwaysOnTopCheckBox = new() { AutoSize = true, TabIndex = 1 };
     private readonly CheckBox minimizeToTrayCheckBox = new() { AutoSize = true, TabIndex = 2 };
@@ -26,6 +28,7 @@ public sealed class SettingsForm : Form
     private readonly TextBox recordingsFolderTextBox = new();
     private readonly TextBox fileNameTemplateTextBox = new();
     private readonly ComboBox languageComboBox = new();
+    private readonly ComboBox playbackDeviceComboBox = new();
     private readonly Button browseButton = new() { AutoSize = true, TabIndex = 9 };
     private readonly Button saveButton = new() { AutoSize = true };
     private readonly Button cancelButton = new() { AutoSize = true };
@@ -43,10 +46,11 @@ public sealed class SettingsForm : Form
     private readonly Label languageLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6) };
     private IReadOnlyList<AppLocalizer.AvailableLanguage> availableLanguages = Array.Empty<AppLocalizer.AvailableLanguage>();
 
-    public SettingsForm(AppLocalizer localizer, AppSettings settings, AppPaths paths)
+    public SettingsForm(AppLocalizer localizer, AppSettings settings, AppPaths paths, PlaybackService playback)
     {
         this.localizer = localizer;
         this.paths = paths;
+        this.playback = playback;
 
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -75,12 +79,13 @@ public sealed class SettingsForm : Form
             UseWindowsTaskScheduler = useWindowsTaskSchedulerCheckBox.Checked,
             RemuxRawAacToM4A = remuxAacCheckBox.Checked,
             SplitRecordingsEnabled = splitRecordingsCheckBox.Checked,
+            PlaybackDevice = playbackDeviceComboBox.SelectedItem is AudioDeviceChoice choice ? choice.Id : string.Empty,
             SplitHours = ParseTimePart(splitHoursTextBox.Text, 999),
             SplitMinutes = ParseTimePart(splitMinutesTextBox.Text, 59),
             SplitSeconds = ParseTimePart(splitSecondsTextBox.Text, 59),
             RecordingsFolder = string.IsNullOrWhiteSpace(recordingsFolderTextBox.Text) ? AppDefaults.DefaultRecordingsFolder : recordingsFolderTextBox.Text.Trim(),
             FileNameTemplate = string.IsNullOrWhiteSpace(fileNameTemplateTextBox.Text) ? AppDefaults.DefaultFileNameTemplate : fileNameTemplateTextBox.Text.Trim(),
-            Language = languageComboBox.SelectedItem is LanguageChoice choice ? choice.Code : LanguageCodes.Default,
+            Language = languageComboBox.SelectedItem is LanguageChoice languageChoice ? languageChoice.Code : LanguageCodes.Default,
         };
     }
 
@@ -128,11 +133,11 @@ public sealed class SettingsForm : Form
         };
 
         saveButton.MinimumSize = new Size(90, 32);
-        saveButton.TabIndex = 17;
+        saveButton.TabIndex = 18;
         saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
         cancelButton.MinimumSize = new Size(90, 32);
-        cancelButton.TabIndex = 18;
+        cancelButton.TabIndex = 19;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = saveButton;
@@ -241,8 +246,17 @@ public sealed class SettingsForm : Form
         languageComboBox.Width = 180;
         languageComboBox.TabIndex = 16;
 
+        playbackDeviceComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        playbackDeviceComboBox.AccessibleName = localizer.PlaybackDeviceAccessibleName;
+        playbackDeviceComboBox.Dock = DockStyle.Fill;
+        playbackDeviceComboBox.TabIndex = 17;
+        PopulatePlaybackDevices();
+
+        layout.RowCount = 2;
         layout.Controls.Add(languageLabel, 0, 0);
         layout.Controls.Add(languageComboBox, 1, 0);
+        layout.Controls.Add(new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 6), Text = localizer.PlaybackDeviceLabel }, 0, 1);
+        layout.Controls.Add(playbackDeviceComboBox, 1, 1);
 
         return layout;
     }
@@ -276,11 +290,17 @@ public sealed class SettingsForm : Form
         templateLabel.Text = localizer.FileNameTemplateLabel;
         tokensLabel.Text = localizer.FileNameTokens;
         languageLabel.Text = localizer.LanguageLabel;
+        if (otherGroup.Controls.Count > 0 && otherGroup.Controls[0] is TableLayoutPanel otherLayout
+            && otherLayout.GetControlFromPosition(0, 1) is Label playbackLabel)
+        {
+            playbackLabel.Text = localizer.PlaybackDeviceLabel;
+        }
         browseButton.Text = localizer.Browse;
         saveButton.Text = localizer.Ok;
         cancelButton.Text = localizer.Cancel;
 
         PopulateLanguages();
+        PopulatePlaybackDevices();
     }
 
     private void PopulateLanguages()
@@ -346,6 +366,7 @@ public sealed class SettingsForm : Form
         recordingsFolderTextBox.Text = settings.RecordingsFolder;
         fileNameTemplateTextBox.Text = settings.FileNameTemplate;
         SelectLanguage(settings.Language);
+        SelectPlaybackDevice(settings.PlaybackDevice);
     }
 
     private void SelectLanguage(string languageCode)
@@ -363,6 +384,62 @@ public sealed class SettingsForm : Form
         if (languageComboBox.Items.Count > 0)
         {
             languageComboBox.SelectedIndex = 0;
+        }
+    }
+
+    private void PopulatePlaybackDevices()
+    {
+        var selected = playbackDeviceComboBox.SelectedItem is AudioDeviceChoice choice ? choice.Id : null;
+        playbackDeviceComboBox.BeginUpdate();
+        try
+        {
+            playbackDeviceComboBox.Items.Clear();
+            IReadOnlyList<AudioOutputDevice> devices;
+            try
+            {
+                devices = playback.GetOutputDevices(localizer.SystemDefaultAudioDevice);
+            }
+            catch
+            {
+                devices = [AudioOutputDevice.SystemDefault(localizer.SystemDefaultAudioDevice)];
+            }
+
+            foreach (var device in devices)
+            {
+                playbackDeviceComboBox.Items.Add(new AudioDeviceChoice(device.Id, device.Name));
+            }
+
+            if (!string.IsNullOrWhiteSpace(selected))
+            {
+                SelectPlaybackDevice(selected!);
+            }
+
+            if (playbackDeviceComboBox.SelectedIndex < 0 && playbackDeviceComboBox.Items.Count > 0)
+            {
+                playbackDeviceComboBox.SelectedIndex = 0;
+            }
+        }
+        finally
+        {
+            playbackDeviceComboBox.EndUpdate();
+        }
+    }
+
+    private void SelectPlaybackDevice(string deviceId)
+    {
+        for (var index = 0; index < playbackDeviceComboBox.Items.Count; index++)
+        {
+            if (playbackDeviceComboBox.Items[index] is AudioDeviceChoice choice
+                && string.Equals(choice.Id, deviceId, StringComparison.OrdinalIgnoreCase))
+            {
+                playbackDeviceComboBox.SelectedIndex = index;
+                return;
+            }
+        }
+
+        if (playbackDeviceComboBox.Items.Count > 0)
+        {
+            playbackDeviceComboBox.SelectedIndex = 0;
         }
     }
 
@@ -407,6 +484,14 @@ public sealed class SettingsForm : Form
     }
 
     private sealed record LanguageChoice(string Code, string Name)
+    {
+        public override string ToString()
+        {
+            return Name;
+        }
+    }
+
+    private sealed record AudioDeviceChoice(string Id, string Name)
     {
         public override string ToString()
         {

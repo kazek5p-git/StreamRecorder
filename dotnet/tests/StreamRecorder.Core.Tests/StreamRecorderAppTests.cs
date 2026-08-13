@@ -10,7 +10,9 @@ public sealed class StreamRecorderAppTests : IDisposable
     [Fact]
     public void SaveSettings_PersistsAcrossRestart()
     {
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
 
         var settings = new AppSettings
         {

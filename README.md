@@ -7,7 +7,12 @@ This repository currently contains two code lines:
 
 ## Current Focus
 
-The active release line is the WinForms rewrite. It is already usable and packaged for preview builds.
+The active release line is the WinForms rewrite. Version 1.0.0 is the first stable release of this line.
+
+The current development work also includes an initial separate playback path
+for HTTP and HTTPS stations. It uses BASS for audio output and bundles the
+BASS_AAC decoder required by AAC/AAC+ Shoutcast stations. HLS and MMS playback
+are still separate future work.
 
 Main documentation:
 
@@ -18,14 +23,16 @@ Main documentation:
 
 ## Permanent Download Link
 
-Every WinForms release also publishes the portable package as
-`StreamRecorder.zip`. The permanent link for the latest stable release is:
+Every WinForms release publishes four assets: versioned and fixed-name
+portable ZIP files, plus versioned and fixed-name installers. The permanent
+links for the latest stable release are:
 
 https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder.zip
 
-GitHub does not include pre-releases in `latest`. A preview release must be
-downloaded through its tag-specific link until the WinForms line becomes a
-stable release.
+https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder-setup.exe
+
+The versioned assets use the matching release version, for example
+`StreamRecorder-1.0.0.zip` and `StreamRecorder-1.0.0-setup.exe`.
 
 ## WinForms Rewrite Requirements
 

@@ -15,7 +15,7 @@ static async Task<int> ProgramMainAsync(string[] args)
     {
         RootDirectory = rootDirectory,
         ConfigDirectory = Path.Combine(rootDirectory, AppDefaults.ConfigDirectoryName),
-        RecordingsDirectory = Path.Combine(rootDirectory, AppDefaults.DefaultRecordingsFolder),
+        RecordingsDirectory = Path.Combine(rootDirectory, AppDefaults.DefaultRecordingsFolderName),
         ConfigFilePath = Path.Combine(rootDirectory, AppDefaults.ConfigDirectoryName, AppDefaults.ConfigFileName),
         LogFilePath = Path.Combine(rootDirectory, AppDefaults.ConfigDirectoryName, AppDefaults.LogFileName),
     };
@@ -24,7 +24,7 @@ static async Task<int> ProgramMainAsync(string[] args)
     var settings = new AppSettings
     {
         RecordingsFolder = string.IsNullOrWhiteSpace(options.RecordingsFolder)
-            ? AppDefaults.DefaultRecordingsFolder
+            ? AppDefaults.DefaultRecordingsFolderName
             : options.RecordingsFolder!,
         FileNameTemplate = string.IsNullOrWhiteSpace(options.FileNameTemplate)
             ? AppDefaults.DefaultFileNameTemplate

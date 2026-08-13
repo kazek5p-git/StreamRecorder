@@ -1,3 +1,4 @@
+using StreamRecorder.Core;
 using StreamRecorder.Core.Configuration;
 using StreamRecorder.Core.Models;
 using StreamRecorder.Core.Naming;
@@ -12,8 +13,13 @@ public sealed class FileNameTemplateTests : IDisposable
     public void BuildOutputPath_SanitizesNameAndEnsuresUniqueness()
     {
         Directory.CreateDirectory(tempRoot);
-        var paths = AppPaths.Discover(Path.Combine(tempRoot, "streamrecorder.exe"));
-        var settings = new AppSettings();
+        var paths = AppPaths.Discover(
+            Path.Combine(tempRoot, "streamrecorder.exe"),
+            Path.Combine(tempRoot, AppDefaults.DefaultRecordingsFolderName));
+        var settings = new AppSettings
+        {
+            RecordingsFolder = AppDefaults.DefaultRecordingsFolderName,
+        };
         var station = Station.Create("Radio:Test/One", "http://example.invalid");
         var timestamp = new DateTimeOffset(2026, 3, 31, 8, 30, 15, TimeSpan.Zero);
 

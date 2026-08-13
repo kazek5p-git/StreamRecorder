@@ -93,6 +93,7 @@ public static class ConfigStore
                 UseWindowsTaskScheduler = persisted.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = persisted.Settings.RemuxRawAacToM4A,
                 SplitRecordingsEnabled = persisted.Settings.SplitRecordingsEnabled,
+                PlaybackDevice = persisted.Settings.PlaybackDevice ?? string.Empty,
                 SplitHours = persisted.Settings.SplitHours,
                 SplitMinutes = persisted.Settings.SplitMinutes,
                 SplitSeconds = persisted.Settings.SplitSeconds,
@@ -139,6 +140,7 @@ public static class ConfigStore
                 UseWindowsTaskScheduler = config.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = config.Settings.RemuxRawAacToM4A,
                 SplitRecordingsEnabled = config.Settings.SplitRecordingsEnabled,
+                PlaybackDevice = config.Settings.PlaybackDevice,
                 SplitHours = config.Settings.SplitHours,
                 SplitMinutes = config.Settings.SplitMinutes,
                 SplitSeconds = config.Settings.SplitSeconds,
@@ -415,6 +417,8 @@ public static class ConfigStore
         public bool RemuxRawAacToM4A { get; set; } = true;
 
         public bool SplitRecordingsEnabled { get; set; }
+
+        public string PlaybackDevice { get; set; } = string.Empty;
 
         public int SplitHours { get; set; }
 

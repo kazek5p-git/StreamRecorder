@@ -22,6 +22,8 @@ public sealed class AppSettings
 
     public bool SplitRecordingsEnabled { get; set; }
 
+    public string PlaybackDevice { get; set; } = string.Empty;
+
     public int SplitHours { get; set; }
 
     public int SplitMinutes { get; set; }

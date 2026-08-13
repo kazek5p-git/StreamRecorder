@@ -44,13 +44,17 @@ $projectFile = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\StreamRec
 $readmePath = Join-Path $repoRoot 'dotnet\README.md'
 $thirdPartyDir = Join-Path $repoRoot 'third_party'
 $gpacSourceDir = Join-Path $thirdPartyDir 'GPAC'
+$bassSourceDir = Join-Path $thirdPartyDir 'BASS'
 $thirdPartyNoticesPath = Join-Path $thirdPartyDir 'THIRD-PARTY-NOTICES.txt'
 $versionToUse = if ($Version) { $Version } else { Get-ProjectVersion -ProjectFilePath $projectFile }
 $buildDir = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\bin\Release\net48'
 $packageRoot = Join-Path $repoRoot 'dotnet\target\release-package'
 $stageDir = Join-Path $packageRoot ("StreamRecorder-v{0}-winforms-net48" -f $versionToUse)
-$zipPath = "$stageDir.zip"
+$zipPath = Join-Path $packageRoot ("StreamRecorder-{0}.zip" -f $versionToUse)
+$legacyZipPath = "$stageDir.zip"
+$legacyVersionedZipPath = Join-Path $packageRoot ("StreamRecorder-v{0}.zip" -f $versionToUse)
 $stableZipPath = Join-Path $packageRoot 'StreamRecorder.zip'
+$hasBundledThirdParty = $false
 
 if (-not $SkipBuild) {
     Push-Location $repoRoot
@@ -77,11 +81,12 @@ foreach ($required in @(
 
 Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $legacyZipPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $legacyVersionedZipPath -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $stableZipPath -Force -ErrorAction SilentlyContinue
 
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'Config') | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $stageDir 'My recordings') | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'locales') | Out-Null
 
 Get-ChildItem -LiteralPath $buildDir -File | Where-Object { $_.Extension -ne '.pdb' } | ForEach-Object {
@@ -100,9 +105,32 @@ if (Test-Path -LiteralPath $gpacSourceDir) {
     New-Item -ItemType Directory -Path $gpacTargetDir -Force | Out-Null
     Copy-Item -Path (Join-Path $gpacSourceDir '*') -Destination $gpacTargetDir -Recurse -Force
 
-    if (Test-Path -LiteralPath $thirdPartyNoticesPath) {
-        Copy-Item -LiteralPath $thirdPartyNoticesPath -Destination (Join-Path $stageDir 'THIRD-PARTY-NOTICES.txt') -Force
+    $hasBundledThirdParty = $true
+}
+
+if (Test-Path -LiteralPath $bassSourceDir) {
+    foreach ($requiredBassPath in @(
+        (Join-Path $bassSourceDir 'x64\bass.dll'),
+        (Join-Path $bassSourceDir 'x86\bass.dll'),
+        (Join-Path $bassSourceDir 'x64\bass_aac.dll'),
+        (Join-Path $bassSourceDir 'x86\bass_aac.dll'),
+        (Join-Path $bassSourceDir 'bass.txt'),
+        (Join-Path $bassSourceDir 'bass_aac.txt'),
+        (Join-Path $bassSourceDir 'bass_aac-gpl.txt')
+    )) {
+        if (-not (Test-Path -LiteralPath $requiredBassPath)) {
+            throw "third_party\BASS is incomplete; required file not found: $requiredBassPath"
+        }
     }
+
+    $bassTargetDir = Join-Path $stageDir 'Tools\BASS'
+    New-Item -ItemType Directory -Path $bassTargetDir -Force | Out-Null
+    Copy-Item -Path (Join-Path $bassSourceDir '*') -Destination $bassTargetDir -Recurse -Force
+    $hasBundledThirdParty = $true
+}
+
+if ($hasBundledThirdParty -and (Test-Path -LiteralPath $thirdPartyNoticesPath)) {
+    Copy-Item -LiteralPath $thirdPartyNoticesPath -Destination (Join-Path $stageDir 'THIRD-PARTY-NOTICES.txt') -Force
 }
 
 $markdown = Get-Content -LiteralPath $readmePath -Raw
