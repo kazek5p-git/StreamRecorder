@@ -50,6 +50,7 @@ $buildDir = Join-Path $repoRoot 'dotnet\src\StreamRecorder.WinForms\bin\Release\
 $packageRoot = Join-Path $repoRoot 'dotnet\target\release-package'
 $stageDir = Join-Path $packageRoot ("StreamRecorder-v{0}-winforms-net48" -f $versionToUse)
 $zipPath = "$stageDir.zip"
+$stableZipPath = Join-Path $packageRoot 'StreamRecorder.zip'
 
 if (-not $SkipBuild) {
     Push-Location $repoRoot
@@ -76,6 +77,7 @@ foreach ($required in @(
 
 Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $stableZipPath -Force -ErrorAction SilentlyContinue
 
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'Config') | Out-Null
@@ -155,5 +157,6 @@ $htmlBody
 
 Set-Content -LiteralPath (Join-Path $stageDir 'README.html') -Value $htmlDocument -Encoding UTF8
 Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -Force
+Copy-Item -LiteralPath $zipPath -Destination $stableZipPath -Force
 
 Write-Output $zipPath

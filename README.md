@@ -16,6 +16,17 @@ Main documentation:
 - `docs/translations.md`
 - `CHANGELOG.md`
 
+## Permanent Download Link
+
+Every WinForms release also publishes the portable package as
+`StreamRecorder.zip`. The permanent link for the latest stable release is:
+
+https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder.zip
+
+GitHub does not include pre-releases in `latest`. A preview release must be
+downloaded through its tag-specific link until the WinForms line becomes a
+stable release.
+
 ## WinForms Rewrite Requirements
 
 - `Microsoft .NET Framework 4.8`

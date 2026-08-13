@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- WinForms release packaging now also creates the fixed-name `StreamRecorder.zip` asset for permanent download links.
+
 ## [0.2.0-alpha11] - 2026-08-02
 
 ### Fixed

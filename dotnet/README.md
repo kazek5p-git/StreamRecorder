@@ -60,6 +60,17 @@ The packaging script creates a portable ZIP for the `net48` build with:
 - empty `My recordings`
 - `README.html`
 
+The same package is also written to the fixed filename `StreamRecorder.zip`.
+Use this permanent link for the latest stable release:
+
+https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder.zip
+
+GitHub's `latest` endpoint intentionally ignores pre-releases. During preview
+testing, a pre-release package can be downloaded with its tag-specific link,
+for example:
+
+https://github.com/kazek5p-git/StreamRecorder/releases/download/v0.2.0-alpha11/StreamRecorder.zip
+
 If `third_party/GPAC/MP4Box.exe` exists, the packaging script also copies the extracted GPAC files into `Tools/GPAC/` inside the ZIP and adds `THIRD-PARTY-NOTICES.txt`.
 
 ## Translations
