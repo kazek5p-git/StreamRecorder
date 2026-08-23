@@ -33,7 +33,6 @@ public sealed class RecordingService : IDisposable
             Timeout = Timeout.InfiniteTimeSpan,
         };
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"StreamRecorder/{currentVersion}");
-        httpClient.DefaultRequestHeaders.Add("Icy-MetaData", "0");
         httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
     }
 
@@ -105,8 +104,16 @@ public sealed class RecordingService : IDisposable
             }
         }, CancellationToken.None);
 
-        sessions[station.Id] = new RecordingSession(cts, task);
+        sessions[station.Id] = new RecordingSession(cts, task, station);
         return Task.CompletedTask;
+    }
+
+    public void SetSaveStreamTitles(Guid stationId, bool enabled)
+    {
+        if (sessions.TryGetValue(stationId, out var session))
+        {
+            session.Station.SaveStreamTitles = enabled;
+        }
     }
 
     public void Stop(Guid stationId)
@@ -331,6 +338,44 @@ public sealed class RecordingService : IDisposable
         var localizer = AppLocalizer.For(settings.Language, paths.RootDirectory);
         var splitInterval = GetSplitInterval(settings);
         var pendingSegmentFinalizations = new List<Task>();
+        var pendingTitles = new Queue<StreamTitleEvent>();
+
+        void HandleStreamTitle(string title)
+        {
+            if (!station.SaveStreamTitles && !settings.CreateCueSheets)
+            {
+                output?.SetSaveStreamTitles(false);
+                pendingTitles.Clear();
+                return;
+            }
+
+            pendingTitles.Enqueue(new StreamTitleEvent(DateTimeOffset.Now, title));
+        }
+
+        void FlushPendingTitles()
+        {
+            if (output is null || (!station.SaveStreamTitles && !settings.CreateCueSheets))
+            {
+                pendingTitles.Clear();
+                return;
+            }
+
+            try
+            {
+                output.SetSaveStreamTitles(station.SaveStreamTitles);
+                output.SetCreateCueSheet(settings.CreateCueSheets);
+                while (pendingTitles.Count > 0)
+                {
+                    output.WriteTitle(pendingTitles.Dequeue());
+                }
+            }
+            catch (Exception ex)
+            {
+                logs.Push(localizer.StreamTitlesFileError(station.Name, ex.Message));
+                pendingTitles.Clear();
+            }
+        }
+
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -357,11 +402,12 @@ public sealed class RecordingService : IDisposable
                 using (cancellationToken.Register(static state => ((IDisposable)state!).Dispose(), source))
                 {
                     var responseStream = source.Stream;
+                    var metadataReader = new IcyMetadataReader(responseStream, source.MetadataInterval, HandleStreamTitle);
                     var contentType = source.ContentType;
                     byte[] initialBytes;
                     try
                     {
-                        initialBytes = await ReadInitialBytesAsync(responseStream, cancellationToken);
+                        initialBytes = await ReadInitialBytesAsync(metadataReader, cancellationToken);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
@@ -421,12 +467,16 @@ public sealed class RecordingService : IDisposable
                             cancellationToken);
                     }
 
+                    FlushPendingTitles();
+
                     var chunkBuffer = new byte[8192];
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         try
                         {
-                            var read = await ReadWithTimeoutAsync(responseStream, chunkBuffer, 0, chunkBuffer.Length, cancellationToken);
+                            var read = await ReadWithTimeoutAsync(
+                                () => metadataReader.ReadAsync(chunkBuffer, 0, chunkBuffer.Length, cancellationToken),
+                                cancellationToken);
                             if (read == 0)
                             {
                                 logs.Push(localizer.ConnectionEndedRetrying(station.Name));
@@ -449,6 +499,7 @@ public sealed class RecordingService : IDisposable
                                 bytes,
                                 hls: false,
                                 cancellationToken);
+                            FlushPendingTitles();
                         }
                         catch (OperationCanceledException)
                         {
@@ -471,6 +522,7 @@ public sealed class RecordingService : IDisposable
         }
         finally
         {
+            FlushPendingTitles();
             await FinalizeOutputAsync(station, settings, paths, logs, output, markStopped: true);
             await AwaitPendingSegmentFinalizationsAsync(logs, pendingSegmentFinalizations);
         }
@@ -631,12 +683,21 @@ public sealed class RecordingService : IDisposable
         if (output is not null)
         {
             await output.File.FlushAsync(CancellationToken.None);
-            await output.File.DisposeAsync();
+            output.Dispose();
 
             var finalOutputPath = output.Path;
             if (output.Format == StreamFormat.AacRaw && settings.RemuxRawAacToM4A)
             {
                 finalOutputPath = await Mp4BoxRemuxer.RemuxRawAacAsync(paths, logs, settings.Language, output.Path);
+            }
+
+            try
+            {
+                output.WriteCueSheet(finalOutputPath);
+            }
+            catch (Exception ex)
+            {
+                logs.Push(localizer.CueSheetFileError(station.Name, ex.Message));
             }
 
             if (markStopped)
@@ -687,6 +748,8 @@ public sealed class RecordingService : IDisposable
             output = OpenOutput(station, settings, paths, logs, localizer, probe.Format, hls);
         }
 
+        output.SetSaveStreamTitles(station.SaveStreamTitles);
+        output.SetCreateCueSheet(settings.CreateCueSheets);
         await output.File.WriteAsync(bytes, cancellationToken);
         IncrementBytesWritten(station.Id, bytes.LongLength);
         return output;
@@ -810,10 +873,13 @@ public sealed class RecordingService : IDisposable
         throw new TimeoutException(timeoutMessage);
     }
 
-    private HttpRequestMessage BuildRequest(Station station, string? url)
+    private HttpRequestMessage BuildRequest(Station station, string? url, bool requestIcyMetadata = true)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url ?? station.Url);
-        request.Headers.TryAddWithoutValidation("Icy-MetaData", "0");
+        if (requestIcyMetadata)
+        {
+            request.Headers.TryAddWithoutValidation("Icy-MetaData", "1");
+        }
         request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
 
         if (station.Credentials is not null && !string.IsNullOrWhiteSpace(station.Credentials.Username))
@@ -829,7 +895,7 @@ public sealed class RecordingService : IDisposable
 
     private HttpRequestMessage BuildMmshRequest(Station station, int requestContext)
     {
-        var request = BuildRequest(station, NormalizeMmshRequestUrl(station.Url));
+        var request = BuildRequest(station, NormalizeMmshRequestUrl(station.Url), requestIcyMetadata: false);
         request.Headers.UserAgent.Clear();
         request.Headers.TryAddWithoutValidation("User-Agent", "NSPlayer/12.00.19041.7058");
         var clientGuid = "{" + Guid.NewGuid().ToString("D") + "}";
@@ -851,7 +917,11 @@ public sealed class RecordingService : IDisposable
             response = await SendWithTimeoutAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
             var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            return OpenStreamSession.FromHttp(response, responseStream, response.Content.Headers.ContentType?.MediaType);
+            return OpenStreamSession.FromHttp(
+                response,
+                responseStream,
+                response.Content.Headers.ContentType?.MediaType,
+                ReadIcyMetadataInterval(response));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -888,14 +958,16 @@ public sealed class RecordingService : IDisposable
         return builder.Uri.ToString();
     }
 
-    private static async Task<byte[]> ReadInitialBytesAsync(Stream stream, CancellationToken cancellationToken)
+    private static async Task<byte[]> ReadInitialBytesAsync(IcyMetadataReader reader, CancellationToken cancellationToken)
     {
         using var memory = new MemoryStream();
         var buffer = new byte[4096];
 
         while (memory.Length < InitialProbeBytes)
         {
-            var read = await ReadWithTimeoutAsync(stream, buffer, 0, buffer.Length, cancellationToken);
+            var read = await ReadWithTimeoutAsync(
+                () => reader.ReadAsync(buffer, 0, buffer.Length, cancellationToken),
+                cancellationToken);
             if (read == 0)
             {
                 break;
@@ -945,8 +1017,17 @@ public sealed class RecordingService : IDisposable
         int count,
         CancellationToken cancellationToken)
     {
+        return await ReadWithTimeoutAsync(
+            () => stream.ReadAsync(buffer, offset, count, cancellationToken),
+            cancellationToken);
+    }
+
+    private static async Task<int> ReadWithTimeoutAsync(
+        Func<Task<int>> readOperation,
+        CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
-        var readTask = stream.ReadAsync(buffer, offset, count, cancellationToken);
+        var readTask = readOperation();
         _ = readTask.ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
         var delayTask = Task.Delay(StreamReadTimeout, cancellationToken);
         var completed = await Task.WhenAny(readTask, delayTask);
@@ -957,6 +1038,17 @@ public sealed class RecordingService : IDisposable
 
         cancellationToken.ThrowIfCancellationRequested();
         throw new TimeoutException($"No stream data was received for {StreamReadTimeout.TotalSeconds:0} seconds.");
+    }
+
+    private static int? ReadIcyMetadataInterval(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues("icy-metaint", out var values))
+        {
+            return null;
+        }
+
+        var value = values.FirstOrDefault();
+        return int.TryParse(value, out var interval) && interval > 0 ? interval : null;
     }
 
     private void MarkOutputStarted(Station station, StreamFormat format, string outputPath)
@@ -1185,9 +1277,201 @@ public sealed class RecordingService : IDisposable
         }
     }
 
-    private sealed record RecordingSession(CancellationTokenSource Cancellation, Task Task);
+    private sealed record RecordingSession(CancellationTokenSource Cancellation, Task Task, Station Station);
 
-    private sealed record OutputSession(FileStream File, string Path, StreamFormat Format, DateTimeOffset StartedAt);
+    private sealed record StreamTitleEvent(DateTimeOffset Timestamp, string Title);
+
+    private sealed class OutputSession : IDisposable
+    {
+        private StreamTitleWriter? titleWriter;
+        private CueSheetWriter? cueSheetWriter;
+
+        public OutputSession(FileStream file, string path, StreamFormat format, DateTimeOffset startedAt)
+        {
+            File = file;
+            Path = path;
+            Format = format;
+            StartedAt = startedAt;
+        }
+
+        public FileStream File { get; }
+
+        public string Path { get; }
+
+        public StreamFormat Format { get; }
+
+        public DateTimeOffset StartedAt { get; }
+
+        public void SetSaveStreamTitles(bool enabled)
+        {
+            if (enabled)
+            {
+                titleWriter ??= new StreamTitleWriter(System.IO.Path.ChangeExtension(Path, ".txt"));
+            }
+            else
+            {
+                titleWriter?.Dispose();
+                titleWriter = null;
+            }
+        }
+
+        public void SetCreateCueSheet(bool enabled)
+        {
+            if (enabled)
+            {
+                cueSheetWriter ??= new CueSheetWriter(System.IO.Path.ChangeExtension(Path, ".cue"));
+            }
+            else
+            {
+                cueSheetWriter = null;
+            }
+        }
+
+        public void WriteTitle(StreamTitleEvent titleEvent)
+        {
+            titleWriter?.Write(titleEvent);
+            cueSheetWriter?.Write(titleEvent, StartedAt);
+        }
+
+        public void WriteCueSheet(string audioPath)
+        {
+            cueSheetWriter?.WriteToFile(audioPath);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                titleWriter?.Dispose();
+            }
+            finally
+            {
+                File.Dispose();
+            }
+        }
+    }
+
+    private sealed class CueSheetWriter
+    {
+        private readonly string path;
+        private readonly List<CueTrack> tracks = new();
+        private string? lastTitle;
+        private long lastFrame = -1;
+
+        public CueSheetWriter(string path)
+        {
+            this.path = path;
+        }
+
+        public void Write(StreamTitleEvent titleEvent, DateTimeOffset recordingStartedAt)
+        {
+            if (string.IsNullOrWhiteSpace(titleEvent.Title)
+                || string.Equals(lastTitle, titleEvent.Title, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var elapsed = titleEvent.Timestamp - recordingStartedAt;
+            var frame = Math.Max(0L, (long)Math.Round(Math.Max(0, elapsed.TotalSeconds) * 75, MidpointRounding.AwayFromZero));
+            if (frame <= lastFrame)
+            {
+                frame = lastFrame + 1;
+            }
+
+            tracks.Add(new CueTrack(titleEvent.Title, frame));
+            lastTitle = titleEvent.Title;
+            lastFrame = frame;
+        }
+
+        public void WriteToFile(string audioPath)
+        {
+            if (tracks.Count == 0)
+            {
+                return;
+            }
+
+            using var writer = new StreamWriter(
+                new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: false),
+                new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            writer.WriteLine("REM Generated by StreamRecorder");
+            writer.WriteLine($"FILE \"{Escape(Path.GetFileName(audioPath))}\" {GetFileType(audioPath)}");
+
+            for (var index = 0; index < tracks.Count; index++)
+            {
+                var track = tracks[index];
+                writer.WriteLine($"  TRACK {index + 1:00} AUDIO");
+                writer.WriteLine($"    TITLE \"{Escape(track.Title)}\"");
+                writer.WriteLine($"    INDEX 01 {FormatIndex(track.Frame)}");
+            }
+        }
+
+        private static string FormatIndex(long frame)
+        {
+            var framesPerMinute = 75 * 60;
+            var minutes = frame / framesPerMinute;
+            var seconds = (frame / 75) % 60;
+            var subframes = frame % 75;
+            return $"{minutes:00}:{seconds:00}:{subframes:00}";
+        }
+
+        private static string GetFileType(string audioPath)
+        {
+            return System.IO.Path.GetExtension(audioPath).ToLowerInvariant() switch
+            {
+                ".mp3" => "MP3",
+                ".flac" => "FLAC",
+                ".ogg" or ".oga" => "OGG",
+                ".wav" => "WAVE",
+                ".aif" or ".aiff" => "AIFF",
+                _ => "BINARY",
+            };
+        }
+
+        private static string Escape(string value)
+        {
+            return value
+                .Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace("\"", "\\\"", StringComparison.Ordinal)
+                .Replace("\r", " ", StringComparison.Ordinal)
+                .Replace("\n", " ", StringComparison.Ordinal);
+        }
+
+        private sealed record CueTrack(string Title, long Frame);
+    }
+
+    private sealed class StreamTitleWriter : IDisposable
+    {
+        private readonly string path;
+        private StreamWriter? writer;
+        private string? lastTitle;
+
+        public StreamTitleWriter(string path)
+        {
+            this.path = path;
+        }
+
+        public void Write(StreamTitleEvent titleEvent)
+        {
+            if (string.IsNullOrWhiteSpace(titleEvent.Title)
+                || string.Equals(lastTitle, titleEvent.Title, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            writer ??= new StreamWriter(
+                new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, useAsync: false),
+                new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            writer.WriteLine($"{titleEvent.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}\t{titleEvent.Title}");
+            writer.Flush();
+            lastTitle = titleEvent.Title;
+        }
+
+        public void Dispose()
+        {
+            writer?.Dispose();
+            writer = null;
+        }
+    }
 
     private sealed record PlaylistParseResult(Uri? MasterPlaylist, IReadOnlyList<Uri> Segments, TimeSpan PollInterval);
 
@@ -1196,10 +1480,16 @@ public sealed class RecordingService : IDisposable
         private readonly HttpResponseMessage? response;
         private readonly IcyStreamResponse? icyResponse;
 
-        private OpenStreamSession(Stream stream, string? contentType, HttpResponseMessage? response, IcyStreamResponse? icyResponse)
+        private OpenStreamSession(
+            Stream stream,
+            string? contentType,
+            int? metadataInterval,
+            HttpResponseMessage? response,
+            IcyStreamResponse? icyResponse)
         {
             Stream = stream;
             ContentType = contentType;
+            MetadataInterval = metadataInterval;
             this.response = response;
             this.icyResponse = icyResponse;
         }
@@ -1208,14 +1498,20 @@ public sealed class RecordingService : IDisposable
 
         public string? ContentType { get; }
 
-        public static OpenStreamSession FromHttp(HttpResponseMessage response, Stream stream, string? contentType)
+        public int? MetadataInterval { get; }
+
+        public static OpenStreamSession FromHttp(
+            HttpResponseMessage response,
+            Stream stream,
+            string? contentType,
+            int? metadataInterval)
         {
-            return new OpenStreamSession(stream, contentType, response, null);
+            return new OpenStreamSession(stream, contentType, metadataInterval, response, null);
         }
 
         public static OpenStreamSession FromIcy(IcyStreamResponse response)
         {
-            return new OpenStreamSession(response.Stream, response.ContentType, null, response);
+            return new OpenStreamSession(response.Stream, response.ContentType, response.MetadataInterval, null, response);
         }
 
         public void Dispose()

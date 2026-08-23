@@ -92,6 +92,7 @@ public static class ConfigStore
                 StartMinimized = persisted.Settings.StartMinimized,
                 UseWindowsTaskScheduler = persisted.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = persisted.Settings.RemuxRawAacToM4A,
+                CreateCueSheets = persisted.Settings.CreateCueSheets,
                 SplitRecordingsEnabled = persisted.Settings.SplitRecordingsEnabled,
                 PlaybackDevice = persisted.Settings.PlaybackDevice ?? string.Empty,
                 SplitHours = persisted.Settings.SplitHours,
@@ -111,6 +112,7 @@ public static class ConfigStore
                     Id = ParseGuidOrNew(station.Id),
                     Name = station.Name ?? string.Empty,
                     Url = station.Url ?? string.Empty,
+                    SaveStreamTitles = station.SaveStreamTitles,
                     Credentials = station.Credentials is null
                         ? null
                         : new Credentials
@@ -139,6 +141,7 @@ public static class ConfigStore
                 StartMinimized = config.Settings.StartMinimized,
                 UseWindowsTaskScheduler = config.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = config.Settings.RemuxRawAacToM4A,
+                CreateCueSheets = config.Settings.CreateCueSheets,
                 SplitRecordingsEnabled = config.Settings.SplitRecordingsEnabled,
                 PlaybackDevice = config.Settings.PlaybackDevice,
                 SplitHours = config.Settings.SplitHours,
@@ -154,6 +157,7 @@ public static class ConfigStore
                     Id = station.Id.ToString("D"),
                     Name = station.Name,
                     Url = station.Url,
+                    SaveStreamTitles = station.SaveStreamTitles,
                     Credentials = station.Credentials is null
                         ? null
                         : new PersistedCredentials
@@ -416,6 +420,8 @@ public static class ConfigStore
 
         public bool RemuxRawAacToM4A { get; set; } = true;
 
+        public bool CreateCueSheets { get; set; }
+
         public bool SplitRecordingsEnabled { get; set; }
 
         public string PlaybackDevice { get; set; } = string.Empty;
@@ -440,6 +446,8 @@ public static class ConfigStore
         public string Name { get; set; } = string.Empty;
 
         public string Url { get; set; } = string.Empty;
+
+        public bool SaveStreamTitles { get; set; }
 
         public PersistedCredentials? Credentials { get; set; }
     }

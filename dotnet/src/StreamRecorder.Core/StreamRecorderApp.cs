@@ -126,6 +126,27 @@ public sealed class StreamRecorderApp : IDisposable
         ConfigChanged?.Invoke();
     }
 
+    public void SetStationSaveStreamTitles(Guid stationId, bool enabled)
+    {
+        var found = false;
+        lock (gate)
+        {
+            var station = config.Stations.FirstOrDefault(value => value.Id == stationId);
+            if (station is not null)
+            {
+                station.SaveStreamTitles = enabled;
+                Persist();
+                found = true;
+            }
+        }
+
+        if (found)
+        {
+            Recorder.SetSaveStreamTitles(stationId, enabled);
+            ConfigChanged?.Invoke();
+        }
+    }
+
     public void DeleteStation(Guid stationId)
     {
         lock (gate)
@@ -257,6 +278,7 @@ public sealed class StreamRecorderApp : IDisposable
                 StartMinimized = source.Settings.StartMinimized,
                 UseWindowsTaskScheduler = source.Settings.UseWindowsTaskScheduler,
                 RemuxRawAacToM4A = source.Settings.RemuxRawAacToM4A,
+                CreateCueSheets = source.Settings.CreateCueSheets,
                 SplitRecordingsEnabled = source.Settings.SplitRecordingsEnabled,
                 PlaybackDevice = source.Settings.PlaybackDevice,
                 SplitHours = source.Settings.SplitHours,
@@ -278,6 +300,7 @@ public sealed class StreamRecorderApp : IDisposable
             Id = station.Id,
             Name = station.Name,
             Url = station.Url,
+            SaveStreamTitles = station.SaveStreamTitles,
             Credentials = station.Credentials is null
                 ? null
                 : new Credentials

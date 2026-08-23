@@ -14,10 +14,12 @@ public sealed class StationDialog : Form
     private readonly TextBox passwordTextBox = new();
     private readonly Button okButton = new() { AutoSize = true };
     private readonly Button cancelButton = new() { AutoSize = true };
+    private readonly bool saveStreamTitles;
 
     public StationDialog(AppLocalizer localizer, Station? station = null)
     {
         this.localizer = localizer;
+        saveStreamTitles = station?.SaveStreamTitles == true;
 
         Text = station is null ? localizer.StationDialogAddTitle : localizer.StationDialogEditTitle;
         StartPosition = FormStartPosition.CenterParent;
@@ -47,6 +49,7 @@ public sealed class StationDialog : Form
             Id = stationId ?? Guid.NewGuid(),
             Name = nameTextBox.Text.Trim(),
             Url = normalizedUrl,
+            SaveStreamTitles = saveStreamTitles,
         };
 
         if (!string.IsNullOrWhiteSpace(usernameTextBox.Text) || !string.IsNullOrWhiteSpace(passwordTextBox.Text))

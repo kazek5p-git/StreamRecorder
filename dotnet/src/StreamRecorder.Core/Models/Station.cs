@@ -8,6 +8,8 @@ public sealed class Station
 
     public string Url { get; set; } = string.Empty;
 
+    public bool SaveStreamTitles { get; set; }
+
     public Credentials? Credentials { get; set; }
 
     public static Station Create(string name, string url)

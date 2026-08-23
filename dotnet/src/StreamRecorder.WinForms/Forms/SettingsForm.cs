@@ -25,13 +25,14 @@ public sealed class SettingsForm : Form
     private readonly TextBox splitMinutesTextBox = new() { Width = 48, TabIndex = 13, MaxLength = 2 };
     private readonly TextBox splitSecondsTextBox = new() { Width = 48, TabIndex = 14, MaxLength = 2 };
     private readonly CheckBox remuxAacCheckBox = new() { AutoSize = true, TabIndex = 15 };
+    private readonly CheckBox createCueSheetsCheckBox = new() { AutoSize = true, TabIndex = 16 };
     private readonly TextBox recordingsFolderTextBox = new();
     private readonly TextBox fileNameTemplateTextBox = new();
     private readonly ComboBox languageComboBox = new();
     private readonly ComboBox playbackDeviceComboBox = new();
     private readonly Button browseButton = new() { AutoSize = true, TabIndex = 9 };
-    private readonly Button saveButton = new() { AutoSize = true };
-    private readonly Button cancelButton = new() { AutoSize = true };
+    private readonly Button saveButton = new() { AutoSize = true, TabIndex = 19 };
+    private readonly Button cancelButton = new() { AutoSize = true, TabIndex = 20 };
     private readonly FolderBrowserDialog folderDialog = new();
     private readonly Label introLabel = new() { AutoSize = true, Margin = new Padding(0, 0, 0, 8) };
     private readonly GroupBox generalGroup = new() { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(12, 10, 12, 12) };
@@ -78,6 +79,7 @@ public sealed class SettingsForm : Form
             StartMinimized = startMinimizedCheckBox.Checked,
             UseWindowsTaskScheduler = useWindowsTaskSchedulerCheckBox.Checked,
             RemuxRawAacToM4A = remuxAacCheckBox.Checked,
+            CreateCueSheets = createCueSheetsCheckBox.Checked,
             SplitRecordingsEnabled = splitRecordingsCheckBox.Checked,
             PlaybackDevice = playbackDeviceComboBox.SelectedItem is AudioDeviceChoice choice ? choice.Id : string.Empty,
             SplitHours = ParseTimePart(splitHoursTextBox.Text, 999),
@@ -133,11 +135,9 @@ public sealed class SettingsForm : Form
         };
 
         saveButton.MinimumSize = new Size(90, 32);
-        saveButton.TabIndex = 18;
         saveButton.Click += (_, _) => DialogResult = DialogResult.OK;
 
         cancelButton.MinimumSize = new Size(90, 32);
-        cancelButton.TabIndex = 19;
         cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         AcceptButton = saveButton;
@@ -163,7 +163,7 @@ public sealed class SettingsForm : Form
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 3,
-            RowCount = 6,
+            RowCount = 7,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -224,6 +224,8 @@ public sealed class SettingsForm : Form
         layout.SetColumnSpan(splitTimePanel, 3);
         layout.Controls.Add(remuxAacCheckBox, 0, 5);
         layout.SetColumnSpan(remuxAacCheckBox, 3);
+        layout.Controls.Add(createCueSheetsCheckBox, 0, 6);
+        layout.SetColumnSpan(createCueSheetsCheckBox, 3);
 
         return layout;
     }
@@ -244,12 +246,12 @@ public sealed class SettingsForm : Form
         languageComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         languageComboBox.AccessibleName = localizer.LanguageAccessibleName;
         languageComboBox.Width = 180;
-        languageComboBox.TabIndex = 16;
+        languageComboBox.TabIndex = 17;
 
         playbackDeviceComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         playbackDeviceComboBox.AccessibleName = localizer.PlaybackDeviceAccessibleName;
         playbackDeviceComboBox.Dock = DockStyle.Fill;
-        playbackDeviceComboBox.TabIndex = 17;
+        playbackDeviceComboBox.TabIndex = 18;
         PopulatePlaybackDevices();
 
         layout.RowCount = 2;
@@ -285,6 +287,7 @@ public sealed class SettingsForm : Form
         splitMinutesTextBox.AccessibleName = localizer.SplitMinutesAccessibleName;
         splitSecondsTextBox.AccessibleName = localizer.SplitSecondsAccessibleName;
         remuxAacCheckBox.Text = localizer.RemuxRawAacToM4A;
+        createCueSheetsCheckBox.Text = localizer.CreateCueSheets;
 
         recordingsLabel.Text = localizer.RecordingFolderLabel;
         templateLabel.Text = localizer.FileNameTemplateLabel;
@@ -363,6 +366,7 @@ public sealed class SettingsForm : Form
         splitSecondsTextBox.Text = FormatTimePart(settings.SplitSeconds);
         UpdateSplitTimeFieldsEnabled();
         remuxAacCheckBox.Checked = settings.RemuxRawAacToM4A;
+        createCueSheetsCheckBox.Checked = settings.CreateCueSheets;
         recordingsFolderTextBox.Text = settings.RecordingsFolder;
         fileNameTemplateTextBox.Text = settings.FileNameTemplate;
         SelectLanguage(settings.Language);

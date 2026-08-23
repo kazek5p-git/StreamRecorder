@@ -19,6 +19,8 @@ The stable 1.0.0 build includes:
 - GitHub release update checks
 - crash recovery through an internal guard mode when `Restart on crash` is enabled
 - first playback preview for HTTP and HTTPS stations through the bundled BASS backend
+- optional per-station ICY stream title capture to timestamped UTF-8 text files next to recordings
+- optional global CUE sheet generation from ICY stream titles
 
 This release line replaces the archived Rust application as the active version.
 
@@ -90,6 +92,28 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_winforms_installer.ps1 
 The installer offers English and Polish at startup and installs by default into
 the current user's profile, so StreamRecorder can write its configuration and
 recordings without administrator privileges.
+
+## Stream title capture
+
+To save station metadata titles, select a station, open its context menu, and
+enable `Save stream titles`. During recording, StreamRecorder requests ICY
+metadata when the station supports it and writes title changes with local
+timestamps to a UTF-8 text file next to the corresponding recording, using the
+same base name and the `.txt` extension. Recording segments created by the
+split-recording option receive their own title file.
+
+The option is stored per station and can be changed while recording. Disabling
+it stops writing new titles without stopping the audio recording.
+
+## CUE sheets
+
+Enable `Create CUE sheets from stream titles` in Settings to create a `.cue`
+file next to each recording segment that contains stream-title changes as
+relative `MM:SS:FF` indexes. This setting is independent of the per-station
+text capture option, so either format or both formats can be enabled. CUE
+support is generally strongest for MP3, FLAC, OGG, and WAV files; other formats
+are still written with a `BINARY` CUE file type and may have limited player
+support.
 
 If `third_party/GPAC/MP4Box.exe` exists, the packaging script also copies the extracted GPAC files into `Tools/GPAC/` inside the ZIP and adds `THIRD-PARTY-NOTICES.txt`.
 

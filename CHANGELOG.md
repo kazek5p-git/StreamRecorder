@@ -10,6 +10,11 @@ All notable changes to this project will be documented in this file.
 - The WinForms preview now contains the first separate HTTP/HTTPS playback path with selectable audio output and automatic reconnect attempts.
 - The default recording folder is now created at `%USERPROFILE%\Documents\StreamRecorder`, regardless of whether the application is portable or installed.
 
+### Added
+
+- Optional per-station ICY stream title capture from the station context menu. Titles are written with timestamps to a UTF-8 `.txt` file next to each recording segment.
+- Optional global CUE sheet generation from ICY stream titles, with relative track indexes for each recording segment.
+
 ### Fixed
 
 - Playback now loads the BASS_AAC add-on required for AAC/AAC+ Shoutcast streams such as `audio/aacp` HTTPS stations.

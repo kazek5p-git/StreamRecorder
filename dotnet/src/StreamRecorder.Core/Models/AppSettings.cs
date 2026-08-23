@@ -20,6 +20,8 @@ public sealed class AppSettings
 
     public bool RemuxRawAacToM4A { get; set; } = true;
 
+    public bool CreateCueSheets { get; set; }
+
     public bool SplitRecordingsEnabled { get; set; }
 
     public string PlaybackDevice { get; set; } = string.Empty;

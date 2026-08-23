@@ -74,7 +74,7 @@ internal static class IcyStreamClient
         builder.Append("Host: ").Append(hostHeader).Append("\r\n");
         builder.Append("User-Agent: ").Append(userAgent).Append("\r\n");
         builder.Append("Accept: */*\r\n");
-        builder.Append("Icy-MetaData: 0\r\n");
+        builder.Append("Icy-MetaData: 1\r\n");
         builder.Append("Cache-Control: no-cache\r\n");
         builder.Append("Connection: close\r\n");
 
@@ -131,6 +131,7 @@ internal static class IcyStreamClient
         }
 
         string? contentType = null;
+        int? metadataInterval = null;
         foreach (var line in lines.Skip(1))
         {
             var separator = line.IndexOf(':');
@@ -144,11 +145,16 @@ internal static class IcyStreamClient
             if (name.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
             {
                 contentType = value;
-                break;
+            }
+            else if (name.Equals("icy-metaint", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(value, out var parsedMetadataInterval)
+                && parsedMetadataInterval > 0)
+            {
+                metadataInterval = parsedMetadataInterval;
             }
         }
 
-        return new IcyStreamResponse(tcpClient, transport, contentType);
+        return new IcyStreamResponse(tcpClient, transport, contentType, metadataInterval);
     }
 
     private static bool HasHeaderTerminator(IReadOnlyList<byte> bytes)
@@ -173,16 +179,19 @@ internal sealed class IcyStreamResponse : IDisposable
 {
     private readonly TcpClient tcpClient;
 
-    public IcyStreamResponse(TcpClient tcpClient, Stream stream, string? contentType)
+    public IcyStreamResponse(TcpClient tcpClient, Stream stream, string? contentType, int? metadataInterval)
     {
         this.tcpClient = tcpClient;
         Stream = stream;
         ContentType = contentType;
+        MetadataInterval = metadataInterval;
     }
 
     public Stream Stream { get; }
 
     public string? ContentType { get; }
+
+    public int? MetadataInterval { get; }
 
     public void Dispose()
     {

@@ -62,6 +62,7 @@ public sealed class ConfigStoreTests : IDisposable
                 StartMinimized = true,
                 UseWindowsTaskScheduler = true,
                 RemuxRawAacToM4A = false,
+                CreateCueSheets = true,
                 SplitRecordingsEnabled = true,
                 PlaybackDevice = "driver:test|index:4",
                 SplitHours = 2,
@@ -78,6 +79,7 @@ public sealed class ConfigStoreTests : IDisposable
                     Id = stationId,
                     Name = "Parity FM",
                     Url = "https://example.invalid/stream.mp3",
+                    SaveStreamTitles = true,
                     Credentials = new Credentials
                     {
                         Username = "demo",
@@ -116,6 +118,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.True(reloaded.Settings.StartMinimized);
         Assert.True(reloaded.Settings.UseWindowsTaskScheduler);
         Assert.False(reloaded.Settings.RemuxRawAacToM4A);
+        Assert.True(reloaded.Settings.CreateCueSheets);
         Assert.True(reloaded.Settings.SplitRecordingsEnabled);
         Assert.Equal("driver:test|index:4", reloaded.Settings.PlaybackDevice);
         Assert.Equal(2, reloaded.Settings.SplitHours);
@@ -129,6 +132,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(stationId, station.Id);
         Assert.Equal("Parity FM", station.Name);
         Assert.Equal("https://example.invalid/stream.mp3", station.Url);
+        Assert.True(station.SaveStreamTitles);
         Assert.NotNull(station.Credentials);
         Assert.Equal("demo", station.Credentials!.Username);
         Assert.Equal("secret", station.Credentials.Password);

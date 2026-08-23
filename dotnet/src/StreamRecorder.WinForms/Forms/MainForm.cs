@@ -31,6 +31,7 @@ public sealed class MainForm : Form
     private readonly ToolStripMenuItem stopRecordingMenuItem = new();
     private readonly ToolStripMenuItem startListeningMenuItem = new();
     private readonly ToolStripMenuItem stopListeningMenuItem = new();
+    private readonly ToolStripMenuItem saveStreamTitlesMenuItem = new();
     private readonly ToolStripMenuItem editStationMenuItem = new();
     private readonly ToolStripMenuItem schedulesMenuItem = new();
     private readonly ToolStripMenuItem deleteStationMenuItem = new();
@@ -233,6 +234,7 @@ public sealed class MainForm : Form
         stationMenu.Items.Add(stopRecordingMenuItem);
         stationMenu.Items.Add(startListeningMenuItem);
         stationMenu.Items.Add(stopListeningMenuItem);
+        stationMenu.Items.Add(saveStreamTitlesMenuItem);
         stationMenu.Items.Add(stationMenuEditSeparator);
         stationMenu.Items.Add(editStationMenuItem);
         stationMenu.Items.Add(deleteStationMenuItem);
@@ -256,6 +258,8 @@ public sealed class MainForm : Form
         stopRecordingMenuItem.Click += (_, _) => StopSelectedStation();
         startListeningMenuItem.Click += async (_, _) => await StartSelectedListeningAsync();
         stopListeningMenuItem.Click += (_, _) => StopSelectedListening();
+        saveStreamTitlesMenuItem.CheckOnClick = true;
+        saveStreamTitlesMenuItem.Click += (_, _) => ToggleSaveStreamTitles();
         editStationMenuItem.Click += (_, _) => EditSelectedStation();
         deleteStationMenuItem.Click += (_, _) => DeleteSelectedStation();
         UpdateStationMenuState();
@@ -339,9 +343,10 @@ public sealed class MainForm : Form
 
     private void UpdateStationMenuState()
     {
-        var hasSelection = GetSelectedStation() is not null;
-        var isRecording = hasSelection && app.Recorder.IsRecording(GetSelectedStation()!.Id);
-        var isListening = hasSelection && app.Playback.IsListening(GetSelectedStation()!.Id);
+        var station = GetSelectedStation();
+        var hasSelection = station is not null;
+        var isRecording = hasSelection && app.Recorder.IsRecording(station!.Id);
+        var isListening = hasSelection && app.Playback.IsListening(station!.Id);
 
         addStationMenuItem.Visible = true;
         addStationMenuItem.Enabled = true;
@@ -350,6 +355,8 @@ public sealed class MainForm : Form
         stopRecordingMenuItem.Enabled = isRecording;
         startListeningMenuItem.Enabled = !isListening;
         stopListeningMenuItem.Enabled = isListening;
+        saveStreamTitlesMenuItem.Enabled = hasSelection;
+        saveStreamTitlesMenuItem.Checked = station?.SaveStreamTitles == true;
         editStationMenuItem.Enabled = true;
         deleteStationMenuItem.Enabled = true;
 
@@ -358,6 +365,7 @@ public sealed class MainForm : Form
         stopRecordingMenuItem.Visible = hasSelection;
         startListeningMenuItem.Visible = hasSelection;
         stopListeningMenuItem.Visible = hasSelection;
+        saveStreamTitlesMenuItem.Visible = hasSelection;
         stationMenuEditSeparator.Visible = hasSelection;
         editStationMenuItem.Visible = hasSelection;
         deleteStationMenuItem.Visible = hasSelection;
@@ -455,6 +463,18 @@ public sealed class MainForm : Form
 
         app.StopPlayback(station.Id);
         RefreshUi();
+    }
+
+    private void ToggleSaveStreamTitles()
+    {
+        var station = GetSelectedStation();
+        if (station is null)
+        {
+            return;
+        }
+
+        app.SetStationSaveStreamTitles(station.Id, saveStreamTitlesMenuItem.Checked);
+        UpdateStationMenuState();
     }
 
     private void DeleteSelectedStation()
@@ -950,6 +970,7 @@ public sealed class MainForm : Form
         stopRecordingMenuItem.Text = localizer.StopRecording;
         startListeningMenuItem.Text = localizer.StartListening;
         stopListeningMenuItem.Text = localizer.StopListening;
+        saveStreamTitlesMenuItem.Text = localizer.SaveStreamTitles;
         editStationMenuItem.Text = localizer.EditStation;
         deleteStationMenuItem.Text = localizer.DeleteStation;
 

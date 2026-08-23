@@ -108,6 +108,7 @@ public sealed class AppLocalizer
     public string StopRecording => Text("StopRecording", IsPolish ? "&Zatrzymaj nagrywanie" : "S&top recording");
     public string StartListening => Text("StartListening", IsPolish ? "&Włącz odsłuch" : "&Start listening");
     public string StopListening => Text("StopListening", IsPolish ? "&Wyłącz odsłuch" : "S&top listening");
+    public string SaveStreamTitles => Text("SaveStreamTitles", IsPolish ? "Zapisuj tytuły strumienia" : "Save stream titles");
     public string EditStation => Text("EditStation", IsPolish ? "&Edytuj stacjÄ™" : "&Edit station");
     public string Schedules => Text("Schedules", IsPolish ? "&Harmonogram..." : "Sche&dules...");
     public string DeleteStation => Text("DeleteStation", IsPolish ? "&UsuĹ„ stacjÄ™" : "&Delete station");
@@ -147,6 +148,7 @@ public sealed class AppLocalizer
     public string StartMinimized => Text("StartMinimized", IsPolish ? "Uruchamiaj zminimalizowany" : "Start minimized");
     public string UseWindowsTaskScheduler => Text("UseWindowsTaskScheduler", IsPolish ? "Używaj zaplanowanych zadań Windows do uruchamiania nagrań" : "Use Windows scheduled tasks to start recordings");
     public string RemuxRawAacToM4A => Text("RemuxRawAacToM4A", IsPolish ? "Remuksuj surowy AAC do M4A po nagraniu" : "Remux RAW AAC to M4A after recording");
+    public string CreateCueSheets => Text("CreateCueSheets", IsPolish ? "Twórz pliki CUE z tytułami strumienia" : "Create CUE sheets from stream titles");
     public string SplitRecordingsEvery => Text("SplitRecordingsEvery", IsPolish ? "Dziel nagrania co" : "Split recordings every");
     public string HoursShortLabel => Text("HoursShortLabel", IsPolish ? "Godziny:" : "Hours:");
     public string MinutesShortLabel => Text("MinutesShortLabel", IsPolish ? "Minuty:" : "Minutes:");
@@ -286,6 +288,8 @@ public sealed class AppLocalizer
     public string HlsSegmentError(string stationName, string message) => Format("HlsSegmentError", IsPolish ? "BĹ‚Ä…d segmentu HLS dla {0}: {1}" : "HLS segment error for {0}: {1}", stationName, message);
     public string RecordingStopped(string stationName) => Format("RecordingStopped", IsPolish ? "Nagrywanie zatrzymane: {0}" : "Recording stopped: {0}", stationName);
     public string RecordingSegmentCompleted(string stationName, string outputPath) => Format("RecordingSegmentCompleted", IsPolish ? "ZamkniÄ™to segment nagrania: {0} -> {1}" : "Recording segment completed: {0} -> {1}", stationName, outputPath);
+    public string StreamTitlesFileError(string stationName, string message) => Format("StreamTitlesFileError", IsPolish ? "Nie udało się zapisać tytułów strumienia dla {0}: {1}" : "Could not save stream titles for {0}: {1}", stationName, message);
+    public string CueSheetFileError(string stationName, string message) => Format("CueSheetFileError", IsPolish ? "Nie udało się zapisać pliku CUE dla {0}: {1}" : "Could not save the CUE sheet for {0}: {1}", stationName, message);
     public string UnknownStreamFormat(string stationName, string sourceUrl, string mime, string bytesDescription) => Format("UnknownStreamFormat", IsPolish
         ? "Nieznany format strumienia dla {0}. Nagrywanie bÄ™dzie kontynuowane jako BIN. ĹąrĂłdĹ‚o={1}, content-type={2}, pierwsze bajty={3}"
         : "Unknown stream format for {0}. Recording will continue as BIN. Source={1}, content type={2}, first bytes={3}", stationName, sourceUrl, mime, bytesDescription);

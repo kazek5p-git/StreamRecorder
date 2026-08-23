@@ -14,6 +14,13 @@ for HTTP and HTTPS stations. It uses BASS for audio output and bundles the
 BASS_AAC decoder required by AAC/AAC+ Shoutcast stations. HLS and MMS playback
 are still separate future work.
 
+The WinForms release can optionally save ICY stream title changes with
+timestamps to UTF-8 text files next to recordings. This option is configured
+per station from the station context menu.
+
+It can also create optional CUE sheets with relative track indexes from the
+same ICY titles. CUE generation is enabled globally in Settings.
+
 Main documentation:
 
 - `dotnet/README.md`
