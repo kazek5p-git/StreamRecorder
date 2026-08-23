@@ -7,8 +7,8 @@ This repository currently contains two code lines:
 
 ## Current Focus
 
-The active release line is the WinForms rewrite. Version 1.0.1 is the current
-stable release of this line and the first maintenance release after 1.0.0.
+The active release line is the WinForms rewrite. Version 1.0.2 is the current
+stable release of this line and a maintenance release after 1.0.0.
 
 The current development work also includes an initial separate playback path
 for HTTP and HTTPS stations. It uses BASS for audio output and bundles the
@@ -48,7 +48,7 @@ https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRec
 https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder-setup.exe
 
 The versioned assets use the matching release version, for example
-`StreamRecorder-1.0.1.zip` and `StreamRecorder-1.0.1-setup.exe`.
+`StreamRecorder-1.0.2.zip` and `StreamRecorder-1.0.2-setup.exe`.
 
 ## WinForms Rewrite Requirements
 

@@ -1,7 +1,7 @@
 ; StreamRecorder installer for Inno Setup.
 
 #ifndef Version
-  #define Version "1.0.1"
+  #define Version "1.0.2"
 #endif
 
 #ifndef StageDir

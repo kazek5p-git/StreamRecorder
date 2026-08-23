@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-The C# + WinForms rewrite now builds, packages, and passes the main parity checks for the stable 1.0.1 release. It is the active release line and has replaced the archived Rust application as the default release line.
+The C# + WinForms rewrite now builds, packages, and passes the main parity checks for the stable 1.0.2 release. It is the active release line and has replaced the archived Rust application as the default release line.
 
 ## Accessibility / NVDA
 
