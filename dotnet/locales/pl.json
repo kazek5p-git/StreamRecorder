@@ -95,7 +95,7 @@
   "StreamUrlAccessibleName": "Adres strumienia",
   "UsernameAccessibleName": "Nazwa użytkownika",
   "PasswordAccessibleName": "Hasło",
-  "ValidationTitle": "Walidacja",
+  "ValidationTitle": "Ostrzeżenie",
   "StationNameEmpty": "Nazwa stacji nie może być pusta.",
   "StreamUrlInvalid": "Adres strumienia jest nieprawidłowy.",
   "SchedulesTitle": "Harmonogram",

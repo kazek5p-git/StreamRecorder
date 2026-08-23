@@ -95,7 +95,7 @@
   "StreamUrlAccessibleName": "Stream URL",
   "UsernameAccessibleName": "Username",
   "PasswordAccessibleName": "Password",
-  "ValidationTitle": "Validation",
+  "ValidationTitle": "Warning",
   "StationNameEmpty": "Station name cannot be empty.",
   "StreamUrlInvalid": "The stream URL is not valid.",
   "SchedulesTitle": "Schedules",

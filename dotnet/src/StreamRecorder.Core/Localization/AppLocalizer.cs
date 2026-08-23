@@ -200,7 +200,7 @@ public sealed class AppLocalizer
     public string StreamUrlAccessibleName => Text("StreamUrlAccessibleName", IsPolish ? "Adres strumienia" : "Stream URL");
     public string UsernameAccessibleName => Text("UsernameAccessibleName", IsPolish ? "Nazwa uĹĽytkownika" : "Username");
     public string PasswordAccessibleName => Text("PasswordAccessibleName", IsPolish ? "HasĹ‚o" : "Password");
-    public string ValidationTitle => Text("ValidationTitle", IsPolish ? "Walidacja" : "Validation");
+    public string ValidationTitle => Text("ValidationTitle", IsPolish ? "Ostrzeżenie" : "Warning");
     public string StationNameEmpty => Text("StationNameEmpty", IsPolish ? "Nazwa stacji nie moĹĽe byÄ‡ pusta." : "Station name cannot be empty.");
     public string StreamUrlInvalid => Text("StreamUrlInvalid", IsPolish ? "Adres strumienia jest nieprawidĹ‚owy." : "The stream URL is not valid.");
     public string SchedulesTitle => Text("SchedulesTitle", IsPolish ? "Harmonogram" : "Schedules");
