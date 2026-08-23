@@ -5,6 +5,8 @@ public static class AppDefaults
     public const string ConfigDirectoryName = "Config";
     public const string ConfigFileName = "app.toml";
     public const string LogFileName = "streamrecorder.log";
+    public const string UserDataDirectoryName = "StreamRecorder";
+    public const string InstalledMarkerFileName = "installed.marker";
     public const string DefaultRecordingsFolderName = "StreamRecorder";
     public const string DefaultFileNameTemplate = "%t_%r-%M-%d_%h-%m-%s";
     public const string DefaultUpdateRepository = "kazek5p-git/StreamRecorder";

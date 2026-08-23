@@ -19,6 +19,7 @@ internal sealed class WindowsScheduledTasksRegistration
     public WindowsScheduledTasksSyncResult Apply(
         bool enabled,
         string executablePath,
+        bool installed,
         IReadOnlyList<ScheduleEntry> schedules,
         IReadOnlyList<Station> stations)
     {
@@ -57,8 +58,8 @@ internal sealed class WindowsScheduledTasksRegistration
             desiredTaskNames.Add(startTaskName);
             desiredTaskNames.Add(stopTaskName);
 
-            RegisterBoundaryTask(service, folder, normalizedExecutablePath, schedule, ScheduledCommandKind.Start, schedule.GetDays(), schedule.GetStartTime());
-            RegisterBoundaryTask(service, folder, normalizedExecutablePath, schedule, ScheduledCommandKind.Stop, GetStopDays(schedule), schedule.GetEndTime());
+            RegisterBoundaryTask(service, folder, normalizedExecutablePath, installed, schedule, ScheduledCommandKind.Start, schedule.GetDays(), schedule.GetStartTime());
+            RegisterBoundaryTask(service, folder, normalizedExecutablePath, installed, schedule, ScheduledCommandKind.Stop, GetStopDays(schedule), schedule.GetEndTime());
         }
 
         DeleteStaleTasks(folder, desiredTaskNames);
@@ -118,6 +119,7 @@ internal sealed class WindowsScheduledTasksRegistration
         dynamic service,
         dynamic folder,
         string executablePath,
+        bool installed,
         ScheduleEntry schedule,
         ScheduledCommandKind kind,
         IReadOnlyList<DayOfWeek> days,
@@ -143,7 +145,7 @@ internal sealed class WindowsScheduledTasksRegistration
 
         dynamic action = definition.Actions.Create(TaskActionExec);
         action.Path = executablePath;
-        action.Arguments = BuildArguments(schedule.Id, kind);
+        action.Arguments = BuildArguments(schedule.Id, kind, installed);
         action.WorkingDirectory = Path.GetDirectoryName(executablePath) ?? AppDomain.CurrentDomain.BaseDirectory;
 
         folder.RegisterTaskDefinition(
@@ -190,10 +192,11 @@ internal sealed class WindowsScheduledTasksRegistration
         return $"StreamRecorder scheduled recording {action}: {schedule.Id:D}";
     }
 
-    private static string BuildArguments(Guid scheduleId, ScheduledCommandKind kind)
+    private static string BuildArguments(Guid scheduleId, ScheduledCommandKind kind, bool installed)
     {
         var commandName = kind == ScheduledCommandKind.Start ? "--scheduled-start" : "--scheduled-stop";
-        return commandName + " " + scheduleId.ToString("D") + " --scheduled-minimized-to-tray";
+        var installedArgument = installed ? " --installed" : string.Empty;
+        return commandName + " " + scheduleId.ToString("D") + " --scheduled-minimized-to-tray" + installedArgument;
     }
 
     private static string BuildStartBoundary(IReadOnlyList<DayOfWeek> days, TimeSpan time)

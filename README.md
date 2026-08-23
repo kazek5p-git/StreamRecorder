@@ -21,6 +21,9 @@ per station from the station context menu.
 It can also create optional CUE sheets with relative track indexes from the
 same ICY titles. CUE generation is enabled globally in Settings.
 
+Installed builds keep user configuration under `%LOCALAPPDATA%\StreamRecorder`,
+while portable builds keep `Config` beside the executable.
+
 Main documentation:
 
 - `dotnet/README.md`

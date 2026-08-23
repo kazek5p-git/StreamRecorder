@@ -196,6 +196,51 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.True(schedule.CrossesMidnight());
     }
 
+    [Fact]
+    public void LoadOrCreate_MigratesLegacyConfigToInstalledUserDataDirectory()
+    {
+        var installRoot = Path.Combine(tempRoot, "installed");
+        var legacyPaths = AppPaths.Discover(
+            Path.Combine(installRoot, "StreamRecorder.exe"),
+            Path.Combine(tempRoot, "legacy-recordings"),
+            installedOverride: false);
+        var stationId = Guid.NewGuid();
+        ConfigStore.Save(
+            legacyPaths,
+            new AppConfig
+            {
+                Stations =
+                [
+                    new Station
+                    {
+                        Id = stationId,
+                        Name = "Migrated FM",
+                        Url = "https://example.invalid/migrated.mp3",
+                    },
+                ],
+            });
+
+        var userDataConfigDirectory = Path.Combine(tempRoot, "user-data", AppDefaults.ConfigDirectoryName);
+        var installedPaths = new AppPaths
+        {
+            RootDirectory = installRoot,
+            ConfigDirectory = userDataConfigDirectory,
+            RecordingsDirectory = Path.Combine(tempRoot, "installed-recordings"),
+            ConfigFilePath = Path.Combine(userDataConfigDirectory, AppDefaults.ConfigFileName),
+            LogFilePath = Path.Combine(userDataConfigDirectory, AppDefaults.LogFileName),
+            LegacyConfigFilePath = legacyPaths.ConfigFilePath,
+            UsesUserDataDirectory = true,
+        };
+
+        var migrated = ConfigStore.LoadOrCreate(installedPaths);
+
+        var station = Assert.Single(migrated.Stations);
+        Assert.Equal(stationId, station.Id);
+        Assert.Equal("Migrated FM", station.Name);
+        Assert.True(File.Exists(installedPaths.ConfigFilePath));
+        Assert.True(File.Exists(legacyPaths.ConfigFilePath));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(tempRoot))

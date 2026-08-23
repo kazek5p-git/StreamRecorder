@@ -579,7 +579,14 @@ public sealed class MainForm : Form
             }
 
             var downloaded = await app.Updater.DownloadUpdateAsync(app.Paths, update);
-            await app.Updater.InstallDownloadedUpdateAsync(app.Paths, downloaded, update.Asset, Application.ExecutablePath, Environment.GetCommandLineArgs().Skip(1).ToArray());
+            var restartArguments = Environment.GetCommandLineArgs().Skip(1).ToList();
+            if (app.Paths.UsesUserDataDirectory
+                && !restartArguments.Contains("--installed", StringComparer.OrdinalIgnoreCase))
+            {
+                restartArguments.Add("--installed");
+            }
+
+            await app.Updater.InstallDownloadedUpdateAsync(app.Paths, downloaded, update.Asset, Application.ExecutablePath, restartArguments);
             MessageBox.Show(this, localizer.UpdateDownloadedAndClosing, localizer.UpdatesTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
             allowClose = true;
             Close();
@@ -704,7 +711,7 @@ public sealed class MainForm : Form
 
         try
         {
-            startupRegistration.Apply(settings.LaunchOnStartup, Application.ExecutablePath);
+            startupRegistration.Apply(settings.LaunchOnStartup, Application.ExecutablePath, app.Paths.UsesUserDataDirectory);
         }
         catch (Exception ex)
         {
@@ -725,6 +732,7 @@ public sealed class MainForm : Form
             var result = scheduledTasksRegistration.Apply(
                 settings.UseWindowsTaskScheduler,
                 Application.ExecutablePath,
+                app.Paths.UsesUserDataDirectory,
                 app.GetSchedules(),
                 app.GetStations());
             app.Logs.Push(app.GetLocalizer().SyncedWindowsScheduledTasks(result.TaskCount, result.Enabled));

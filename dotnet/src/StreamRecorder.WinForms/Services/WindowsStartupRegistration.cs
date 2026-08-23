@@ -7,7 +7,7 @@ internal sealed class WindowsStartupRegistration
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ValueName = "StreamRecorder";
 
-    public void Apply(bool enabled, string executablePath)
+    public void Apply(bool enabled, string executablePath, bool installed = false)
     {
         if (string.IsNullOrWhiteSpace(executablePath))
         {
@@ -22,7 +22,7 @@ internal sealed class WindowsStartupRegistration
 
         if (enabled)
         {
-            key.SetValue(ValueName, FormatCommand(executablePath), RegistryValueKind.String);
+            key.SetValue(ValueName, FormatCommand(executablePath, installed), RegistryValueKind.String);
         }
         else
         {
@@ -30,8 +30,10 @@ internal sealed class WindowsStartupRegistration
         }
     }
 
-    internal static string FormatCommand(string executablePath)
+    internal static string FormatCommand(string executablePath, bool installed = false)
     {
-        return $"\"{executablePath}\"";
+        return installed
+            ? $"\"{executablePath}\" --installed"
+            : $"\"{executablePath}\"";
     }
 }

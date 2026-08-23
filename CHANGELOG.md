@@ -9,11 +9,13 @@ All notable changes to this project will be documented in this file.
 - WinForms release packaging now creates versioned and fixed-name assets for both the portable ZIP and the installer, following the same naming convention as Sonic Pitch.
 - The WinForms preview now contains the first separate HTTP/HTTPS playback path with selectable audio output and automatic reconnect attempts.
 - The default recording folder is now created at `%USERPROFILE%\Documents\StreamRecorder`, regardless of whether the application is portable or installed.
+- Installed builds now keep application data outside the installation directory in `%LOCALAPPDATA%\StreamRecorder\Config`; portable builds continue to use the adjacent `Config` directory.
 
 ### Added
 
 - Optional per-station ICY stream title capture from the station context menu. Titles are written with timestamps to a UTF-8 `.txt` file next to each recording segment.
 - Optional global CUE sheet generation from ICY stream titles, with relative track indexes for each recording segment.
+- Existing portable-style configuration is copied to the installed user-data directory on first launch without deleting the original file.
 
 ### Fixed
 

@@ -93,6 +93,13 @@ The installer offers English and Polish at startup and installs by default into
 the current user's profile, so StreamRecorder can write its configuration and
 recordings without administrator privileges.
 
+Installed builds store configuration and logs in
+`%LOCALAPPDATA%\StreamRecorder\Config`, independently of the application
+installation directory. On the first launch after upgrading from an older
+build, an existing `Config\app.toml` beside the executable is copied to the
+user-data directory without deleting the original. Portable builds continue to
+use `Config\app.toml` beside the executable.
+
 ## Stream title capture
 
 To save station metadata titles, select a station, open its context menu, and
@@ -173,5 +180,5 @@ is copied into the release package.
 
 ## Notes
 
-- The rewrite uses `Config/app.toml`, not INI.
+- The rewrite uses TOML, not INI: portable builds use `Config/app.toml`, while installed builds use `%LOCALAPPDATA%\StreamRecorder\Config\app.toml`.
 - The stable build should continue to be tested with keyboard navigation, tray behavior, updater flow, and real-world recording.

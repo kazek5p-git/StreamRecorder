@@ -13,6 +13,7 @@ public static class ConfigStore
         }
 
         paths.EnsureDirectories();
+        MigrateLegacyConfigIfNeeded(paths);
 
         if (!File.Exists(paths.ConfigFilePath))
         {
@@ -40,6 +41,20 @@ public static class ConfigStore
         }
 
         return config;
+    }
+
+    private static void MigrateLegacyConfigIfNeeded(AppPaths paths)
+    {
+        if (!paths.UsesUserDataDirectory
+            || File.Exists(paths.ConfigFilePath)
+            || string.IsNullOrWhiteSpace(paths.LegacyConfigFilePath)
+            || string.Equals(paths.ConfigFilePath, paths.LegacyConfigFilePath, StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(paths.LegacyConfigFilePath))
+        {
+            return;
+        }
+
+        File.Copy(paths.LegacyConfigFilePath, paths.ConfigFilePath);
     }
 
     public static void Save(AppPaths paths, AppConfig config)

@@ -18,12 +18,14 @@ internal static class Program
         if (options.GuardMode)
         {
             var executablePath = ResolveExecutablePath();
-            var logPath = Path.Combine(AppPaths.Discover(executablePath).ConfigDirectory, "crash_guard.log");
+            var logPath = Path.Combine(
+                AppPaths.Discover(executablePath, installedOverride: options.InstalledOverride).ConfigDirectory,
+                "crash_guard.log");
             return CrashGuard.Run(executablePath, options.ForwardedArgs, logPath);
         }
 
         var executable = ResolveExecutablePath();
-        var paths = AppPaths.Discover(executable);
+        var paths = AppPaths.Discover(executable, installedOverride: options.InstalledOverride);
         var config = ConfigStore.LoadOrCreate(paths);
         AppLocalizer.ApplyThreadCulture(config.Settings.Language);
 
@@ -129,6 +131,8 @@ internal static class Program
 
         public bool GuardedChild { get; set; }
 
+        public bool? InstalledOverride { get; set; }
+
         public ScheduledCommand? ScheduledCommand { get; set; }
 
         public bool ScheduledMinimizedToTray { get; set; }
@@ -141,6 +145,7 @@ internal static class Program
         {
             var guardMode = false;
             var guardedChild = false;
+            bool? installedOverride = null;
             string? crashCountFile = null;
             var crashUntil = 0;
             var exitDelayMs = 1000;
@@ -158,6 +163,10 @@ internal static class Program
                         break;
                     case "--guarded":
                         guardedChild = true;
+                        break;
+                    case "--installed":
+                        installedOverride = true;
+                        forwarded.Add("--installed");
                         break;
                     case "--test-crash-count-file":
                         crashCountFile = RequireValue(args, ref index);
@@ -205,6 +214,7 @@ internal static class Program
             {
                 GuardMode = guardMode,
                 GuardedChild = guardedChild,
+                InstalledOverride = installedOverride,
                 ScheduledCommand = scheduledCommand,
                 ScheduledMinimizedToTray = scheduledMinimizedToTray,
                 ForwardedArgs = forwarded,
