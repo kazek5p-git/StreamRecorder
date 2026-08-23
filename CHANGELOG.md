@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-23
+
 ### Changed
 
 - WinForms release packaging now creates versioned and fixed-name assets for both the portable ZIP and the installer, following the same naming convention as Sonic Pitch.

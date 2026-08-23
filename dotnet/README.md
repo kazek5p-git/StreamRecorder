@@ -4,7 +4,7 @@ This directory contains the C# + WinForms release line of StreamRecorder.
 
 ## Current State
 
-The stable 1.0.0 build includes:
+The stable 1.0.1 build includes:
 
 - WinForms main window with station list, context menu, tray integration, log window, settings, and global schedules
 - HTTP, HTTPS, and HLS recording
@@ -68,12 +68,12 @@ a recording folder next to `StreamRecorder.exe`. A manually selected recording
 path remains unchanged, and existing recordings are not moved automatically.
 
 The package is written using both the versioned filename
-`StreamRecorder-1.0.0.zip` and the fixed filename `StreamRecorder.zip`. Use
+`StreamRecorder-1.0.1.zip` and the fixed filename `StreamRecorder.zip`. Use
 this permanent link for the latest stable release:
 
 https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder.zip
 
-The installer is published in the same way: `StreamRecorder-1.0.0-setup.exe`
+The installer is published in the same way: `StreamRecorder-1.0.1-setup.exe`
 and the fixed `StreamRecorder-setup.exe`. Its permanent link is:
 
 https://github.com/kazek5p-git/StreamRecorder/releases/latest/download/StreamRecorder-setup.exe
@@ -86,7 +86,7 @@ testing, use the same fixed asset name with the tag of the selected release:
 For a normal Windows installation, build the Inno Setup installer with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build_winforms_installer.ps1 -Version 1.0.0
+powershell -ExecutionPolicy Bypass -File .\scripts\build_winforms_installer.ps1 -Version 1.0.1
 ```
 
 The installer offers English and Polish at startup and installs by default into
