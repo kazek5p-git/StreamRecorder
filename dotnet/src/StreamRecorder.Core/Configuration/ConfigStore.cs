@@ -122,19 +122,27 @@ public static class ConfigStore
         {
             Settings = settings,
             Stations = (persisted.Stations ?? [])
-                .Select(static station => new Station
+                .Select(static persistedStation =>
                 {
-                    Id = ParseGuidOrNew(station.Id),
-                    Name = station.Name ?? string.Empty,
-                    Url = station.Url ?? string.Empty,
-                    SaveStreamTitles = station.SaveStreamTitles,
-                    Credentials = station.Credentials is null
-                        ? null
-                        : new Credentials
-                        {
-                            Username = station.Credentials.Username ?? string.Empty,
-                            Password = station.Credentials.Password ?? string.Empty,
-                        },
+                    var plan = NormalizeHourlyRecordingPlan(
+                        persistedStation.HourlyRecordingMode,
+                        persistedStation.HourlyRecordingHours);
+                    return new Station
+                    {
+                        Id = ParseGuidOrNew(persistedStation.Id),
+                        Name = persistedStation.Name ?? string.Empty,
+                        Url = persistedStation.Url ?? string.Empty,
+                        SaveStreamTitles = persistedStation.SaveStreamTitles,
+                        HourlyRecordingMode = plan.Mode,
+                        HourlyRecordingHours = plan.Hours,
+                        Credentials = persistedStation.Credentials is null
+                            ? null
+                            : new Credentials
+                            {
+                                Username = persistedStation.Credentials.Username ?? string.Empty,
+                                Password = persistedStation.Credentials.Password ?? string.Empty,
+                            },
+                    };
                 })
                 .ToList(),
             Schedules = FromPersistedSchedules(persisted.Schedules),
@@ -167,19 +175,27 @@ public static class ConfigStore
                 Language = LanguageCodes.Normalize(config.Settings.Language),
             },
             Stations = config.Stations
-                .Select(static station => new PersistedStation
+                .Select(static station =>
                 {
-                    Id = station.Id.ToString("D"),
-                    Name = station.Name,
-                    Url = station.Url,
-                    SaveStreamTitles = station.SaveStreamTitles,
-                    Credentials = station.Credentials is null
-                        ? null
-                        : new PersistedCredentials
-                        {
-                            Username = station.Credentials.Username,
-                            Password = station.Credentials.Password,
-                        },
+                    var plan = NormalizeHourlyRecordingPlan(
+                        (int)station.HourlyRecordingMode,
+                        station.HourlyRecordingHours);
+                    return new PersistedStation
+                    {
+                        Id = station.Id.ToString("D"),
+                        Name = station.Name,
+                        Url = station.Url,
+                        SaveStreamTitles = station.SaveStreamTitles,
+                        HourlyRecordingMode = (int)plan.Mode,
+                        HourlyRecordingHours = plan.Hours,
+                        Credentials = station.Credentials is null
+                            ? null
+                            : new PersistedCredentials
+                            {
+                                Username = station.Credentials.Username,
+                                Password = station.Credentials.Password,
+                            },
+                    };
                 })
                 .ToList(),
             Schedules = config.Schedules
@@ -203,6 +219,27 @@ public static class ConfigStore
     private static Guid ParseGuidOrNew(string? value)
     {
         return Guid.TryParse(value, out var parsed) ? parsed : Guid.NewGuid();
+    }
+
+    private static (HourlyRecordingMode Mode, List<int> Hours) NormalizeHourlyRecordingPlan(
+        int modeValue,
+        IEnumerable<int>? hours)
+    {
+        var mode = Enum.IsDefined(typeof(HourlyRecordingMode), modeValue)
+            ? (HourlyRecordingMode)modeValue
+            : HourlyRecordingMode.Disabled;
+        var normalizedHours = (hours ?? [])
+            .Where(static hour => hour is >= 0 and <= 23)
+            .Distinct()
+            .OrderBy(static hour => hour)
+            .ToList();
+
+        if (mode == HourlyRecordingMode.SelectedHours && normalizedHours.Count == 0)
+        {
+            mode = HourlyRecordingMode.Disabled;
+        }
+
+        return (mode, normalizedHours);
     }
 
     private static List<DayOfWeek> NormalizeScheduleDays(List<DayOfWeek>? days, DayOfWeek? legacyDay)
@@ -463,6 +500,10 @@ public static class ConfigStore
         public string Url { get; set; } = string.Empty;
 
         public bool SaveStreamTitles { get; set; }
+
+        public int HourlyRecordingMode { get; set; }
+
+        public List<int>? HourlyRecordingHours { get; set; }
 
         public PersistedCredentials? Credentials { get; set; }
     }

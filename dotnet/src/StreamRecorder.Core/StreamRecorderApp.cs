@@ -147,6 +147,26 @@ public sealed class StreamRecorderApp : IDisposable
         }
     }
 
+    public void SetHourlyRecordingPlan(Guid stationId, HourlyRecordingMode mode, IEnumerable<int> hours)
+    {
+        var found = false;
+        lock (gate)
+        {
+            var station = config.Stations.FirstOrDefault(value => value.Id == stationId);
+            if (station is not null)
+            {
+                station.SetHourlyRecordingPlan(mode, hours);
+                Persist();
+                found = true;
+            }
+        }
+
+        if (found)
+        {
+            ConfigChanged?.Invoke();
+        }
+    }
+
     public void DeleteStation(Guid stationId)
     {
         lock (gate)
@@ -249,6 +269,7 @@ public sealed class StreamRecorderApp : IDisposable
     {
         Scheduler.Start(
             schedulesProvider: GetSchedules,
+            stationsProvider: GetStations,
             stationProvider: GetStation,
             languageProvider: () => GetSettings().Language,
             rootDirectoryProvider: () => Paths.RootDirectory,
@@ -301,6 +322,8 @@ public sealed class StreamRecorderApp : IDisposable
             Name = station.Name,
             Url = station.Url,
             SaveStreamTitles = station.SaveStreamTitles,
+            HourlyRecordingMode = station.HourlyRecordingMode,
+            HourlyRecordingHours = station.GetHourlyRecordingHours().ToList(),
             Credentials = station.Credentials is null
                 ? null
                 : new Credentials

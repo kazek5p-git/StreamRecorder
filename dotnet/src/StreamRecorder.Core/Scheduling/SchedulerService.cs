@@ -8,11 +8,13 @@ namespace StreamRecorder.Core.Scheduling;
 public sealed class SchedulerService : IDisposable
 {
     private readonly ConcurrentDictionary<string, DateTime> lastRuns = new();
+    private readonly ConcurrentDictionary<Guid, bool> hourlyDesiredStates = new();
     private CancellationTokenSource? cancellation;
     private Task? loopTask;
 
     public void Start(
         Func<IReadOnlyList<ScheduleEntry>> schedulesProvider,
+        Func<IReadOnlyList<Station>> stationsProvider,
         Func<Guid, Station?> stationProvider,
         Func<string> languageProvider,
         Func<string> rootDirectoryProvider,
@@ -23,54 +25,119 @@ public sealed class SchedulerService : IDisposable
     {
         Stop();
 
-        cancellation = new CancellationTokenSource();
+        var tokenSource = new CancellationTokenSource();
+        cancellation = tokenSource;
+        var token = tokenSource.Token;
         loopTask = Task.Run(async () =>
         {
-            while (!cancellation.Token.IsCancellationRequested)
+            try
             {
-                var now = DateTime.Now;
-                foreach (var schedule in schedulesProvider())
+                while (!token.IsCancellationRequested)
                 {
-                    if (!schedule.Enabled)
+                    var now = DateTime.Now;
+                    var stations = stationsProvider();
+                    var hourlyStationIds = new HashSet<Guid>();
+
+                    foreach (var station in stations)
                     {
-                        continue;
+                        if (!station.HasActiveHourlyRecordingPlan)
+                        {
+                            if (hourlyDesiredStates.TryRemove(station.Id, out var wasDesired)
+                                && wasDesired
+                                && isRecording(station.Id))
+                            {
+                                stopRecording(station.Id);
+                            }
+
+                            continue;
+                        }
+
+                        hourlyStationIds.Add(station.Id);
+                        var shouldRecord = station.ShouldRecordDuringHour(now.Hour);
+                        var hadPreviousState = hourlyDesiredStates.TryGetValue(station.Id, out var previousState);
+                        hourlyDesiredStates[station.Id] = shouldRecord;
+                        if (shouldRecord && !isRecording(station.Id))
+                        {
+                            await startRecordingAsync(station.Id);
+                            if (isRecording(station.Id))
+                            {
+                                var localizer = AppLocalizer.For(languageProvider(), rootDirectoryProvider());
+                                logs.Push(localizer.ScheduleStartedRecording(station.Name));
+                            }
+                        }
+                        else if (!shouldRecord
+                            && (!hadPreviousState || previousState)
+                            && isRecording(station.Id))
+                        {
+                            stopRecording(station.Id);
+                            var localizer = AppLocalizer.For(languageProvider(), rootDirectoryProvider());
+                            logs.Push(localizer.ScheduleStoppedRecording(station.Name));
+                        }
                     }
 
-                    var station = stationProvider(schedule.StationId);
-                    if (station is null)
+                    foreach (var trackedStationId in hourlyDesiredStates.Keys.ToArray())
                     {
-                        continue;
+                        if (hourlyStationIds.Contains(trackedStationId))
+                        {
+                            continue;
+                        }
+
+                        hourlyDesiredStates.TryRemove(trackedStationId, out _);
                     }
 
-                    var localizer = AppLocalizer.For(languageProvider(), rootDirectoryProvider());
-
-                    if (IsBoundaryDue(schedule, now, ScheduleBoundary.Start)
-                        && MarkBoundaryRun(schedule.Id, ScheduleBoundary.Start, now)
-                        && !isRecording(station.Id))
+                    foreach (var schedule in schedulesProvider())
                     {
-                        await startRecordingAsync(station.Id);
-                        logs.Push(localizer.ScheduleStartedRecording(station.Name));
+                        if (!schedule.Enabled)
+                        {
+                            continue;
+                        }
+
+                        if (hourlyStationIds.Contains(schedule.StationId))
+                        {
+                            continue;
+                        }
+
+                        var station = stationProvider(schedule.StationId);
+                        if (station is null)
+                        {
+                            continue;
+                        }
+
+                        var localizer = AppLocalizer.For(languageProvider(), rootDirectoryProvider());
+
+                        if (IsBoundaryDue(schedule, now, ScheduleBoundary.Start)
+                            && MarkBoundaryRun(schedule.Id, ScheduleBoundary.Start, now)
+                            && !isRecording(station.Id))
+                        {
+                            await startRecordingAsync(station.Id);
+                            logs.Push(localizer.ScheduleStartedRecording(station.Name));
+                        }
+
+                        if (IsBoundaryDue(schedule, now, ScheduleBoundary.Stop)
+                            && MarkBoundaryRun(schedule.Id, ScheduleBoundary.Stop, now)
+                            && isRecording(station.Id))
+                        {
+                            stopRecording(station.Id);
+                            logs.Push(localizer.ScheduleStoppedRecording(station.Name));
+                        }
                     }
 
-                    if (IsBoundaryDue(schedule, now, ScheduleBoundary.Stop)
-                        && MarkBoundaryRun(schedule.Id, ScheduleBoundary.Stop, now)
-                        && isRecording(station.Id))
-                    {
-                        stopRecording(station.Id);
-                        logs.Push(localizer.ScheduleStoppedRecording(station.Name));
-                    }
+                    await Task.Delay(TimeSpan.FromSeconds(1), token);
                 }
-
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
             }
-        }, cancellation.Token);
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+            }
+        }, token);
     }
 
     public void Stop()
     {
-        cancellation?.Cancel();
+        var tokenSource = cancellation;
         cancellation = null;
         loopTask = null;
+        tokenSource?.Cancel();
+        hourlyDesiredStates.Clear();
     }
 
     public void Dispose()

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Per-station daily hourly recording plans with `All hours` and `Selected hours` modes.
+- A dedicated hourly recording dialog with 24 keyboard-accessible check boxes and select/clear all actions.
+- Windows Task Scheduler synchronization for hourly recording windows.
+
+### Changed
+
+- An active hourly plan now takes precedence over regular schedule entries for the same station.
+- Hourly windows that cross midnight are grouped into one start/stop pair to avoid conflicting tasks.
+
 ## [1.0.1] - 2026-08-23
 
 ### Changed

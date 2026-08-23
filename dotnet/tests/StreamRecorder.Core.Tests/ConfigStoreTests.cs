@@ -80,6 +80,8 @@ public sealed class ConfigStoreTests : IDisposable
                     Name = "Parity FM",
                     Url = "https://example.invalid/stream.mp3",
                     SaveStreamTitles = true,
+                    HourlyRecordingMode = HourlyRecordingMode.SelectedHours,
+                    HourlyRecordingHours = [1, 4, 23, 4, -1, 24],
                     Credentials = new Credentials
                     {
                         Username = "demo",
@@ -133,6 +135,8 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal("Parity FM", station.Name);
         Assert.Equal("https://example.invalid/stream.mp3", station.Url);
         Assert.True(station.SaveStreamTitles);
+        Assert.Equal(HourlyRecordingMode.SelectedHours, station.HourlyRecordingMode);
+        Assert.Equal(new[] { 1, 4, 23 }, station.GetHourlyRecordingHours());
         Assert.NotNull(station.Credentials);
         Assert.Equal("demo", station.Credentials!.Username);
         Assert.Equal("secret", station.Credentials.Password);

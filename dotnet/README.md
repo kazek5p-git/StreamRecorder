@@ -24,6 +24,12 @@ The stable 1.0.1 build includes:
 
 This release line replaces the archived Rust application as the active version.
 
+The current development line additionally supports a daily hourly recording
+plan configured separately for each station. The plan can be disabled, cover
+all hours, or use selected hours from `00:00` through `23:00`. It controls when
+the station is recorded; it does not replace the existing elapsed-time file
+splitting option.
+
 ## Requirements
 
 - `Microsoft .NET Framework 4.8`
@@ -121,6 +127,27 @@ text capture option, so either format or both formats can be enabled. CUE
 support is generally strongest for MP3, FLAC, OGG, and WAV files; other formats
 are still written with a `BINARY` CUE file type and may have limited player
 support.
+
+## Hourly recording plans
+
+Select a station, open its context menu, and choose `Hourly recording`. The
+dialog offers three modes:
+
+- `Do not use an hourly plan`
+- `Record during all hours`
+- `Record only selected hours`, with independent check boxes for `00:00` to
+  `23:00`
+
+The plan is stored per station and applies every day. Consecutive selected
+hours are handled as one recording window, including windows that cross
+midnight. When an hourly plan is active, ordinary schedule entries for that
+station are ignored so the two mechanisms cannot start and stop the same
+recording against each other. If Windows Task Scheduler integration is
+enabled, the same hourly windows are synchronized as Windows tasks.
+
+This feature controls recording availability by clock hour. The separate
+`Split recordings every` setting still measures elapsed time from the start of
+each recording session.
 
 If `third_party/GPAC/MP4Box.exe` exists, the packaging script also copies the extracted GPAC files into `Tools/GPAC/` inside the ZIP and adds `THIRD-PARTY-NOTICES.txt`.
 

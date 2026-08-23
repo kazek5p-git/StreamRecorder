@@ -2,15 +2,19 @@ namespace StreamRecorder.WinForms.Services;
 
 public sealed class ScheduledCommand
 {
-    public ScheduledCommand(ScheduledCommandKind kind, Guid scheduleId)
+    public ScheduledCommand(ScheduledCommandKind kind, Guid targetId)
     {
         Kind = kind;
-        ScheduleId = scheduleId;
+        TargetId = targetId;
     }
 
     public ScheduledCommandKind Kind { get; }
 
-    public Guid ScheduleId { get; }
+    public Guid TargetId { get; }
+
+    public Guid ScheduleId => TargetId;
+
+    public Guid StationId => TargetId;
 
     public string ToWireFormat()
     {
@@ -32,12 +36,12 @@ public sealed class ScheduledCommand
             return false;
         }
 
-        if (!Guid.TryParse(parts[1], out var scheduleId))
+        if (!Guid.TryParse(parts[1], out var targetId))
         {
             return false;
         }
 
-        command = new ScheduledCommand(kind, scheduleId);
+        command = new ScheduledCommand(kind, targetId);
         return true;
     }
 }
@@ -46,4 +50,6 @@ public enum ScheduledCommandKind
 {
     Start,
     Stop,
+    HourlyStart,
+    HourlyStop,
 }

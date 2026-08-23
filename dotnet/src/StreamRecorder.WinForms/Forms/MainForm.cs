@@ -33,6 +33,7 @@ public sealed class MainForm : Form
     private readonly ToolStripMenuItem stopListeningMenuItem = new();
     private readonly ToolStripMenuItem saveStreamTitlesMenuItem = new();
     private readonly ToolStripMenuItem editStationMenuItem = new();
+    private readonly ToolStripMenuItem hourlyRecordingMenuItem = new();
     private readonly ToolStripMenuItem schedulesMenuItem = new();
     private readonly ToolStripMenuItem deleteStationMenuItem = new();
     private readonly ToolStripSeparator stationMenuActionsSeparator = new();
@@ -237,6 +238,7 @@ public sealed class MainForm : Form
         stationMenu.Items.Add(saveStreamTitlesMenuItem);
         stationMenu.Items.Add(stationMenuEditSeparator);
         stationMenu.Items.Add(editStationMenuItem);
+        stationMenu.Items.Add(hourlyRecordingMenuItem);
         stationMenu.Items.Add(deleteStationMenuItem);
 
         stationMenu.Opening += (_, _) =>
@@ -261,6 +263,7 @@ public sealed class MainForm : Form
         saveStreamTitlesMenuItem.CheckOnClick = true;
         saveStreamTitlesMenuItem.Click += (_, _) => ToggleSaveStreamTitles();
         editStationMenuItem.Click += (_, _) => EditSelectedStation();
+        hourlyRecordingMenuItem.Click += (_, _) => OpenHourlyRecordingPlan();
         deleteStationMenuItem.Click += (_, _) => DeleteSelectedStation();
         UpdateStationMenuState();
     }
@@ -368,6 +371,8 @@ public sealed class MainForm : Form
         saveStreamTitlesMenuItem.Visible = hasSelection;
         stationMenuEditSeparator.Visible = hasSelection;
         editStationMenuItem.Visible = hasSelection;
+        hourlyRecordingMenuItem.Visible = hasSelection;
+        hourlyRecordingMenuItem.Enabled = hasSelection;
         deleteStationMenuItem.Visible = hasSelection;
     }
 
@@ -409,6 +414,26 @@ public sealed class MainForm : Form
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             app.UpsertStation(dialog.BuildStation(station.Id));
+            RefreshUi();
+            SelectStation(station.Id);
+        }
+
+        Activate();
+        FocusStationList();
+    }
+
+    private void OpenHourlyRecordingPlan()
+    {
+        var station = GetSelectedStation();
+        if (station is null)
+        {
+            return;
+        }
+
+        using var dialog = new HourlyRecordingPlanForm(app.GetLocalizer(), station);
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            app.SetHourlyRecordingPlan(station.Id, dialog.SelectedMode, dialog.SelectedHours);
             RefreshUi();
             SelectStation(station.Id);
         }
@@ -755,6 +780,12 @@ public sealed class MainForm : Form
 
     private async Task ExecuteScheduledCommandAsync(ScheduledCommand command)
     {
+        if (command.Kind is ScheduledCommandKind.HourlyStart or ScheduledCommandKind.HourlyStop)
+        {
+            await ExecuteHourlyScheduledCommandAsync(command);
+            return;
+        }
+
         var schedule = app.GetSchedules().FirstOrDefault(value => value.Id == command.ScheduleId);
         if (schedule is null || !schedule.Enabled)
         {
@@ -762,7 +793,7 @@ public sealed class MainForm : Form
         }
 
         var station = app.GetStation(schedule.StationId);
-        if (station is null)
+        if (station is null || station.HasActiveHourlyRecordingPlan)
         {
             return;
         }
@@ -776,6 +807,43 @@ public sealed class MainForm : Form
                 app.Logs.Push(localizer.ScheduleStartedRecording(station.Name));
             }
 
+            return;
+        }
+
+        if (app.Recorder.IsRecording(station.Id))
+        {
+            app.StopRecording(station.Id);
+            app.Logs.Push(localizer.ScheduleStoppedRecording(station.Name));
+        }
+    }
+
+    private async Task ExecuteHourlyScheduledCommandAsync(ScheduledCommand command)
+    {
+        var station = app.GetStation(command.StationId);
+        if (station is null || !station.HasActiveHourlyRecordingPlan)
+        {
+            return;
+        }
+
+        var localizer = app.GetLocalizer();
+        if (command.Kind == ScheduledCommandKind.HourlyStart)
+        {
+            if (!station.ShouldRecordDuringHour(DateTime.Now.Hour))
+            {
+                return;
+            }
+
+            if (!app.Recorder.IsRecording(station.Id))
+            {
+                await app.StartRecordingAsync(station.Id);
+                app.Logs.Push(localizer.ScheduleStartedRecording(station.Name));
+            }
+
+            return;
+        }
+
+        if (station.ShouldRecordDuringHour(DateTime.Now.Hour))
+        {
             return;
         }
 
@@ -980,6 +1048,7 @@ public sealed class MainForm : Form
         stopListeningMenuItem.Text = localizer.StopListening;
         saveStreamTitlesMenuItem.Text = localizer.SaveStreamTitles;
         editStationMenuItem.Text = localizer.EditStation;
+        hourlyRecordingMenuItem.Text = localizer.HourlyRecording;
         deleteStationMenuItem.Text = localizer.DeleteStation;
 
         trayShowMenuItem.Text = localizer.Show;

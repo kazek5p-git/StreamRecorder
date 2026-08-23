@@ -110,6 +110,7 @@ public sealed class AppLocalizer
     public string StopListening => Text("StopListening", IsPolish ? "&Wyłącz odsłuch" : "S&top listening");
     public string SaveStreamTitles => Text("SaveStreamTitles", IsPolish ? "Zapisuj tytuły strumienia" : "Save stream titles");
     public string EditStation => Text("EditStation", IsPolish ? "&Edytuj stacjÄ™" : "&Edit station");
+    public string HourlyRecording => Text("HourlyRecording", IsPolish ? "&Godziny nagrywania..." : "&Hourly recording...");
     public string Schedules => Text("Schedules", IsPolish ? "&Harmonogram..." : "Sche&dules...");
     public string DeleteStation => Text("DeleteStation", IsPolish ? "&UsuĹ„ stacjÄ™" : "&Delete station");
     public string ShowLog => Text("ShowLog", IsPolish ? "PokaĹĽ &log" : "Show &log");
@@ -168,6 +169,23 @@ public sealed class AppLocalizer
     public string SplitHoursAccessibleName => Text("SplitHoursAccessibleName", IsPolish ? "Dziel nagrania co, godziny" : "Split recordings every, hours");
     public string SplitMinutesAccessibleName => Text("SplitMinutesAccessibleName", IsPolish ? "Dziel nagrania co, minuty" : "Split recordings every, minutes");
     public string SplitSecondsAccessibleName => Text("SplitSecondsAccessibleName", IsPolish ? "Dziel nagrania co, sekundy" : "Split recordings every, seconds");
+    public string HourlyRecordingTitle => Text("HourlyRecordingTitle", IsPolish ? "Godziny nagrywania" : "Hourly recording");
+    public string HourlyRecordingIntro => Text("HourlyRecordingIntro", IsPolish
+        ? "Ustaw godziny nagrywania dla tej stacji. Plan obowiązuje każdego dnia."
+        : "Choose the recording hours for this station. The plan applies every day.");
+    public string HourlyRecordingModeGroup => Text("HourlyRecordingModeGroup", IsPolish ? "Tryb" : "Mode");
+    public string HourlyRecordingDisabled => Text("HourlyRecordingDisabled", IsPolish ? "Nie używaj planu godzinowego" : "Do not use an hourly plan");
+    public string HourlyRecordingAllHours => Text("HourlyRecordingAllHours", IsPolish ? "Nagrywaj przez wszystkie godziny" : "Record during all hours");
+    public string HourlyRecordingSelectedHours => Text("HourlyRecordingSelectedHours", IsPolish ? "Nagrywaj tylko wybrane godziny" : "Record only selected hours");
+    public string HourlyRecordingHoursGroup => Text("HourlyRecordingHoursGroup", IsPolish ? "Godziny" : "Hours");
+    public string HourlyRecordingHoursAccessibleName => Text("HourlyRecordingHoursAccessibleName", IsPolish ? "Wybór godzin nagrywania" : "Recording hours selection");
+    public string HourlyRecordingHourAccessibleName(int hour) => Format(
+        "HourlyRecordingHourAccessibleName",
+        IsPolish ? "Godzina {0:00}:00" : "Hour {0:00}:00",
+        hour);
+    public string HourlyRecordingRequiresHour => Text("HourlyRecordingRequiresHour", IsPolish ? "Wybierz co najmniej jedną godzinę." : "Select at least one hour.");
+    public string SelectAll => Text("SelectAll", IsPolish ? "Zaznacz wszystkie" : "Select all");
+    public string ClearAll => Text("ClearAll", IsPolish ? "Wyczyść wszystkie" : "Clear all");
     public string StationDialogAddTitle => Text("StationDialogAddTitle", IsPolish ? "Dodaj stacjÄ™" : "Add station");
     public string StationDialogEditTitle => Text("StationDialogEditTitle", IsPolish ? "Edytuj stacjÄ™" : "Edit station");
     public string StationDialogIntro => Text("StationDialogIntro", IsPolish

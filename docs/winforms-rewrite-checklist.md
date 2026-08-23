@@ -49,6 +49,11 @@
 - The design must support multiple independent schedule entries, for example:
   - Thursday 07:00 start station Y
   - Friday 08:00 start station X
+- Hourly recording plans must be configured per station rather than globally.
+- Hourly plans must offer all-hours and selected-hours modes with 24 independent
+  native check boxes from `00:00` through `23:00`.
+- An active hourly plan must take precedence over ordinary schedule entries for
+  the same station.
 
 ## Early Core Migration Order
 

@@ -200,6 +200,18 @@ internal static class Program
                         forwarded.Add("--scheduled-stop");
                         forwarded.Add(stopScheduleId.ToString("D"));
                         break;
+                    case "--hourly-start":
+                        var hourlyStartStationId = Guid.Parse(RequireValue(args, ref index));
+                        scheduledCommand = new ScheduledCommand(ScheduledCommandKind.HourlyStart, hourlyStartStationId);
+                        forwarded.Add("--hourly-start");
+                        forwarded.Add(hourlyStartStationId.ToString("D"));
+                        break;
+                    case "--hourly-stop":
+                        var hourlyStopStationId = Guid.Parse(RequireValue(args, ref index));
+                        scheduledCommand = new ScheduledCommand(ScheduledCommandKind.HourlyStop, hourlyStopStationId);
+                        forwarded.Add("--hourly-stop");
+                        forwarded.Add(hourlyStopStationId.ToString("D"));
+                        break;
                     case "--scheduled-minimized-to-tray":
                         scheduledMinimizedToTray = true;
                         forwarded.Add("--scheduled-minimized-to-tray");

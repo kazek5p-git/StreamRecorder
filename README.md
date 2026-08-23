@@ -22,6 +22,11 @@ per station from the station context menu.
 It can also create optional CUE sheets with relative track indexes from the
 same ICY titles. CUE generation is enabled globally in Settings.
 
+The development line also supports a daily hourly recording plan configured
+separately for each station. A plan can record during all hours or only during
+selected hours from the station context menu. An active hourly plan takes
+precedence over regular schedules for that station.
+
 Installed builds keep user configuration under `%LOCALAPPDATA%\StreamRecorder`,
 while portable builds keep `Config` beside the executable.
 

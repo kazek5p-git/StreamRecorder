@@ -47,6 +47,8 @@ The C# + WinForms rewrite now builds, packages, and passes the main parity check
   - explicit station target
   - start/stop actions
   - `HH:mm:ss`
+- per-station daily hourly recording plans with all-hours and selected-hours modes
+- shared hourly-window evaluation for the in-process scheduler and Windows Task Scheduler
 
 ### Verified in parity runs
 
