@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - An active hourly plan now takes precedence over regular schedule entries for the same station.
 - Hourly windows that cross midnight are grouped into one start/stop pair to avoid conflicting tasks.
 - Validation dialogs now use a warning title instead of a validation-specific title.
+- The installer now offers the standard Inno Setup choice between all-users installation in `Program Files` and current-user installation in `%LOCALAPPDATA%\Programs`.
+- Installer publisher metadata now identifies Kazimierz Parzych and DJ Graco.
 
 ## [1.0.1] - 2026-08-23
 

@@ -95,9 +95,10 @@ For a normal Windows installation, build the Inno Setup installer with:
 powershell -ExecutionPolicy Bypass -File .\scripts\build_winforms_installer.ps1 -Version 1.0.2
 ```
 
-The installer offers English and Polish at startup and installs by default into
-the current user's profile, so StreamRecorder can write its configuration and
-recordings without administrator privileges.
+The installer offers English and Polish at startup and lets the user choose
+between installing for all users in `Program Files` or only for the current user
+in `%LOCALAPPDATA%\Programs`. StreamRecorder keeps its configuration and
+recordings in user-writable data directories in either mode.
 
 Installed builds store configuration and logs in
 `%LOCALAPPDATA%\StreamRecorder\Config`, independently of the application

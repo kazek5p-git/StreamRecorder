@@ -13,7 +13,7 @@
 #endif
 
 #define AppName "StreamRecorder"
-#define AppPublisher "StreamRecorder contributors"
+#define AppPublisher "Kazimierz Parzych and DJ Graco"
 #define AppUrl "https://github.com/kazek5p-git/StreamRecorder"
 
 [Setup]
@@ -25,10 +25,11 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppUrl}
 AppSupportURL={#AppUrl}
 AppUpdatesURL={#AppUrl}/releases
-DefaultDirName={localappdata}\Programs\{#AppName}
+DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=dialog
 OutputDir={#OutputDir}
 OutputBaseFilename=StreamRecorder-{#Version}-setup
 Compression=lzma2/ultra64
